@@ -1,0 +1,6 @@
+# Name,   Type, SubType, Offset,  Size, Flags
+# Single app partition for development - provides 3MB app space
+nvs,      data, nvs,     0x9000,  0x5000,
+app0,     app,  factory, 0x10000, 0x2F0000,
+spiffs,   data, spiffs,  0x300000,0xE0000,
+coredump, data, coredump,0x3E0000,0x10000,
