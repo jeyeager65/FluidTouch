@@ -108,9 +108,9 @@ void UITabs::createTestTab(lv_obj_t *tab) {
 
 // Public wrappers for settings functions
 void UITabs::loadSettings() {
-    UITabSettings::loadSettings();
+    // Settings are now loaded by the individual subtabs (General and Connection)
 }
 
 void UITabs::saveSettings() {
-    UITabSettings::saveSettings();
+    // Settings are now saved by the individual subtabs (General and Connection)
 }
