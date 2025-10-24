@@ -23,7 +23,8 @@ The codebase follows a **strict modular pattern** with clear separation:
    - `ScreenshotServer` - WiFi web server for remote screenshots via LovyanGFX `readRect()`
 
 2. **UI Module Hierarchy** (all under `ui/` subdirectory):
-   - `UICommon` - Shared status bar with machine state display
+   - `UICommon` - Shared status bar with machine/WiFi info and position displays
+   - `UIMachineSelect` - Machine selection screen (appears after splash, before main UI)
    - `UISplash` - Startup splash screen (2.5s duration)
    - `UITabs` - Main tabview orchestrator, delegates to tab modules
    - `UITab*` - Individual tab modules (`UITabStatus`, `UITabControl`, etc.)
@@ -46,15 +47,28 @@ The codebase follows a **strict modular pattern** with clear separation:
 1. **Main loop sequence** (`main.cpp`):
    ```cpp
    DisplayDriver::init() → TouchDriver::init() → ScreenshotServer::init()
-   → UISplash::show() → UICommon::init() → UITabs::createTabs()
+   → UISplash::show() → UIMachineSelect::show() → [user selects machine]
+   → UICommon::init() → UICommon::createStatusBar() → UITabs::createTabs()
    ```
 
-2. **Tab creation delegation**:
+2. **Machine Selection**:
+   - `UIMachineSelect` displays 4 machines: V1E LowRider 3, Pen Plotter, Yeagbot (wireless with WiFi symbol), Test Wired Machine (wired with USB symbol)
+   - Selected machine stored in Preferences under "machine" key
+   - Machine name displayed in status bar with connection symbol
+
+3. **Status Bar Layout** (60px height, 18pt font, clickable to switch to Status tab):
+   - **Left**: Machine state (IDLE/RUN/ALARM) - 32pt uppercase, vertically centered, color-coded
+   - **Center**: Work Position (top line, orange label) and Machine Position (bottom line, cyan label)
+     - Separate labels for each axis (X/Y/Z) with axis-specific colors (X=cyan, Y=green, Z=magenta)
+     - Format: "WPos:" then "X:0000.000 Y:0000.000 Z:0000.000" (4 digits before decimal)
+   - **Right**: Machine name with symbol (top line, blue) and WiFi network (bottom line, cyan)
+
+4. **Tab creation delegation**:
    - `UITabs` creates tabview structure, delegates content to `UITab*::create()`
    - Each tab module is responsible for its own layout and event handlers
    - Nested tabviews use `LV_DIR_LEFT` for vertical tabs (see `UITabControl`)
 
-3. **Serial debugging**: All modules use `Serial.println/printf` at 115200 baud with heap/PSRAM monitoring
+5. **Serial debugging**: All modules use `Serial.println/printf` at 115200 baud with heap/PSRAM monitoring
 
 ## Development Workflows
 
@@ -147,6 +161,18 @@ All other hardcoded values live in `include/config.h`:
 - **`src/display_driver.cpp`**: LovyanGFX RGB parallel setup (lines 11-63 are pin mappings)
 - **`include/config.h`**: Central configuration for ALL hardcoded values
 - **`src/screenshot_server.cpp`**: WiFi setup, BMP conversion from RGB565 frame buffer
+- **`src/ui/ui_common.cpp`**: Status bar implementation with separate axis labels for independent styling
+- **`src/ui/ui_machine_select.cpp`**: Machine selection screen with 4 machines and Preferences storage
+- **`src/ui/tabs/ui_tab_status.cpp`**: Status tab with position displays, modal states (8 fields: WCS, PLANE, DIST, UNITS, MOTION, SPINDLE, COOLANT, TOOL), and message field
+
+### Status Tab Layout (ui_tab_status.cpp)
+- **Top Section**: STATE (left) + MESSAGE (right, aligned with Machine Position at x=250)
+- **Left Column** (x=15): Work Position (X/Y/Z) → Feed Rate + Override
+- **Center Column** (x=250): Machine Position (X/Y/Z) → Spindle + Override
+- **Right Column** (x=500/620): Modal states in two-column layout (labels at 500, values at 620)
+  - 8 modal fields with 29px vertical spacing: WCS, PLANE, DIST, UNITS, MOTION, SPINDLE, COOLANT, TOOL
+  - All use 20pt font, teal labels (ACCENT_SECONDARY), semantic value colors
+- **Position Format**: "X  0000.000" (4 digits before decimal, 3 after, double-space after axis letter)
 
 ## Common Pitfalls
 

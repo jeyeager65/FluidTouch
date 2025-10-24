@@ -5,6 +5,7 @@
 #include "screenshot_server.h"  // Screenshot web server
 #include "ui/ui_theme.h"        // UI theme colors
 #include "ui/ui_splash.h"       // Splash screen module
+#include "ui/ui_machine_select.h" // Machine selection screen
 #include "ui/ui_common.h"       // UI common components (status bar)
 #include "ui/ui_tabs.h"         // UI tabs module
 
@@ -46,20 +47,10 @@ void setup()
     Serial.println("Showing splash screen...");
     UISplash::show(displayDriver.getDisplay());
 
-    // Initialize UI Common
-    UICommon::init(displayDriver.getDisplay());
-
-    // Create CNC Controller UI
-    Serial.println("Creating CNC Controller UI...");
-    
-    lv_obj_t *scr = lv_screen_active();
-    lv_obj_set_style_bg_color(scr, UITheme::BG_DARKER, LV_PART_MAIN);
-
-    // Create status bar using UICommon module
-    UICommon::createStatusBar();
-
-    // Create all tabs using UITabs module
-    UITabs::createTabs();
+    // Show machine selection screen
+    // (Main UI will be initialized after machine selection)
+    Serial.println("Showing machine selection screen...");
+    UIMachineSelect::show(displayDriver.getDisplay());
 }
 
 void loop()

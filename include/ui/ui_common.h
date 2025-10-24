@@ -23,9 +23,19 @@ private:
     static lv_display_t *display;
     static lv_obj_t *status_bar;
     static lv_obj_t *lbl_modal_states;
-    static lv_obj_t *lbl_mpos;
     static lv_obj_t *lbl_status;
-    static lv_obj_t *lbl_wpos;
+    
+    // Work Position labels (individual axes)
+    static lv_obj_t *lbl_wpos_label;
+    static lv_obj_t *lbl_wpos_x;
+    static lv_obj_t *lbl_wpos_y;
+    static lv_obj_t *lbl_wpos_z;
+    
+    // Machine Position labels (individual axes)
+    static lv_obj_t *lbl_mpos_label;
+    static lv_obj_t *lbl_mpos_x;
+    static lv_obj_t *lbl_mpos_y;
+    static lv_obj_t *lbl_mpos_z;
 };
 
 #endif // UI_COMMON_H
