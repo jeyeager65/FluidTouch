@@ -11,7 +11,6 @@
 #include "ui/ui_common.h"       // UI common components (status bar)
 #include "ui/ui_tabs.h"         // UI tabs module
 #include "ui/tabs/ui_tab_status.h" // Status tab for updates
-#include "ui/tabs/ui_tab_terminal.h" // Terminal tab for updates
 
 void setup()
 {
@@ -118,9 +117,6 @@ void loop()
         UITabStatus::updateMessage(status.last_message);
         }
     }
-    
-    // Update Terminal tab (batched UI updates every 100ms) - DISABLED: Terminal tab hidden
-    // UITabTerminal::update();
     
     // Update LVGL tick (CRITICAL for timers and input device polling!)
     static uint32_t lastTick = 0;

@@ -4,10 +4,7 @@
 #include "ui/tabs/ui_tab_control.h"
 #include "ui/tabs/ui_tab_files.h"
 #include "ui/tabs/ui_tab_macros.h"
-#include "ui/tabs/ui_tab_terminal.h"
 #include "ui/tabs/ui_tab_settings.h"
-#include "ui/tabs/ui_tab_test.h"
-#include "fluidnc_client.h"
 
 // Static member initialization
 lv_obj_t *UITabs::tabview = nullptr;
@@ -15,9 +12,7 @@ lv_obj_t *UITabs::tab_status = nullptr;
 lv_obj_t *UITabs::tab_control = nullptr;
 lv_obj_t *UITabs::tab_files = nullptr;
 lv_obj_t *UITabs::tab_macros = nullptr;
-lv_obj_t *UITabs::tab_terminal = nullptr;
 lv_obj_t *UITabs::tab_settings = nullptr;
-lv_obj_t *UITabs::tab_test = nullptr;
 
 // Create main tabview and all tabs
 void UITabs::createTabs() {
@@ -50,26 +45,21 @@ void UITabs::createTabs() {
     tab_control = lv_tabview_add_tab(tabview, "Control");
     tab_files = lv_tabview_add_tab(tabview, "Files");
     tab_macros = lv_tabview_add_tab(tabview, "Macros");
-    // tab_terminal = lv_tabview_add_tab(tabview, "Terminal");  // Hidden - terminal updates disabled
     tab_settings = lv_tabview_add_tab(tabview, "Settings");
-    tab_test = lv_tabview_add_tab(tabview, "Test");
     
     // Disable scrolling only on tabs that don't need it
     lv_obj_clear_flag(tab_status, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(tab_control, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(tab_macros, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(tab_files, LV_OBJ_FLAG_SCROLLABLE);
-    // lv_obj_clear_flag(tab_terminal, LV_OBJ_FLAG_SCROLLABLE);  // Hidden
-    // Settings and Test tabs may need scrolling, so leave them enabled
+    // Settings tab may need scrolling, so leave it enabled
     
     // Create tab content
     createStatusTab(tab_status);
     createControlTab(tab_control);
     createFilesTab(tab_files);
     createMacrosTab(tab_macros);
-    // createTerminalTab(tab_terminal);  // Hidden - terminal updates disabled
     createSettingsTab(tab_settings);
-    createTestTab(tab_test);
 }
 
 // Create Status tab content (delegated to UITabStatus module)
@@ -92,24 +82,9 @@ void UITabs::createMacrosTab(lv_obj_t *tab) {
     UITabMacros::create(tab);
 }
 
-// Create Terminal tab content (delegated to UITabTerminal module)
-void UITabs::createTerminalTab(lv_obj_t *tab) {
-    UITabTerminal::create(tab);
-    
-    // Register terminal callback to receive all FluidNC messages
-    FluidNCClient::setTerminalCallback([](const char* message) {
-        UITabTerminal::appendMessage(message);
-    });
-}
-
 // Create Settings tab content (delegated to UITabSettings module)
 void UITabs::createSettingsTab(lv_obj_t *tab) {
     UITabSettings::create(tab);
-}
-
-// Create Test tab content (delegated to UITabTest module)
-void UITabs::createTestTab(lv_obj_t *tab) {
-    UITabTest::create(tab);
 }
 
 // Public wrappers for settings functions

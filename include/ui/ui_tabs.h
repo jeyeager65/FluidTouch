@@ -11,9 +11,7 @@ public:
     static void createControlTab(lv_obj_t *tab);
     static void createFilesTab(lv_obj_t *tab);
     static void createMacrosTab(lv_obj_t *tab);
-    static void createTerminalTab(lv_obj_t *tab);
     static void createSettingsTab(lv_obj_t *tab);
-    static void createTestTab(lv_obj_t *tab);
     
     // Settings management
     static void loadSettings();
@@ -28,9 +26,7 @@ private:
     static lv_obj_t *tab_control;
     static lv_obj_t *tab_files;
     static lv_obj_t *tab_macros;
-    static lv_obj_t *tab_terminal;
     static lv_obj_t *tab_settings;
-    static lv_obj_t *tab_test;
 };
 
 #endif // UI_TABS_H

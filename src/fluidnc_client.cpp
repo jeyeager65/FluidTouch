@@ -8,7 +8,6 @@ MachineConfig FluidNCClient::currentConfig;
 uint32_t FluidNCClient::lastStatusRequestMs = 0;
 bool FluidNCClient::initialized = false;
 MessageCallback FluidNCClient::messageCallback = nullptr;
-MessageCallback FluidNCClient::terminalCallback = nullptr;
 
 void FluidNCClient::init() {
     if (initialized) return;
@@ -98,16 +97,6 @@ void FluidNCClient::clearMessageCallback() {
     Serial.println("[FluidNC] Message callback cleared");
 }
 
-void FluidNCClient::setTerminalCallback(MessageCallback callback) {
-    terminalCallback = callback;
-    Serial.println("[FluidNC] Terminal callback registered");
-}
-
-void FluidNCClient::clearTerminalCallback() {
-    terminalCallback = nullptr;
-    Serial.println("[FluidNC] Terminal callback cleared");
-}
-
 void FluidNCClient::onWebSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
     switch(type) {
         case WStype_DISCONNECTED:
@@ -148,12 +137,6 @@ void FluidNCClient::onWebSocketEvent(WStype_t type, uint8_t* payload, size_t len
                     Serial.printf("[FluidNC] Received (%s): %s\n", 
                                  type == WStype_TEXT ? "TEXT" : "BIN", message);
                 }
-                
-                // Send all messages to terminal callback if registered
-                // DISABLED: Terminal updates temporarily disabled
-                // if (terminalCallback) {
-                //     terminalCallback(message);
-                // }
                 
                 // Call message callback if registered (for file lists, etc.)
                 if (messageCallback) {
