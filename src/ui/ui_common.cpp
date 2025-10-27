@@ -16,6 +16,11 @@ lv_obj_t *UICommon::status_bar_right_area = nullptr;
 lv_obj_t *UICommon::machine_select_dialog = nullptr;
 lv_obj_t *UICommon::connecting_popup = nullptr;
 lv_obj_t *UICommon::connection_error_dialog = nullptr;
+lv_obj_t *UICommon::hold_popup = nullptr;
+lv_obj_t *UICommon::alarm_popup = nullptr;
+int UICommon::last_popup_state = -1;
+bool UICommon::hold_popup_dismissed = false;
+bool UICommon::alarm_popup_dismissed = false;
 lv_obj_t *UICommon::lbl_modal_states = nullptr;
 lv_obj_t *UICommon::lbl_status = nullptr;
 
@@ -699,4 +704,209 @@ void UICommon::checkConnectionTimeout() {
             Serial.println("UICommon: Machine connection timeout - showing error dialog");
         }
     }
+}
+
+// HOLD popup - shown when machine enters HOLD state
+void UICommon::showHoldPopup(const char *message) {
+    if (hold_popup) return; // Already showing
+    
+    // Create modal backdrop
+    hold_popup = lv_obj_create(lv_scr_act());
+    lv_obj_set_size(hold_popup, SCREEN_WIDTH, SCREEN_HEIGHT);
+    lv_obj_set_style_bg_color(hold_popup, lv_color_hex(0x000000), 0);
+    lv_obj_set_style_bg_opa(hold_popup, LV_OPA_50, 0);
+    lv_obj_set_style_border_width(hold_popup, 0, 0);
+    lv_obj_clear_flag(hold_popup, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_center(hold_popup);
+    
+    // Create dialog box
+    lv_obj_t *dialog = lv_obj_create(hold_popup);
+    lv_obj_set_size(dialog, 600, 300);
+    lv_obj_set_style_bg_color(dialog, UITheme::BG_DARK, 0);
+    lv_obj_set_style_border_color(dialog, UITheme::STATE_HOLD, 0);
+    lv_obj_set_style_border_width(dialog, 3, 0);
+    lv_obj_set_style_pad_all(dialog, 20, 0);
+    lv_obj_clear_flag(dialog, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_center(dialog);
+    
+    // State label (large, colored)
+    lv_obj_t *state_label = lv_label_create(dialog);
+    lv_label_set_text(state_label, "HOLD");
+    lv_obj_set_style_text_font(state_label, &lv_font_montserrat_32, 0);
+    lv_obj_set_style_text_color(state_label, UITheme::STATE_HOLD, 0);
+    lv_obj_align(state_label, LV_ALIGN_TOP_MID, 0, 0);
+    
+    // Message label
+    lv_obj_t *msg_label = lv_label_create(dialog);
+    lv_label_set_text(msg_label, message && strlen(message) > 0 ? message : "Machine paused");
+    lv_obj_set_style_text_font(msg_label, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_color(msg_label, UITheme::TEXT_LIGHT, 0);
+    lv_obj_set_width(msg_label, 520);
+    lv_label_set_long_mode(msg_label, LV_LABEL_LONG_WRAP);
+    lv_obj_align(msg_label, LV_ALIGN_TOP_MID, 0, 60);
+    
+    // Button container
+    lv_obj_t *btn_container = lv_obj_create(dialog);
+    lv_obj_set_size(btn_container, 560, 60);
+    lv_obj_set_style_bg_opa(btn_container, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(btn_container, 0, 0);
+    lv_obj_set_style_pad_all(btn_container, 0, 0);
+    lv_obj_set_flex_flow(btn_container, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(btn_container, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_align(btn_container, LV_ALIGN_BOTTOM_MID, 0, 0);
+    
+    // Close button
+    lv_obj_t *close_btn = lv_btn_create(btn_container);
+    lv_obj_set_size(close_btn, 250, 50);
+    lv_obj_set_style_bg_color(close_btn, UITheme::BG_MEDIUM, 0);
+    lv_obj_add_event_cb(close_btn, [](lv_event_t *e) {
+        UICommon::hold_popup_dismissed = true;  // Mark as dismissed
+        UICommon::hideHoldPopup();
+    }, LV_EVENT_CLICKED, nullptr);
+    
+    lv_obj_t *close_label = lv_label_create(close_btn);
+    lv_label_set_text(close_label, LV_SYMBOL_CLOSE " Close");
+    lv_obj_set_style_text_font(close_label, &lv_font_montserrat_18, 0);
+    lv_obj_center(close_label);
+    
+    // Resume button
+    lv_obj_t *resume_btn = lv_btn_create(btn_container);
+    lv_obj_set_size(resume_btn, 250, 50);
+    lv_obj_set_style_bg_color(resume_btn, UITheme::BTN_PLAY, 0);
+    lv_obj_add_event_cb(resume_btn, [](lv_event_t *e) {
+        FluidNCClient::sendCommand("~"); // Send cycle start (resume)
+    }, LV_EVENT_CLICKED, nullptr);
+    
+    lv_obj_t *resume_label = lv_label_create(resume_btn);
+    lv_label_set_text(resume_label, LV_SYMBOL_PLAY " Resume");
+    lv_obj_set_style_text_font(resume_label, &lv_font_montserrat_18, 0);
+    lv_obj_center(resume_label);
+    
+    Serial.println("UICommon: HOLD popup shown");
+}
+
+void UICommon::hideHoldPopup() {
+    if (hold_popup) {
+        lv_obj_del(hold_popup);
+        hold_popup = nullptr;
+        Serial.println("UICommon: HOLD popup hidden");
+    }
+}
+
+// ALARM popup - shown when machine enters ALARM state
+void UICommon::showAlarmPopup(const char *message) {
+    if (alarm_popup) return; // Already showing
+    
+    // Create modal backdrop
+    alarm_popup = lv_obj_create(lv_scr_act());
+    lv_obj_set_size(alarm_popup, SCREEN_WIDTH, SCREEN_HEIGHT);
+    lv_obj_set_style_bg_color(alarm_popup, lv_color_hex(0x000000), 0);
+    lv_obj_set_style_bg_opa(alarm_popup, LV_OPA_50, 0);
+    lv_obj_set_style_border_width(alarm_popup, 0, 0);
+    lv_obj_clear_flag(alarm_popup, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_center(alarm_popup);
+    
+    // Create dialog box
+    lv_obj_t *dialog = lv_obj_create(alarm_popup);
+    lv_obj_set_size(dialog, 600, 300);
+    lv_obj_set_style_bg_color(dialog, UITheme::BG_DARK, 0);
+    lv_obj_set_style_border_color(dialog, UITheme::STATE_ALARM, 0);
+    lv_obj_set_style_border_width(dialog, 3, 0);
+    lv_obj_set_style_pad_all(dialog, 20, 0);
+    lv_obj_clear_flag(dialog, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_center(dialog);
+    
+    // State label (large, colored)
+    lv_obj_t *state_label = lv_label_create(dialog);
+    lv_label_set_text(state_label, "ALARM");
+    lv_obj_set_style_text_font(state_label, &lv_font_montserrat_32, 0);
+    lv_obj_set_style_text_color(state_label, UITheme::STATE_ALARM, 0);
+    lv_obj_align(state_label, LV_ALIGN_TOP_MID, 0, 0);
+    
+    // Message label
+    lv_obj_t *msg_label = lv_label_create(dialog);
+    lv_label_set_text(msg_label, message && strlen(message) > 0 ? message : "Alarm condition detected");
+    lv_obj_set_style_text_font(msg_label, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_color(msg_label, UITheme::TEXT_LIGHT, 0);
+    lv_obj_set_width(msg_label, 520);
+    lv_label_set_long_mode(msg_label, LV_LABEL_LONG_WRAP);
+    lv_obj_align(msg_label, LV_ALIGN_TOP_MID, 0, 60);
+    
+    // Button container
+    lv_obj_t *btn_container = lv_obj_create(dialog);
+    lv_obj_set_size(btn_container, 560, 60);
+    lv_obj_set_style_bg_opa(btn_container, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(btn_container, 0, 0);
+    lv_obj_set_style_pad_all(btn_container, 0, 0);
+    lv_obj_set_flex_flow(btn_container, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(btn_container, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_align(btn_container, LV_ALIGN_BOTTOM_MID, 0, 0);
+    
+    // Close button
+    lv_obj_t *close_btn = lv_btn_create(btn_container);
+    lv_obj_set_size(close_btn, 250, 50);
+    lv_obj_set_style_bg_color(close_btn, UITheme::BG_MEDIUM, 0);
+    lv_obj_add_event_cb(close_btn, [](lv_event_t *e) {
+        UICommon::alarm_popup_dismissed = true;  // Mark as dismissed
+        UICommon::hideAlarmPopup();
+    }, LV_EVENT_CLICKED, nullptr);
+    
+    lv_obj_t *close_label = lv_label_create(close_btn);
+    lv_label_set_text(close_label, LV_SYMBOL_CLOSE " Close");
+    lv_obj_set_style_text_font(close_label, &lv_font_montserrat_18, 0);
+    lv_obj_center(close_label);
+    
+    // Clear Alarm button
+    lv_obj_t *clear_btn = lv_btn_create(btn_container);
+    lv_obj_set_size(clear_btn, 250, 50);
+    lv_obj_set_style_bg_color(clear_btn, UITheme::UI_WARNING, 0);
+    lv_obj_add_event_cb(clear_btn, [](lv_event_t *e) {
+        // Send soft reset, then unlock
+        FluidNCClient::sendCommand("\x18"); // Ctrl-X (soft reset)
+        delay(100);
+        FluidNCClient::sendCommand("$X\n");   // Unlock
+    }, LV_EVENT_CLICKED, nullptr);
+    
+    lv_obj_t *clear_label = lv_label_create(clear_btn);
+    lv_label_set_text(clear_label, LV_SYMBOL_REFRESH " Clear Alarm");
+    lv_obj_set_style_text_font(clear_label, &lv_font_montserrat_18, 0);
+    lv_obj_center(clear_label);
+    
+    Serial.println("UICommon: ALARM popup shown");
+}
+
+void UICommon::hideAlarmPopup() {
+    if (alarm_popup) {
+        lv_obj_del(alarm_popup);
+        alarm_popup = nullptr;
+        Serial.println("UICommon: ALARM popup hidden");
+    }
+}
+
+// Check current state and manage popups accordingly
+void UICommon::checkStatePopups(int current_state, const char *last_message) {
+    // If state changed from previous, reset dismissal flags and hide any existing popups
+    if (current_state != last_popup_state && last_popup_state != -1) {
+        // State changed - reset dismissal flags
+        if (current_state != STATE_HOLD) {
+            hold_popup_dismissed = false;
+        }
+        if (current_state != STATE_ALARM) {
+            alarm_popup_dismissed = false;
+        }
+        
+        // Hide any existing popups
+        hideHoldPopup();
+        hideAlarmPopup();
+    }
+    
+    // Show appropriate popup for current state (only if not dismissed)
+    if (current_state == STATE_HOLD && !hold_popup && !hold_popup_dismissed) {
+        showHoldPopup(last_message);
+    } else if (current_state == STATE_ALARM && !alarm_popup && !alarm_popup_dismissed) {
+        showAlarmPopup(last_message);
+    }
+    
+    // Update last state
+    last_popup_state = current_state;
 }

@@ -27,6 +27,13 @@ public:
     static void hideConnectionErrorDialog();
     static void checkConnectionTimeout();  // Non-blocking timeout check
     
+    // State popup functions (HOLD and ALARM)
+    static void showHoldPopup(const char *message);
+    static void hideHoldPopup();
+    static void showAlarmPopup(const char *message);
+    static void hideAlarmPopup();
+    static void checkStatePopups(int current_state, const char *last_message);  // Called from main loop
+    
     // Getters for shared objects
     static lv_obj_t* getStatusBar() { return status_bar; }
     static lv_display_t* getDisplay() { return display; }
@@ -39,6 +46,11 @@ private:
     static lv_obj_t *machine_select_dialog;  // Confirmation dialog
     static lv_obj_t *connecting_popup;       // Connecting popup
     static lv_obj_t *connection_error_dialog; // Connection error dialog
+    static lv_obj_t *hold_popup;             // HOLD state popup
+    static lv_obj_t *alarm_popup;            // ALARM state popup
+    static int last_popup_state;             // Track last state to detect changes
+    static bool hold_popup_dismissed;        // User dismissed HOLD popup
+    static bool alarm_popup_dismissed;       // User dismissed ALARM popup
     static lv_obj_t *lbl_modal_states;
     static lv_obj_t *lbl_status;
     

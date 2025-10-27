@@ -144,6 +144,9 @@ void loop()
         UICommon::updateMachinePosition(status.mpos_x, status.mpos_y, status.mpos_z);
         UICommon::updateWorkPosition(status.wpos_x, status.wpos_y, status.wpos_z);
         
+        // Check for HOLD/ALARM state and show popups if needed
+        UICommon::checkStatePopups(status.state, status.last_message);
+        
         // Update Status tab
         UITabStatus::updateState(state_str);
         UITabStatus::updateWorkPosition(status.wpos_x, status.wpos_y, status.wpos_z);
