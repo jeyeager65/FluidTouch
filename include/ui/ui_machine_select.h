@@ -14,11 +14,16 @@ private:
     static lv_display_t *display;
     static MachineConfig machines[MAX_MACHINES];
     
+    // Edit mode state
+    static bool edit_mode;
+    static lv_obj_t *edit_mode_button;
+    
     // Machine button widgets
     static lv_obj_t *machine_buttons[MAX_MACHINES];
     static lv_obj_t *edit_buttons[MAX_MACHINES];
     static lv_obj_t *move_up_buttons[MAX_MACHINES];
     static lv_obj_t *move_down_buttons[MAX_MACHINES];
+    static lv_obj_t *delete_buttons[MAX_MACHINES];
     static lv_obj_t *add_button;  // Single add button
     
     // Configuration dialog
@@ -39,6 +44,7 @@ private:
     
     // Event handlers
     static void onMachineSelected(lv_event_t *e);
+    static void onEditModeToggle(lv_event_t *e);
     static void onEditMachine(lv_event_t *e);
     static void onAddMachine(lv_event_t *e);
     static void onMoveUpMachine(lv_event_t *e);

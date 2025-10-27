@@ -9,10 +9,13 @@
 lv_obj_t *UIMachineSelect::screen = nullptr;
 lv_display_t *UIMachineSelect::display = nullptr;
 MachineConfig UIMachineSelect::machines[MAX_MACHINES];
+bool UIMachineSelect::edit_mode = false;
+lv_obj_t *UIMachineSelect::edit_mode_button = nullptr;
 lv_obj_t *UIMachineSelect::machine_buttons[MAX_MACHINES] = {nullptr};
 lv_obj_t *UIMachineSelect::edit_buttons[MAX_MACHINES] = {nullptr};
 lv_obj_t *UIMachineSelect::move_up_buttons[MAX_MACHINES] = {nullptr};
 lv_obj_t *UIMachineSelect::move_down_buttons[MAX_MACHINES] = {nullptr};
+lv_obj_t *UIMachineSelect::delete_buttons[MAX_MACHINES] = {nullptr};
 lv_obj_t *UIMachineSelect::add_button = nullptr;
 lv_obj_t *UIMachineSelect::config_dialog = nullptr;
 lv_obj_t *UIMachineSelect::dialog_content = nullptr;
@@ -31,6 +34,9 @@ void UIMachineSelect::show(lv_display_t *disp) {
     display = disp;
     Serial.println("UIMachineSelect: Creating machine selection screen");
     
+    // Initialize edit mode to false
+    edit_mode = false;
+    
     // Load machines from Preferences
     MachineConfigManager::loadMachines(machines);
     
@@ -41,37 +47,45 @@ void UIMachineSelect::show(lv_display_t *disp) {
     // Title
     lv_obj_t *title = lv_label_create(screen);
     lv_label_set_text(title, "Select Machine");
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_32, 0);  // Larger font
     lv_obj_set_style_text_color(title, UITheme::TEXT_LIGHT, 0);
-    lv_obj_align(title, LV_ALIGN_TOP_LEFT, 20, 20);
+    lv_obj_align(title, LV_ALIGN_TOP_LEFT, 20, 15);
     
-    // Add Machine button (upper right corner)
+    // Add Machine button (upper right corner, initially hidden)
+    // Centered vertically between top of screen and container
     add_button = lv_btn_create(screen);
-    lv_obj_set_size(add_button, 120, 40);
+    lv_obj_set_size(add_button, 120, 45);  // 5px taller
     lv_obj_set_style_bg_color(add_button, UITheme::BTN_PLAY, 0);
-    lv_obj_align(add_button, LV_ALIGN_TOP_RIGHT, -20, 15);
+    lv_obj_align(add_button, LV_ALIGN_TOP_RIGHT, -145, 11);  // Moved up 10px
     lv_obj_add_event_cb(add_button, onAddMachine, LV_EVENT_CLICKED, nullptr);
+    lv_obj_add_flag(add_button, LV_OBJ_FLAG_HIDDEN);  // Hidden by default
     
     lv_obj_t *add_label = lv_label_create(add_button);
     lv_label_set_text(add_label, LV_SYMBOL_PLUS " Add");
     lv_obj_set_style_text_font(add_label, &lv_font_montserrat_16, 0);
     lv_obj_center(add_label);
     
-    // Subtitle
-    lv_obj_t *subtitle = lv_label_create(screen);
-    lv_label_set_text(subtitle, "Choose or configure a CNC machine");
-    lv_obj_set_style_text_font(subtitle, &lv_font_montserrat_16, 0);
-    lv_obj_set_style_text_color(subtitle, UITheme::TEXT_MEDIUM, 0);
-    lv_obj_align(subtitle, LV_ALIGN_TOP_MID, 0, 50);
+    // Edit Mode toggle button (upper right corner)
+    // Centered vertically between top of screen and container
+    edit_mode_button = lv_btn_create(screen);
+    lv_obj_set_size(edit_mode_button, 120, 45);  // 5px taller
+    lv_obj_set_style_bg_color(edit_mode_button, UITheme::ACCENT_SECONDARY, 0);
+    lv_obj_align(edit_mode_button, LV_ALIGN_TOP_RIGHT, -20, 11);  // Moved up 10px
+    lv_obj_add_event_cb(edit_mode_button, onEditModeToggle, LV_EVENT_CLICKED, nullptr);
     
-    // Machine list container (760px width x 385px height with 10px padding = 740x365 usable)
+    lv_obj_t *edit_mode_label = lv_label_create(edit_mode_button);
+    lv_label_set_text(edit_mode_label, LV_SYMBOL_EDIT " Edit");
+    lv_obj_set_style_text_font(edit_mode_label, &lv_font_montserrat_16, 0);
+    lv_obj_center(edit_mode_label);
+    
+    // Machine list container (760px width x 395px height with 20px padding = 720x355 usable)
     lv_obj_t *list_container = lv_obj_create(screen);
-    lv_obj_set_size(list_container, 760, 385);
+    lv_obj_set_size(list_container, 760, 395);  // Taller since no subtitle
     lv_obj_set_style_bg_color(list_container, UITheme::BG_MEDIUM, 0);
     lv_obj_set_style_border_width(list_container, 1, 0);
     lv_obj_set_style_border_color(list_container, UITheme::BORDER_MEDIUM, 0);
-    lv_obj_set_style_pad_all(list_container, 10, 0);
-    lv_obj_align(list_container, LV_ALIGN_CENTER, 0, 30);
+    lv_obj_set_style_pad_all(list_container, 20, 0);  // Doubled padding (was 10, now 20)
+    lv_obj_align(list_container, LV_ALIGN_BOTTOM_MID, 0, -20);  // Moved up 10px (was -10, now -20)
     lv_obj_clear_flag(list_container, LV_OBJ_FLAG_SCROLLABLE);
     
     refreshMachineList();
@@ -102,7 +116,7 @@ void UIMachineSelect::hide() {
 
 void UIMachineSelect::refreshMachineList() {
     // Find list container
-    lv_obj_t *list_container = lv_obj_get_child(screen, 3); // 4th child (title, add button, subtitle, container)
+    lv_obj_t *list_container = lv_obj_get_child(screen, 3); // 4th child (title, add button, edit mode button, container)
     
     // Clear existing buttons
     lv_obj_clean(list_container);
@@ -110,94 +124,157 @@ void UIMachineSelect::refreshMachineList() {
     // Count configured machines
     int configured_count = getConfiguredMachineCount();
     
-    // Update Add button visibility
-    if (configured_count < MAX_MACHINES) {
+    // Update Add button visibility (only show in edit mode)
+    if (edit_mode && configured_count < MAX_MACHINES) {
         lv_obj_clear_flag(add_button, LV_OBJ_FLAG_HIDDEN);
     } else {
         lv_obj_add_flag(add_button, LV_OBJ_FLAG_HIDDEN);
     }
     
-    // Only display configured machines (no empty slots)
-    int displayed_index = 0;
-    for (int i = 0; i < MAX_MACHINES; i++) {
-        if (machines[i].is_configured) {
-            int y_pos = (displayed_index * 73); // 70px button + 3px gap
-            
-            // Machine button - now wider to accommodate up/down buttons
-            machine_buttons[i] = lv_btn_create(list_container);
-            lv_obj_set_size(machine_buttons[i], 450, 70);
-            lv_obj_set_pos(machine_buttons[i], 0, y_pos);
-            lv_obj_set_style_bg_color(machine_buttons[i], UITheme::ACCENT_PRIMARY, 0);
-            lv_obj_set_style_bg_color(machine_buttons[i], UITheme::ACCENT_SECONDARY, LV_STATE_PRESSED);
-            lv_obj_add_event_cb(machine_buttons[i], onMachineSelected, LV_EVENT_CLICKED, (void*)(intptr_t)i);
-            
-            // Machine label with symbol
-            lv_obj_t *label = lv_label_create(machine_buttons[i]);
-            const char *symbol = (machines[i].connection_type == CONN_WIRELESS) ? LV_SYMBOL_WIFI : LV_SYMBOL_USB;
-            String text = String(symbol) + " " + String(machines[i].name);
-            lv_label_set_text(label, text.c_str());
-            lv_obj_set_style_text_font(label, &lv_font_montserrat_22, 0);
-            lv_obj_align(label, LV_ALIGN_LEFT_MID, 10, 0);
-            
-            // Move Up button
-            move_up_buttons[i] = lv_btn_create(list_container);
-            lv_obj_set_size(move_up_buttons[i], 60, 70);
-            lv_obj_set_pos(move_up_buttons[i], 455, y_pos);
-            lv_obj_set_style_bg_color(move_up_buttons[i], UITheme::BG_BUTTON, 0);
-            lv_obj_add_event_cb(move_up_buttons[i], onMoveUpMachine, LV_EVENT_CLICKED, (void*)(intptr_t)i);
-            
-            // Disable if first item
-            if (displayed_index == 0) {
-                lv_obj_add_state(move_up_buttons[i], LV_STATE_DISABLED);
+    if (edit_mode) {
+        // EDIT MODE: Show control buttons with narrower machine buttons
+        // Clear flex layout for absolute positioning
+        lv_obj_set_layout(list_container, LV_LAYOUT_NONE);
+        
+        int displayed_index = 0;
+        for (int i = 0; i < MAX_MACHINES; i++) {
+            if (machines[i].is_configured) {
+                int y_pos = (displayed_index * 73); // 70px button + 3px gap
+                
+                // Machine button - narrower to accommodate control buttons (438px = 450 - 12)
+                machine_buttons[i] = lv_btn_create(list_container);
+                lv_obj_set_size(machine_buttons[i], 438, 70);  // Was 450, now 438 (-12px)
+                lv_obj_set_pos(machine_buttons[i], 0, y_pos);
+                lv_obj_set_style_bg_color(machine_buttons[i], UITheme::ACCENT_PRIMARY, 0);
+                lv_obj_set_style_bg_color(machine_buttons[i], UITheme::ACCENT_SECONDARY, LV_STATE_PRESSED);
+                lv_obj_add_event_cb(machine_buttons[i], onMachineSelected, LV_EVENT_CLICKED, (void*)(intptr_t)i);
+                
+                // Machine label with symbol
+                lv_obj_t *label = lv_label_create(machine_buttons[i]);
+                const char *symbol = (machines[i].connection_type == CONN_WIRELESS) ? LV_SYMBOL_WIFI : LV_SYMBOL_USB;
+                String text = String(symbol) + " " + String(machines[i].name);
+                lv_label_set_text(label, text.c_str());
+                lv_obj_set_style_text_font(label, &lv_font_montserrat_22, 0);
+                lv_obj_align(label, LV_ALIGN_LEFT_MID, 10, 0);
+                
+                // Move Up button
+                move_up_buttons[i] = lv_btn_create(list_container);
+                lv_obj_set_size(move_up_buttons[i], 60, 70);
+                lv_obj_set_pos(move_up_buttons[i], 443, y_pos);  // Was 455, now 443 (-12px)
+                lv_obj_set_style_bg_color(move_up_buttons[i], UITheme::BG_BUTTON, 0);
+                lv_obj_add_event_cb(move_up_buttons[i], onMoveUpMachine, LV_EVENT_CLICKED, (void*)(intptr_t)i);
+                
+                // Disable if first item
+                if (displayed_index == 0) {
+                    lv_obj_add_state(move_up_buttons[i], LV_STATE_DISABLED);
+                }
+                
+                lv_obj_t *up_label = lv_label_create(move_up_buttons[i]);
+                lv_label_set_text(up_label, LV_SYMBOL_UP);
+                lv_obj_set_style_text_font(up_label, &lv_font_montserrat_22, 0);
+                lv_obj_center(up_label);
+                
+                // Move Down button
+                move_down_buttons[i] = lv_btn_create(list_container);
+                lv_obj_set_size(move_down_buttons[i], 60, 70);
+                lv_obj_set_pos(move_down_buttons[i], 508, y_pos);  // Was 520, now 508 (-12px)
+                lv_obj_set_style_bg_color(move_down_buttons[i], UITheme::BG_BUTTON, 0);
+                lv_obj_add_event_cb(move_down_buttons[i], onMoveDownMachine, LV_EVENT_CLICKED, (void*)(intptr_t)i);
+                
+                // Disable if last item
+                if (displayed_index == configured_count - 1) {
+                    lv_obj_add_state(move_down_buttons[i], LV_STATE_DISABLED);
+                }
+                
+                lv_obj_t *down_label = lv_label_create(move_down_buttons[i]);
+                lv_label_set_text(down_label, LV_SYMBOL_DOWN);
+                lv_obj_set_style_text_font(down_label, &lv_font_montserrat_22, 0);
+                lv_obj_center(down_label);
+                
+                // Edit button
+                edit_buttons[i] = lv_btn_create(list_container);
+                lv_obj_set_size(edit_buttons[i], 70, 70);
+                lv_obj_set_pos(edit_buttons[i], 573, y_pos);  // Was 585, now 573 (-12px)
+                lv_obj_set_style_bg_color(edit_buttons[i], UITheme::ACCENT_SECONDARY, 0);
+                lv_obj_add_event_cb(edit_buttons[i], onEditMachine, LV_EVENT_CLICKED, (void*)(intptr_t)i);
+                
+                lv_obj_t *edit_label = lv_label_create(edit_buttons[i]);
+                lv_label_set_text(edit_label, LV_SYMBOL_EDIT);
+                lv_obj_set_style_text_font(edit_label, &lv_font_montserrat_22, 0);
+                lv_obj_center(edit_label);
+                
+                // Delete button
+                delete_buttons[i] = lv_btn_create(list_container);
+                lv_obj_set_size(delete_buttons[i], 70, 70);
+                lv_obj_set_pos(delete_buttons[i], 648, y_pos);  // Was 660, now 648 (-12px)
+                lv_obj_set_style_bg_color(delete_buttons[i], UITheme::STATE_ALARM, 0);
+                lv_obj_add_event_cb(delete_buttons[i], onDeleteMachine, LV_EVENT_CLICKED, (void*)(intptr_t)i);
+                
+                lv_obj_t *del_label = lv_label_create(delete_buttons[i]);
+                lv_label_set_text(del_label, LV_SYMBOL_TRASH);
+                lv_obj_set_style_text_font(del_label, &lv_font_montserrat_20, 0);
+                lv_obj_center(del_label);
+                
+                displayed_index++;
             }
-            
-            lv_obj_t *up_label = lv_label_create(move_up_buttons[i]);
-            lv_label_set_text(up_label, LV_SYMBOL_UP);
-            lv_obj_set_style_text_font(up_label, &lv_font_montserrat_22, 0);
-            lv_obj_center(up_label);
-            
-            // Move Down button
-            move_down_buttons[i] = lv_btn_create(list_container);
-            lv_obj_set_size(move_down_buttons[i], 60, 70);
-            lv_obj_set_pos(move_down_buttons[i], 520, y_pos);
-            lv_obj_set_style_bg_color(move_down_buttons[i], UITheme::BG_BUTTON, 0);
-            lv_obj_add_event_cb(move_down_buttons[i], onMoveDownMachine, LV_EVENT_CLICKED, (void*)(intptr_t)i);
-            
-            // Disable if last item
-            if (displayed_index == configured_count - 1) {
-                lv_obj_add_state(move_down_buttons[i], LV_STATE_DISABLED);
+        }
+    } else {
+        // NORMAL MODE: Full-width machine buttons with flex layout
+        // Set list container to use flex layout
+        lv_obj_set_flex_flow(list_container, LV_FLEX_FLOW_ROW_WRAP);
+        lv_obj_set_flex_align(list_container, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+        lv_obj_set_style_pad_gap(list_container, 20, 0);  // Doubled gap between buttons (was 10, now 20)
+        
+        // Display configured machines with flex layout
+        for (int i = 0; i < MAX_MACHINES; i++) {
+            if (machines[i].is_configured) {
+                // Machine button - sized for 2 rows of 2 buttons (4 machines total)
+                // Container: 720px usable (760 - 40 padding), with 20px gap = 340px per button (conservative)
+                machine_buttons[i] = lv_btn_create(list_container);
+                lv_obj_set_size(machine_buttons[i], 349, 167);  // Width: 349px (+1), Height: 167px
+                lv_obj_set_style_bg_color(machine_buttons[i], UITheme::ACCENT_PRIMARY, 0);
+                lv_obj_set_style_bg_color(machine_buttons[i], UITheme::ACCENT_SECONDARY, LV_STATE_PRESSED);
+                lv_obj_add_event_cb(machine_buttons[i], onMachineSelected, LV_EVENT_CLICKED, (void*)(intptr_t)i);
+                lv_obj_set_style_pad_all(machine_buttons[i], 20, 0);  // Double padding (was 10, now 20)
+                
+                // Line 1: Machine Name (centered, supports 2 lines)
+                lv_obj_t *name_label = lv_label_create(machine_buttons[i]);
+                lv_label_set_text(name_label, machines[i].name);
+                lv_obj_set_style_text_font(name_label, &lv_font_montserrat_32, 0);  // Large font
+                lv_obj_set_style_text_color(name_label, UITheme::TEXT_LIGHT, 0);
+                lv_label_set_long_mode(name_label, LV_LABEL_LONG_WRAP);  // Enable text wrapping
+                lv_obj_set_width(name_label, 309);  // Set width for wrapping (349 - 40px padding)
+                lv_obj_align(name_label, LV_ALIGN_TOP_MID, 0, 0);  // Centered horizontally
+                
+                // Line 2: Connection type symbol + SSID/Wired (bottom area)
+                lv_obj_t *connection_label = lv_label_create(machine_buttons[i]);
+                String connection_text;
+                if (machines[i].connection_type == CONN_WIRELESS) {
+                    connection_text = String(LV_SYMBOL_WIFI) + " " + String(machines[i].ssid);
+                } else {
+                    connection_text = String(LV_SYMBOL_USB) + " Wired";
+                }
+                lv_label_set_text(connection_label, connection_text.c_str());
+                lv_obj_set_style_text_font(connection_label, &lv_font_montserrat_26, 0);  // Larger font
+                lv_obj_set_style_text_color(connection_label, UITheme::UI_INFO, 0);
+                lv_obj_align(connection_label, LV_ALIGN_BOTTOM_LEFT, 0, -30);  // 30px from bottom
+                
+                // Line 3: FluidNC URL:Port (bottom area)
+                lv_obj_t *url_label = lv_label_create(machine_buttons[i]);
+                char url_text[128];
+                snprintf(url_text, sizeof(url_text), "%s:%d", 
+                        machines[i].fluidnc_url, machines[i].websocket_port);
+                lv_label_set_text(url_label, url_text);
+                lv_obj_set_style_text_font(url_label, &lv_font_montserrat_24, 0);  // Larger font
+                lv_obj_set_style_text_color(url_label, UITheme::TEXT_MEDIUM, 0);
+                lv_obj_align(url_label, LV_ALIGN_BOTTOM_LEFT, 0, 0);  // At bottom
+                
+                // Store null for control buttons (not displayed in normal mode)
+                move_up_buttons[i] = nullptr;
+                move_down_buttons[i] = nullptr;
+                edit_buttons[i] = nullptr;
+                delete_buttons[i] = nullptr;
             }
-            
-            lv_obj_t *down_label = lv_label_create(move_down_buttons[i]);
-            lv_label_set_text(down_label, LV_SYMBOL_DOWN);
-            lv_obj_set_style_text_font(down_label, &lv_font_montserrat_22, 0);
-            lv_obj_center(down_label);
-            
-            // Edit button
-            edit_buttons[i] = lv_btn_create(list_container);
-            lv_obj_set_size(edit_buttons[i], 70, 70);
-            lv_obj_set_pos(edit_buttons[i], 585, y_pos);
-            lv_obj_set_style_bg_color(edit_buttons[i], UITheme::ACCENT_SECONDARY, 0);
-            lv_obj_add_event_cb(edit_buttons[i], onEditMachine, LV_EVENT_CLICKED, (void*)(intptr_t)i);
-            
-            lv_obj_t *edit_label = lv_label_create(edit_buttons[i]);
-            lv_label_set_text(edit_label, LV_SYMBOL_EDIT);
-            lv_obj_set_style_text_font(edit_label, &lv_font_montserrat_22, 0);
-            lv_obj_center(edit_label);
-            
-            // Delete button
-            lv_obj_t *del_btn = lv_btn_create(list_container);
-            lv_obj_set_size(del_btn, 70, 70);
-            lv_obj_set_pos(del_btn, 660, y_pos);
-            lv_obj_set_style_bg_color(del_btn, UITheme::STATE_ALARM, 0);
-            lv_obj_add_event_cb(del_btn, onDeleteMachine, LV_EVENT_CLICKED, (void*)(intptr_t)i);
-            
-            lv_obj_t *del_label = lv_label_create(del_btn);
-            lv_label_set_text(del_label, LV_SYMBOL_TRASH);
-            lv_obj_set_style_text_font(del_label, &lv_font_montserrat_20, 0);
-            lv_obj_center(del_label);
-            
-            displayed_index++;
         }
     }
 }
@@ -273,6 +350,26 @@ void UIMachineSelect::onMoveDownMachine(lv_event_t *e) {
         Serial.printf("UIMachineSelect: Move down machine %d\n", index);
         swapMachines(index, next_index);
     }
+}
+
+void UIMachineSelect::onEditModeToggle(lv_event_t *e) {
+    // Toggle edit mode
+    edit_mode = !edit_mode;
+    
+    Serial.printf("UIMachineSelect: Edit mode %s\n", edit_mode ? "enabled" : "disabled");
+    
+    // Update button text and color
+    lv_obj_t *label = lv_obj_get_child(edit_mode_button, 0);
+    if (edit_mode) {
+        lv_label_set_text(label, LV_SYMBOL_CLOSE " Done");
+        lv_obj_set_style_bg_color(edit_mode_button, UITheme::BTN_PLAY, 0);
+    } else {
+        lv_label_set_text(label, LV_SYMBOL_EDIT " Edit");
+        lv_obj_set_style_bg_color(edit_mode_button, UITheme::ACCENT_SECONDARY, 0);
+    }
+    
+    // Refresh the machine list to show/hide control buttons
+    refreshMachineList();
 }
 
 void UIMachineSelect::onMachineSelected(lv_event_t *e) {

@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <lvgl.h>
 #include <WiFi.h>
+#include <Preferences.h>
 #include "display_driver.h"     // Display driver module
 #include "touch_driver.h"       // Touch driver module
 #include "screenshot_server.h"  // Screenshot web server
@@ -11,6 +12,7 @@
 #include "ui/ui_common.h"       // UI common components (status bar)
 #include "ui/ui_tabs.h"         // UI tabs module
 #include "ui/tabs/ui_tab_status.h" // Status tab for updates
+#include "ui/machine_config.h"  // Machine configuration manager
 
 void setup()
 {
@@ -54,10 +56,46 @@ void setup()
     Serial.println("Showing splash screen...");
     UISplash::show(displayDriver.getDisplay());
 
-    // Show machine selection screen
-    // (Main UI will be initialized after machine selection)
-    Serial.println("Showing machine selection screen...");
-    UIMachineSelect::show(displayDriver.getDisplay());
+    // Check if machine selection should be shown
+    Preferences prefs;
+    prefs.begin(PREFS_NAMESPACE, true);  // Read-only
+    bool show_machine_select = prefs.getBool("show_mach_sel", true);  // Default to true
+    prefs.end();
+    
+    Serial.printf("Main: show_mach_sel preference = %d\n", show_machine_select);
+    
+    if (show_machine_select) {
+        // Show machine selection screen
+        Serial.println("Showing machine selection screen...");
+        UIMachineSelect::show(displayDriver.getDisplay());
+    } else {
+        // Auto-load first configured machine
+        Serial.println("Auto-loading first machine...");
+        MachineConfig machines[MAX_MACHINES];
+        MachineConfigManager::loadMachines(machines);
+        
+        // Find first configured machine
+        int first_machine_index = -1;
+        for (int i = 0; i < MAX_MACHINES; i++) {
+            if (machines[i].is_configured) {
+                first_machine_index = i;
+                break;
+            }
+        }
+        
+        if (first_machine_index >= 0) {
+            // Set as selected machine and initialize UI
+            MachineConfigManager::setSelectedMachineIndex(first_machine_index);
+            Serial.printf("Auto-selected machine: %s\n", machines[first_machine_index].name);
+            
+            // Initialize main UI directly
+            UICommon::createMainUI();
+        } else {
+            // No machines configured, show selection screen anyway
+            Serial.println("No machines configured, showing selection screen...");
+            UIMachineSelect::show(displayDriver.getDisplay());
+        }
+    }
 }
 
 void loop()

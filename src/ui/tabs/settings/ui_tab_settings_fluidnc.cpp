@@ -25,11 +25,11 @@ void UITabSettingsFluidNC::create(lv_obj_t *tab) {
     lv_obj_set_width(placeholder, 600);
     lv_obj_set_pos(placeholder, 40, 60);
     
-    // === Action Buttons ===
+    // === Action Buttons (positioned at bottom with 20px margins) ===
     // Save button
     lv_obj_t *btn_save = lv_button_create(tab);
     lv_obj_set_size(btn_save, 180, 50);
-    lv_obj_set_pos(btn_save, 100, 240);
+    lv_obj_set_pos(btn_save, 20, 280);  // 360px (tab height) - 50px (button) - 30px (margin) = 280px
     lv_obj_set_style_bg_color(btn_save, UITheme::BTN_PLAY, LV_PART_MAIN);
     lv_obj_t *lbl_save = lv_label_create(btn_save);
     lv_label_set_text(lbl_save, "Save Settings");
@@ -40,7 +40,7 @@ void UITabSettingsFluidNC::create(lv_obj_t *tab) {
     // Reset to defaults button
     lv_obj_t *btn_defaults = lv_button_create(tab);
     lv_obj_set_size(btn_defaults, 180, 50);
-    lv_obj_set_pos(btn_defaults, 300, 240);
+    lv_obj_set_pos(btn_defaults, 220, 280);  // Same vertical position, 200px gap from Save button
     lv_obj_set_style_bg_color(btn_defaults, UITheme::BG_BUTTON, LV_PART_MAIN);
     lv_obj_t *lbl_defaults = lv_label_create(btn_defaults);
     lv_label_set_text(lbl_defaults, "Reset Defaults");

@@ -158,11 +158,11 @@ void UITabSettingsJog::create(lv_obj_t *tab) {
     lv_textarea_set_text(ta_z_feed, buf);
     y_pos += 60;
     
-    // === Action Buttons ===
+    // === Action Buttons (positioned at bottom with 20px margins) ===
     // Save button
     lv_obj_t *btn_save = lv_button_create(tab);
     lv_obj_set_size(btn_save, 180, 50);
-    lv_obj_set_pos(btn_save, 20, y_pos);
+    lv_obj_set_pos(btn_save, 20, 280);  // 360px (tab height) - 50px (button) - 30px (margin) = 280px
     lv_obj_set_style_bg_color(btn_save, UITheme::BTN_PLAY, LV_PART_MAIN);
     lv_obj_t *lbl_save = lv_label_create(btn_save);
     lv_label_set_text(lbl_save, "Save Settings");
@@ -173,7 +173,7 @@ void UITabSettingsJog::create(lv_obj_t *tab) {
     // Reset to defaults button
     lv_obj_t *btn_reset = lv_button_create(tab);
     lv_obj_set_size(btn_reset, 180, 50);
-    lv_obj_set_pos(btn_reset, 220, y_pos);
+    lv_obj_set_pos(btn_reset, 220, 280);  // Same vertical position, 200px gap from Save button
     lv_obj_set_style_bg_color(btn_reset, UITheme::BG_BUTTON, LV_PART_MAIN);
     lv_obj_t *lbl_reset = lv_label_create(btn_reset);
     lv_label_set_text(lbl_reset, "Reset Defaults");
