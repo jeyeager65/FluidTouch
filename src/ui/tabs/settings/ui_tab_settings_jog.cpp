@@ -277,6 +277,7 @@ void UITabSettingsJog::showKeyboard(lv_obj_t *ta) {
         keyboard = lv_keyboard_create(lv_scr_act());
         lv_obj_set_size(keyboard, SCREEN_WIDTH, 220);
         lv_obj_align(keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
+        lv_keyboard_set_mode(keyboard, LV_KEYBOARD_MODE_NUMBER);  // All jog settings are numeric
         lv_obj_add_event_cb(keyboard, [](lv_event_t *e) { UITabSettingsJog::hideKeyboard(); }, LV_EVENT_READY, nullptr);
         lv_obj_add_event_cb(keyboard, [](lv_event_t *e) { UITabSettingsJog::hideKeyboard(); }, LV_EVENT_CANCEL, nullptr);
         if (parent_tab) {

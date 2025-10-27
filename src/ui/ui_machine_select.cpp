@@ -825,6 +825,13 @@ void UIMachineSelect::showKeyboard(lv_obj_t *ta) {
     
     lv_keyboard_set_textarea(keyboard, ta);
     
+    // Switch to number mode if editing the port field
+    if (ta == ta_port) {
+        lv_keyboard_set_mode(keyboard, LV_KEYBOARD_MODE_NUMBER);
+    } else {
+        lv_keyboard_set_mode(keyboard, LV_KEYBOARD_MODE_TEXT_LOWER);
+    }
+    
     // Scroll the dialog content to position the focused textarea just above keyboard
     if (dialog_content && ta) {
         // Get textarea position within dialog_content
