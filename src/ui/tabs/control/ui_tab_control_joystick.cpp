@@ -1,7 +1,35 @@
 #include "ui/tabs/control/ui_tab_control_joystick.h"
+#include "ui/tabs/settings/ui_tab_settings_jog.h"
 #include "ui/ui_theme.h"
+#include "fluidnc_client.h"
 #include <lvgl.h>
 #include <math.h>
+
+// Static label pointers for real-time updates
+static lv_obj_t *xy_percent_label = NULL;
+static lv_obj_t *xy_feedrate_label = NULL;
+static lv_obj_t *z_percent_label = NULL;
+static lv_obj_t *z_feedrate_label = NULL;
+
+// Jogging state tracking
+static bool xy_jogging = false;
+static bool z_jogging = false;
+static float last_xy_x_percent = 0.0f;
+static float last_xy_y_percent = 0.0f;
+static float last_z_percent = 0.0f;
+static unsigned long last_jog_time = 0;
+
+// Jogging parameters
+static const unsigned long JOG_INTERVAL_MS = 25;  // Send jog command every 25ms (40Hz for smooth motion)
+static const float JOG_TIME_INCREMENT = 0.025f;   // 25ms in seconds (nominal dt)
+
+// Send jog cancel command (realtime command 0x85)
+static void sendJogCancel() {
+    // Send jog cancel realtime command
+    const char cancel_cmd = 0x85;
+    FluidNCClient::sendCommand(&cancel_cmd);
+    Serial.println("Joystick: Sent jog cancel (0x85)");
+}
 
 // XY Joystick drag event handler (circular movement)
 static void xy_joystick_event_handler(lv_event_t *e) {
@@ -57,17 +85,83 @@ static void xy_joystick_event_handler(lv_event_t *e) {
         // Position knob relative to background center using align
         lv_obj_align(knob, LV_ALIGN_CENTER, dx, dy);
         
-        // Calculate joystick percentage (-100 to +100)
+        // Calculate radial distance percentage (0 to 100)
+        float radial_percent = (distance * 100.0f) / max_radius;
+        if (radial_percent > 100.0f) radial_percent = 100.0f;
+        
+        // Calculate individual axis percentages for direction (-100 to +100)
         float x_percent = (dx * 100.0f) / max_radius;
         float y_percent = -(dy * 100.0f) / max_radius;  // Invert Y axis
         
-        // TODO: Send jog command based on x_percent and y_percent
+        // Calculate feedrate based on radial distance (use max feedrate from settings)
+        int max_xy_feed = UITabSettingsJog::getMaxXYFeed();
+        int xy_feedrate = (int)(radial_percent * max_xy_feed / 100.0f);
+        
+        // Update labels - show single radial percentage
+        if (xy_percent_label != NULL) {
+            lv_label_set_text_fmt(xy_percent_label, "XY: %d%%", (int)radial_percent);
+        }
+        if (xy_feedrate_label != NULL) {
+            lv_label_set_text_fmt(xy_feedrate_label, "%d mm/min", xy_feedrate);
+        }
+        
+        // Send jog command at regular intervals
+        unsigned long current_time = millis();
+        if (!xy_jogging || (current_time - last_jog_time >= JOG_INTERVAL_MS)) {
+            // Calculate actual time delta for accurate positioning
+            float actual_dt = xy_jogging ? ((current_time - last_jog_time) / 1000.0f) : JOG_TIME_INCREMENT;
+            
+            // Calculate feed rate components (mm/min) using max feedrate from settings
+            int max_xy_feed = UITabSettingsJog::getMaxXYFeed();
+            float v_x = (x_percent / 100.0f) * max_xy_feed;  // mm/min
+            float v_y = (y_percent / 100.0f) * max_xy_feed;  // mm/min
+            float feed_rate = sqrt(v_x * v_x + v_y * v_y);   // Vector magnitude
+            
+            if (feed_rate > 1.0f) {  // Only send if moving significantly
+                // Calculate incremental distances: s = v * dt
+                // Convert feed_rate from mm/min to mm/sec, then multiply by actual time increment
+                float v_x_mm_per_sec = v_x / 60.0f;
+                float v_y_mm_per_sec = v_y / 60.0f;
+                
+                float x_distance = v_x_mm_per_sec * actual_dt;
+                float y_distance = v_y_mm_per_sec * actual_dt;
+                
+                // Build and send jog command: $J=G91 X[dist] Y[dist] F[rate]
+                char jog_cmd[64];
+                snprintf(jog_cmd, sizeof(jog_cmd), "$J=G91 X%.4f Y%.4f F%.0f\n", 
+                         x_distance, y_distance, feed_rate);
+                FluidNCClient::sendCommand(jog_cmd);
+                
+                xy_jogging = true;
+                last_jog_time = current_time;
+                last_xy_x_percent = x_percent;
+                last_xy_y_percent = y_percent;
+                
+                Serial.printf("XY Jog: %s\n", jog_cmd);
+            }
+        }
+        
+        // TODO: Legacy comment - command sending now implemented above
     }
     else if (code == LV_EVENT_RELEASED) {
         // Return knob to center when released
         lv_obj_center(knob);
         
-        // TODO: Send jog cancel command
+        // Reset labels to 0
+        if (xy_percent_label != NULL) {
+            lv_label_set_text(xy_percent_label, "XY: 0%");
+        }
+        if (xy_feedrate_label != NULL) {
+            lv_label_set_text(xy_feedrate_label, "0 mm/min");
+        }
+        
+        // Send jog cancel if we were jogging
+        if (xy_jogging) {
+            sendJogCancel();
+            xy_jogging = false;
+            last_xy_x_percent = 0.0f;
+            last_xy_y_percent = 0.0f;
+        }
     }
 }
 
@@ -117,31 +211,93 @@ static void z_joystick_event_handler(lv_event_t *e) {
         // Calculate joystick percentage (-100 to +100, inverted for Z)
         float z_percent = -(dy * 100.0f) / max_offset;  // Negative dy = Z+
         
-        // TODO: Send Z jog command based on z_percent
+        // Calculate feedrate (absolute value for display) using max feedrate from settings
+        int max_z_feed = UITabSettingsJog::getMaxZFeed();
+        int z_feedrate = (int)(fabs(z_percent) * max_z_feed / 100.0f);
+        
+        // Update labels
+        if (z_percent_label != NULL) {
+            lv_label_set_text_fmt(z_percent_label, "Z: %d%%", (int)z_percent);
+        }
+        if (z_feedrate_label != NULL) {
+            lv_label_set_text_fmt(z_feedrate_label, "%d mm/min", z_feedrate);
+        }
+        
+        // Send jog command at regular intervals
+        unsigned long current_time = millis();
+        if (!z_jogging || (current_time - last_jog_time >= JOG_INTERVAL_MS)) {
+            // Calculate actual time delta for accurate positioning
+            float actual_dt = z_jogging ? ((current_time - last_jog_time) / 1000.0f) : JOG_TIME_INCREMENT;
+            
+            // Calculate feed rate with sign (mm/min) using max feedrate from settings
+            int max_z_feed = UITabSettingsJog::getMaxZFeed();
+            float v_z = (z_percent / 100.0f) * max_z_feed;  // mm/min (with sign)
+            float feed_rate = fabs(v_z);  // Absolute value for F parameter
+            
+            if (feed_rate > 1.0f) {  // Only send if moving significantly
+                // Calculate incremental distance: s = v * dt
+                // Convert from mm/min to mm/sec, then multiply by actual time increment
+                float v_z_mm_per_sec = v_z / 60.0f;
+                float z_distance = v_z_mm_per_sec * actual_dt;
+                
+                // Build and send jog command: $J=G91 Z[dist] F[rate]
+                char jog_cmd[64];
+                snprintf(jog_cmd, sizeof(jog_cmd), "$J=G91 Z%.4f F%.0f\n", 
+                         z_distance, feed_rate);
+                FluidNCClient::sendCommand(jog_cmd);
+                
+                z_jogging = true;
+                last_jog_time = current_time;
+                last_z_percent = z_percent;
+                
+                Serial.printf("Z Jog: %s\n", jog_cmd);
+            }
+        }
+        
+        // TODO: Legacy comment - command sending now implemented above
     }
     else if (code == LV_EVENT_RELEASED) {
         // Return knob to center when released
         lv_obj_center(knob);
         
-        // TODO: Send jog cancel command
+        // Reset labels to 0
+        if (z_percent_label != NULL) {
+            lv_label_set_text(z_percent_label, "Z: 0%");
+        }
+        if (z_feedrate_label != NULL) {
+            lv_label_set_text(z_feedrate_label, "0 mm/min");
+        }
+        
+        // Send jog cancel if we were jogging
+        if (z_jogging) {
+            sendJogCancel();
+            z_jogging = false;
+            last_z_percent = 0.0f;
+        }
     }
 }
 
 void UITabControlJoystick::create(lv_obj_t *parent) {
-    // Set parent to use horizontal flex layout (XY joystick on left, Z slider on right)
+    // Set parent to use horizontal flex layout (XY joystick on left, info in center, Z slider on right)
     lv_obj_set_flex_flow(parent, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(parent, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_all(parent, 10, 0);
+    lv_obj_set_style_pad_left(parent, 15, 0);  // Shift everything right by 5px (10px default + 5px offset)
+    lv_obj_set_style_pad_right(parent, 10, 0);
+    lv_obj_set_style_pad_top(parent, 10, 0);
+    lv_obj_set_style_pad_bottom(parent, 10, 0);
     lv_obj_set_style_pad_gap(parent, 20, 0);
 
     // ========== XY Joystick (Circular) ==========
     lv_obj_t *xy_container = lv_obj_create(parent);
     lv_obj_set_size(xy_container, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
     lv_obj_set_style_pad_all(xy_container, 5, 0);
-    lv_obj_set_flex_flow(xy_container, LV_FLEX_FLOW_COLUMN);  // Stack label and joystick vertically
-    lv_obj_clear_flag(xy_container, LV_OBJ_FLAG_SCROLLABLE);  // Disable scrolling
+    lv_obj_set_flex_flow(xy_container, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(xy_container, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_clear_flag(xy_container, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_opa(xy_container, LV_OPA_TRANSP, 0);  // Transparent background
+    lv_obj_set_style_border_width(xy_container, 0, 0);  // No border
     
-    // XY Label
+    // XY Label (centered above joystick)
     lv_obj_t *xy_label = lv_label_create(xy_container);
     lv_label_set_text(xy_label, "XY Jog");
     lv_obj_set_style_text_font(xy_label, &lv_font_montserrat_18, 0);
@@ -189,14 +345,74 @@ void UITabControlJoystick::create(lv_obj_t *parent) {
     lv_obj_add_event_cb(xy_knob, xy_joystick_event_handler, LV_EVENT_PRESSING, NULL);
     lv_obj_add_event_cb(xy_knob, xy_joystick_event_handler, LV_EVENT_RELEASED, NULL);
 
+    // ========== Center Info Display (XY + Z values) ==========
+    lv_obj_t *info_container = lv_obj_create(parent);
+    lv_obj_set_size(info_container, 160, LV_SIZE_CONTENT);
+    lv_obj_set_style_pad_all(info_container, 10, 0);
+    lv_obj_set_flex_flow(info_container, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(info_container, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_gap(info_container, 10, 0);
+    lv_obj_clear_flag(info_container, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_opa(info_container, LV_OPA_TRANSP, 0);  // Transparent background
+    lv_obj_set_style_border_width(info_container, 0, 0);  // No border
+    
+    // XY Percentage (radial distance)
+    xy_percent_label = lv_label_create(info_container);
+    lv_label_set_text(xy_percent_label, "XY: 0%");
+    lv_obj_set_style_text_font(xy_percent_label, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(xy_percent_label, UITheme::JOYSTICK_XY, 0);
+    
+    // XY Feedrate
+    xy_feedrate_label = lv_label_create(info_container);
+    lv_label_set_text(xy_feedrate_label, "0 mm/min");
+    lv_obj_set_style_text_font(xy_feedrate_label, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(xy_feedrate_label, UITheme::TEXT_LIGHT, 0);
+    
+    // XY Max Feedrate (from settings)
+    lv_obj_t *xy_max_label = lv_label_create(info_container);
+    char xy_max_text[32];
+    snprintf(xy_max_text, sizeof(xy_max_text), "Max: %d mm/min", UITabSettingsJog::getMaxXYFeed());
+    lv_label_set_text(xy_max_label, xy_max_text);
+    lv_obj_set_style_text_font(xy_max_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(xy_max_label, UITheme::UI_INFO, 0);
+    
+    // Spacer between XY and Z info
+    lv_obj_t *spacer = lv_obj_create(info_container);
+    lv_obj_set_size(spacer, 1, 20);
+    lv_obj_set_style_bg_opa(spacer, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(spacer, 0, 0);
+    
+    // Z Percentage
+    z_percent_label = lv_label_create(info_container);
+    lv_label_set_text(z_percent_label, "Z: 0%");
+    lv_obj_set_style_text_font(z_percent_label, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(z_percent_label, UITheme::AXIS_Z, 0);
+    
+    // Z Feedrate
+    z_feedrate_label = lv_label_create(info_container);
+    lv_label_set_text(z_feedrate_label, "0 mm/min");
+    lv_obj_set_style_text_font(z_feedrate_label, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(z_feedrate_label, UITheme::TEXT_LIGHT, 0);
+    
+    // Z Max Feedrate (from settings)
+    lv_obj_t *z_max_label = lv_label_create(info_container);
+    char z_max_text[32];
+    snprintf(z_max_text, sizeof(z_max_text), "Max: %d mm/min", UITabSettingsJog::getMaxZFeed());
+    lv_label_set_text(z_max_label, z_max_text);
+    lv_obj_set_style_text_font(z_max_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(z_max_label, UITheme::UI_INFO, 0);
+
     // ========== Z Slider (Vertical) ==========
     lv_obj_t *z_container = lv_obj_create(parent);
     lv_obj_set_size(z_container, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
     lv_obj_set_style_pad_all(z_container, 5, 0);
-    lv_obj_set_flex_flow(z_container, LV_FLEX_FLOW_COLUMN);  // Stack label and slider vertically
-    lv_obj_clear_flag(z_container, LV_OBJ_FLAG_SCROLLABLE);  // Disable scrolling
+    lv_obj_set_flex_flow(z_container, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(z_container, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_clear_flag(z_container, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_opa(z_container, LV_OPA_TRANSP, 0);  // Transparent background
+    lv_obj_set_style_border_width(z_container, 0, 0);  // No border
     
-    // Z Label
+    // Z Label (centered above slider)
     lv_obj_t *z_label = lv_label_create(z_container);
     lv_label_set_text(z_label, "Z Jog");
     lv_obj_set_style_text_font(z_label, &lv_font_montserrat_18, 0);

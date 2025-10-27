@@ -12,6 +12,10 @@ int UITabSettingsJog::default_z_feed = 1000;
 int UITabSettingsJog::max_xy_feed = 3000;
 int UITabSettingsJog::max_z_feed = 1000;
 
+// Keyboard
+lv_obj_t *UITabSettingsJog::keyboard = nullptr;
+lv_obj_t *UITabSettingsJog::parent_tab = nullptr;
+
 // UI element references
 static lv_obj_t *ta_xy_step = nullptr;
 static lv_obj_t *ta_z_step = nullptr;
@@ -24,8 +28,12 @@ static lv_obj_t *status_label = nullptr;
 // Forward declarations for event handlers
 static void btn_save_jog_event_handler(lv_event_t *e);
 static void btn_reset_event_handler(lv_event_t *e);
+static void textarea_focused_event_handler(lv_event_t *e);
 
 void UITabSettingsJog::create(lv_obj_t *tab) {
+    // Store parent tab reference
+    parent_tab = tab;
+    
     // Set dark background
     lv_obj_set_style_bg_color(tab, UITheme::BG_MEDIUM, LV_PART_MAIN);
     
@@ -70,6 +78,7 @@ void UITabSettingsJog::create(lv_obj_t *tab) {
     lv_textarea_set_one_line(ta_xy_step, true);
     lv_textarea_set_max_length(ta_xy_step, 6);
     lv_textarea_set_accepted_chars(ta_xy_step, "0123456789");
+    lv_obj_add_event_cb(ta_xy_step, textarea_focused_event_handler, LV_EVENT_FOCUSED, nullptr);
     char buf[16];
     snprintf(buf, sizeof(buf), "%.0f", default_xy_step);
     lv_textarea_set_text(ta_xy_step, buf);
@@ -87,6 +96,7 @@ void UITabSettingsJog::create(lv_obj_t *tab) {
     lv_textarea_set_one_line(ta_max_xy_feed, true);
     lv_textarea_set_max_length(ta_max_xy_feed, 6);
     lv_textarea_set_accepted_chars(ta_max_xy_feed, "0123456789");
+    lv_obj_add_event_cb(ta_max_xy_feed, textarea_focused_event_handler, LV_EVENT_FOCUSED, nullptr);
     snprintf(buf, sizeof(buf), "%d", max_xy_feed);
     lv_textarea_set_text(ta_max_xy_feed, buf);
     y_pos += 50;
@@ -104,6 +114,7 @@ void UITabSettingsJog::create(lv_obj_t *tab) {
     lv_textarea_set_one_line(ta_z_step, true);
     lv_textarea_set_max_length(ta_z_step, 6);
     lv_textarea_set_accepted_chars(ta_z_step, "0123456789");
+    lv_obj_add_event_cb(ta_z_step, textarea_focused_event_handler, LV_EVENT_FOCUSED, nullptr);
     snprintf(buf, sizeof(buf), "%.0f", default_z_step);
     lv_textarea_set_text(ta_z_step, buf);
     
@@ -120,6 +131,7 @@ void UITabSettingsJog::create(lv_obj_t *tab) {
     lv_textarea_set_one_line(ta_max_z_feed, true);
     lv_textarea_set_max_length(ta_max_z_feed, 6);
     lv_textarea_set_accepted_chars(ta_max_z_feed, "0123456789");
+    lv_obj_add_event_cb(ta_max_z_feed, textarea_focused_event_handler, LV_EVENT_FOCUSED, nullptr);
     snprintf(buf, sizeof(buf), "%d", max_z_feed);
     lv_textarea_set_text(ta_max_z_feed, buf);
     y_pos += 50;
@@ -137,6 +149,7 @@ void UITabSettingsJog::create(lv_obj_t *tab) {
     lv_textarea_set_one_line(ta_xy_feed, true);
     lv_textarea_set_max_length(ta_xy_feed, 6);
     lv_textarea_set_accepted_chars(ta_xy_feed, "0123456789");
+    lv_obj_add_event_cb(ta_xy_feed, textarea_focused_event_handler, LV_EVENT_FOCUSED, nullptr);
     snprintf(buf, sizeof(buf), "%d", default_xy_feed);
     lv_textarea_set_text(ta_xy_feed, buf);
     y_pos += 50;
@@ -154,6 +167,7 @@ void UITabSettingsJog::create(lv_obj_t *tab) {
     lv_textarea_set_one_line(ta_z_feed, true);
     lv_textarea_set_max_length(ta_z_feed, 6);
     lv_textarea_set_accepted_chars(ta_z_feed, "0123456789");
+    lv_obj_add_event_cb(ta_z_feed, textarea_focused_event_handler, LV_EVENT_FOCUSED, nullptr);
     snprintf(buf, sizeof(buf), "%d", default_z_feed);
     lv_textarea_set_text(ta_z_feed, buf);
     y_pos += 60;
@@ -250,6 +264,74 @@ void UITabSettingsJog::setDefaultXYFeed(int value) { default_xy_feed = value; }
 void UITabSettingsJog::setDefaultZFeed(int value) { default_z_feed = value; }
 void UITabSettingsJog::setMaxXYFeed(int value) { max_xy_feed = value; }
 void UITabSettingsJog::setMaxZFeed(int value) { max_z_feed = value; }
+
+// Textarea focused event handler - show keyboard
+static void textarea_focused_event_handler(lv_event_t *e) {
+    lv_obj_t *ta = (lv_obj_t *)lv_event_get_target(e);
+    UITabSettingsJog::showKeyboard(ta);
+}
+
+// Show keyboard
+void UITabSettingsJog::showKeyboard(lv_obj_t *ta) {
+    if (!keyboard) {
+        keyboard = lv_keyboard_create(lv_scr_act());
+        lv_obj_set_size(keyboard, SCREEN_WIDTH, 220);
+        lv_obj_align(keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
+        lv_obj_add_event_cb(keyboard, [](lv_event_t *e) { UITabSettingsJog::hideKeyboard(); }, LV_EVENT_READY, nullptr);
+        lv_obj_add_event_cb(keyboard, [](lv_event_t *e) { UITabSettingsJog::hideKeyboard(); }, LV_EVENT_CANCEL, nullptr);
+        if (parent_tab) {
+            lv_obj_add_event_cb(parent_tab, [](lv_event_t *e) { UITabSettingsJog::hideKeyboard(); }, LV_EVENT_CLICKED, nullptr);
+        }
+        
+        // Enable scrolling on parent tab and add extra padding at bottom for keyboard
+        if (parent_tab) {
+            lv_obj_add_flag(parent_tab, LV_OBJ_FLAG_SCROLLABLE);
+            lv_obj_set_style_pad_bottom(parent_tab, 240, 0); // Extra space for scrolling (keyboard height + margin)
+        }
+    }
+    
+    lv_keyboard_set_textarea(keyboard, ta);
+    lv_obj_clear_flag(keyboard, LV_OBJ_FLAG_HIDDEN);
+    
+    // Scroll the parent tab to position the focused textarea just above keyboard
+    if (parent_tab && ta) {
+        // Get textarea position within parent_tab
+        lv_coord_t ta_y = lv_obj_get_y(ta);
+        lv_obj_t *parent = lv_obj_get_parent(ta);
+        
+        // Walk up parent hierarchy to get cumulative Y position
+        while (parent && parent != parent_tab) {
+            ta_y += lv_obj_get_y(parent);
+            parent = lv_obj_get_parent(parent);
+        }
+        
+        // Calculate scroll position to place textarea just above keyboard
+        // Status bar is 60px, keyboard is 220px, so visible area is 200px (480 - 60 - 220)
+        lv_coord_t visible_height = 200; // Height above keyboard and below status bar
+        lv_coord_t ta_height = lv_obj_get_height(ta);
+        lv_coord_t target_position = visible_height - ta_height - 20; // 20px margin above keyboard
+        
+        // Scroll amount = (textarea Y position) - (where we want it)
+        lv_coord_t scroll_y = ta_y - target_position;
+        if (scroll_y < 0) scroll_y = 0; // Don't scroll past top
+        
+        lv_obj_scroll_to_y(parent_tab, scroll_y, LV_ANIM_ON);
+    }
+}
+
+// Hide keyboard
+void UITabSettingsJog::hideKeyboard() {
+    if (keyboard) {
+        lv_obj_add_flag(keyboard, LV_OBJ_FLAG_HIDDEN);
+        
+        // Restore parent tab to non-scrollable and remove extra padding
+        if (parent_tab) {
+            lv_obj_clear_flag(parent_tab, LV_OBJ_FLAG_SCROLLABLE);
+            lv_obj_set_style_pad_bottom(parent_tab, 10, 0); // Back to original padding
+            lv_obj_scroll_to_y(parent_tab, 0, LV_ANIM_ON); // Reset scroll position
+        }
+    }
+}
 
 // Save button event handler
 static void btn_save_jog_event_handler(lv_event_t *e) {

@@ -11,6 +11,10 @@ public:
     static void loadPreferences();
     static void savePreferences();
     
+    // Keyboard management
+    static void showKeyboard(lv_obj_t *ta);
+    static void hideKeyboard();
+    
     // Getters for default values
     static float getDefaultXYStep();
     static float getDefaultZStep();
@@ -35,6 +39,10 @@ private:
     static int default_z_feed;
     static int max_xy_feed;
     static int max_z_feed;
+    
+    // Keyboard
+    static lv_obj_t *keyboard;
+    static lv_obj_t *parent_tab;  // Store parent tab for keyboard positioning
 };
 
 #endif // UI_TAB_SETTINGS_JOG_H
