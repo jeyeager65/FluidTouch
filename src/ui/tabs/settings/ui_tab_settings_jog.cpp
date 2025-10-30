@@ -200,14 +200,13 @@ void UITabSettingsJog::create(lv_obj_t *tab) {
     lv_obj_set_style_text_font(lbl_reset, &lv_font_montserrat_16, 0);
     lv_obj_center(lbl_reset);
     lv_obj_add_event_cb(btn_reset, btn_reset_event_handler, LV_EVENT_CLICKED, NULL);
-    y_pos += 60;
     
     // Status label
     status_label = lv_label_create(tab);
     lv_label_set_text(status_label, "");
     lv_obj_set_style_text_font(status_label, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(status_label, UITheme::UI_INFO, 0);
-    lv_obj_set_pos(status_label, 100, y_pos);
+    lv_obj_set_pos(status_label, 20, 335);
 }
 
 // Load preferences from current machine configuration

@@ -178,6 +178,21 @@ void UITabTerminal::appendMessage(const char *message) {
     if (strncmp(message, "PING:", 5) == 0) {
         return;
     }
+    
+    // Filter out "ok" messages
+    if (strcmp(message, "ok") == 0 || strncmp(message, "ok\n", 3) == 0 || strncmp(message, "ok\r", 3) == 0) {
+        return;
+    }
+    
+    // Filter out JSON messages (those starting with '{')
+    if (message[0] == '{') {
+        return;
+    }
+    
+    // Filter out CURRENT_ID and ACTIVE_ID messages (prevent performance issues during jogging)
+    if (strncmp(message, "CURRENT_ID:", 11) == 0 || strncmp(message, "ACTIVE_ID:", 10) == 0) {
+        return;
+    }
 
     // Strip trailing whitespace/newlines from message
     String clean_msg = String(message);

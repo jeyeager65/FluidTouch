@@ -157,7 +157,7 @@ void UITabSettingsProbe::create(lv_obj_t *tab) {
     lv_label_set_text(status_label, "");
     lv_obj_set_style_text_font(status_label, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(status_label, UITheme::UI_INFO, 0);
-    lv_obj_set_pos(status_label, 100, 335);  // 280 (button y) + 50 (button height) + 5 (gap)
+    lv_obj_set_pos(status_label, 20, 335);  // 280 (button y) + 50 (button height) + 5 (gap)
 }
 
 // Load preferences from current machine configuration

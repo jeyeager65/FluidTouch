@@ -236,7 +236,7 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_obj_set_pos(status_coord_label, 615, 99);
     
     lbl_modal_wcs = lv_label_create(tab);
-    lv_label_set_text(lbl_modal_wcs, "G54");
+    lv_label_set_text(lbl_modal_wcs, "---");
     lv_obj_set_style_text_font(lbl_modal_wcs, &lv_font_montserrat_20, 0);
     lv_obj_set_style_text_color(lbl_modal_wcs, UITheme::POS_MODAL, 0);
     lv_obj_set_pos(lbl_modal_wcs, 735, 99);
@@ -249,7 +249,7 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_obj_set_pos(status_plane_label, 615, 126);
     
     lbl_modal_plane = lv_label_create(tab);
-    lv_label_set_text(lbl_modal_plane, "G17");
+    lv_label_set_text(lbl_modal_plane, "---");
     lv_obj_set_style_text_font(lbl_modal_plane, &lv_font_montserrat_20, 0);
     lv_obj_set_style_text_color(lbl_modal_plane, UITheme::UI_SECONDARY, 0);
     lv_obj_set_pos(lbl_modal_plane, 735, 126);
@@ -262,7 +262,7 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_obj_set_pos(status_dist_label, 615, 153);
     
     lbl_modal_dist = lv_label_create(tab);
-    lv_label_set_text(lbl_modal_dist, "G90");
+    lv_label_set_text(lbl_modal_dist, "---");
     lv_obj_set_style_text_font(lbl_modal_dist, &lv_font_montserrat_20, 0);
     lv_obj_set_style_text_color(lbl_modal_dist, UITheme::UI_SECONDARY, 0);
     lv_obj_set_pos(lbl_modal_dist, 735, 153);
@@ -275,7 +275,7 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_obj_set_pos(status_units_label, 615, 180);
     
     lbl_modal_units = lv_label_create(tab);
-    lv_label_set_text(lbl_modal_units, "G21");
+    lv_label_set_text(lbl_modal_units, "---");
     lv_obj_set_style_text_font(lbl_modal_units, &lv_font_montserrat_20, 0);
     lv_obj_set_style_text_color(lbl_modal_units, UITheme::POS_WORK, 0);
     lv_obj_set_pos(lbl_modal_units, 735, 180);
@@ -288,7 +288,7 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_obj_set_pos(status_motion_label, 615, 207);
     
     lbl_modal_motion = lv_label_create(tab);
-    lv_label_set_text(lbl_modal_motion, "G0");
+    lv_label_set_text(lbl_modal_motion, "---");
     lv_obj_set_style_text_font(lbl_modal_motion, &lv_font_montserrat_20, 0);
     lv_obj_set_style_text_color(lbl_modal_motion, UITheme::UI_INFO, 0);
     lv_obj_set_pos(lbl_modal_motion, 735, 207);
@@ -301,7 +301,7 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_obj_set_pos(status_feedrate_label, 615, 234);
     
     lbl_modal_feedrate = lv_label_create(tab);
-    lv_label_set_text(lbl_modal_feedrate, "G94");
+    lv_label_set_text(lbl_modal_feedrate, "---");
     lv_obj_set_style_text_font(lbl_modal_feedrate, &lv_font_montserrat_20, 0);
     lv_obj_set_style_text_color(lbl_modal_feedrate, UITheme::UI_INFO, 0);
     lv_obj_set_pos(lbl_modal_feedrate, 735, 234);
@@ -314,7 +314,7 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_obj_set_pos(status_spindle_label, 615, 261);
     
     lbl_modal_spindle = lv_label_create(tab);
-    lv_label_set_text(lbl_modal_spindle, "M5");
+    lv_label_set_text(lbl_modal_spindle, "---");
     lv_obj_set_style_text_font(lbl_modal_spindle, &lv_font_montserrat_20, 0);
     lv_obj_set_style_text_color(lbl_modal_spindle, UITheme::UI_INFO, 0);
     lv_obj_set_pos(lbl_modal_spindle, 735, 261);
@@ -327,7 +327,7 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_obj_set_pos(status_coolant_label, 615, 288);
     
     lbl_modal_coolant = lv_label_create(tab);
-    lv_label_set_text(lbl_modal_coolant, "M9");
+    lv_label_set_text(lbl_modal_coolant, "---");
     lv_obj_set_style_text_font(lbl_modal_coolant, &lv_font_montserrat_20, 0);
     lv_obj_set_style_text_color(lbl_modal_coolant, UITheme::UI_INFO, 0);
     lv_obj_set_pos(lbl_modal_coolant, 735, 288);
@@ -340,7 +340,7 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_obj_set_pos(status_tool_label, 615, 315);
     
     lbl_modal_tool = lv_label_create(tab);
-    lv_label_set_text(lbl_modal_tool, "T0");
+    lv_label_set_text(lbl_modal_tool, "---");
     lv_obj_set_style_text_font(lbl_modal_tool, &lv_font_montserrat_20, 0);
     lv_obj_set_style_text_color(lbl_modal_tool, UITheme::UI_WARNING, 0);
     lv_obj_set_pos(lbl_modal_tool, 735, 315);
@@ -353,13 +353,13 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_obj_set_pos(status_feed_header, 455, 70);
 
     lbl_feed_value = lv_label_create(tab);
-    lv_label_set_text(lbl_feed_value, "0");
+    lv_label_set_text(lbl_feed_value, "---");
     lv_obj_set_style_text_font(lbl_feed_value, &lv_font_montserrat_32, 0);
     lv_obj_set_style_text_color(lbl_feed_value, lv_color_white(), 0);
     lv_obj_set_pos(lbl_feed_value, 455, 95);
     
     lbl_feed_override = lv_label_create(tab);
-    lv_label_set_text(lbl_feed_override, "100%");
+    lv_label_set_text(lbl_feed_override, "---%");
     lv_obj_set_style_text_font(lbl_feed_override, &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_color(lbl_feed_override, UITheme::UI_INFO, 0);
     lv_obj_set_pos(lbl_feed_override, 555, 70);  // Right next to value
@@ -378,7 +378,7 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_obj_set_pos(status_rapid_label, 455, 147);
     
     lbl_rapid_override = lv_label_create(tab);
-    lv_label_set_text(lbl_rapid_override, "100%");
+    lv_label_set_text(lbl_rapid_override, "---%");
     lv_obj_set_style_text_font(lbl_rapid_override, &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_color(lbl_rapid_override, UITheme::UI_INFO, 0);
     lv_obj_set_pos(lbl_rapid_override, 555, 147);  // Right aligned with percentage
@@ -390,13 +390,13 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_obj_set_pos(status_speed_header, 455, 164);
 
     lbl_spindle_value = lv_label_create(tab);
-    lv_label_set_text(lbl_spindle_value, "0");
+    lv_label_set_text(lbl_spindle_value, "---");
     lv_obj_set_style_text_font(lbl_spindle_value, &lv_font_montserrat_32, 0);
     lv_obj_set_style_text_color(lbl_spindle_value, lv_color_white(), 0);
     lv_obj_set_pos(lbl_spindle_value, 455, 185);
     
     lbl_spindle_override = lv_label_create(tab);
-    lv_label_set_text(lbl_spindle_override, "100%");
+    lv_label_set_text(lbl_spindle_override, "---%");
     lv_obj_set_style_text_font(lbl_spindle_override, &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_color(lbl_spindle_override, UITheme::UI_INFO, 0);
     lv_obj_set_pos(lbl_spindle_override, 555, 164);  // Right next to value
@@ -415,7 +415,7 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_obj_set_pos(message_header, 0, 235);
 
     lbl_message = lv_label_create(tab);
-    lv_label_set_text(lbl_message, "No messages");
+    lv_label_set_text(lbl_message, "No messages.");
     lv_obj_set_size(lbl_message, 600, 80);  // Height to fit 10px margin at bottom
     lv_label_set_long_mode(lbl_message, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_font(lbl_message, &lv_font_montserrat_20, 0);

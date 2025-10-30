@@ -81,7 +81,7 @@ void UITabSettingsGeneral::create(lv_obj_t *tab) {
     lv_label_set_text(status_label, "");
     lv_obj_set_style_text_font(status_label, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(status_label, UITheme::UI_INFO, 0);
-    lv_obj_set_pos(status_label, 20, 250);  // 40px above buttons
+    lv_obj_set_pos(status_label, 20, 335);
 }
 
 // Save button event handler

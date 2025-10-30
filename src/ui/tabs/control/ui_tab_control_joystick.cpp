@@ -19,9 +19,15 @@ static float last_xy_y_percent = 0.0f;
 static float last_z_percent = 0.0f;
 static unsigned long last_jog_time = 0;
 
+// Label update throttling (only update when values change significantly)
+static int last_displayed_xy_percent = -1;
+static int last_displayed_xy_feedrate = -1;
+static int last_displayed_z_percent = -999;  // Use -999 to ensure first update
+static int last_displayed_z_feedrate = -1;
+
 // Jogging parameters
-static const unsigned long JOG_INTERVAL_MS = 25;  // Send jog command every 25ms (40Hz for smooth motion)
-static const float JOG_TIME_INCREMENT = 0.025f;   // 25ms in seconds (nominal dt)
+static const unsigned long JOG_INTERVAL_MS = 50;  // Send jog command every 50ms (20Hz for balance of smoothness and performance)
+static const float JOG_TIME_INCREMENT = 0.050f;   // 50ms in seconds (nominal dt)
 
 // Send jog cancel command (realtime command 0x85)
 static void sendJogCancel() {
@@ -96,12 +102,20 @@ static void xy_joystick_event_handler(lv_event_t *e) {
         int max_xy_feed = UITabSettingsJog::getMaxXYFeed();
         int xy_feedrate = (int)(radial_percent * max_xy_feed / 100.0f);
         
-        // Update labels - show single radial percentage
-        if (xy_percent_label != NULL) {
-            lv_label_set_text_fmt(xy_percent_label, "XY: %d%%", (int)radial_percent);
+        // Update labels ONLY if values changed significantly (reduce LVGL redraws)
+        int current_percent = (int)radial_percent;
+        if (abs(current_percent - last_displayed_xy_percent) >= 5) {
+            if (xy_percent_label != NULL) {
+                lv_label_set_text_fmt(xy_percent_label, "XY: %d%%", current_percent);
+            }
+            last_displayed_xy_percent = current_percent;
         }
-        if (xy_feedrate_label != NULL) {
-            lv_label_set_text_fmt(xy_feedrate_label, "%d mm/min", xy_feedrate);
+        
+        if (abs(xy_feedrate - last_displayed_xy_feedrate) >= 50) {
+            if (xy_feedrate_label != NULL) {
+                lv_label_set_text_fmt(xy_feedrate_label, "%d mm/min", xy_feedrate);
+            }
+            last_displayed_xy_feedrate = xy_feedrate;
         }
         
         // Send jog command at regular intervals
@@ -136,7 +150,8 @@ static void xy_joystick_event_handler(lv_event_t *e) {
                 last_xy_x_percent = x_percent;
                 last_xy_y_percent = y_percent;
                 
-                Serial.printf("XY Jog: %s\n", jog_cmd);
+                // Serial debug disabled for performance (uncomment only when debugging)
+                // Serial.printf("XY Jog: %s", jog_cmd);
             }
         }
         
@@ -153,6 +168,10 @@ static void xy_joystick_event_handler(lv_event_t *e) {
         if (xy_feedrate_label != NULL) {
             lv_label_set_text(xy_feedrate_label, "0 mm/min");
         }
+        
+        // Reset last displayed values so next press updates immediately
+        last_displayed_xy_percent = -1;
+        last_displayed_xy_feedrate = -1;
         
         // Send jog cancel if we were jogging
         if (xy_jogging) {
@@ -214,12 +233,20 @@ static void z_joystick_event_handler(lv_event_t *e) {
         int max_z_feed = UITabSettingsJog::getMaxZFeed();
         int z_feedrate = (int)(fabs(z_percent) * max_z_feed / 100.0f);
         
-        // Update labels
-        if (z_percent_label != NULL) {
-            lv_label_set_text_fmt(z_percent_label, "Z: %d%%", (int)z_percent);
+        // Update labels ONLY if values changed significantly (reduce LVGL redraws)
+        int current_percent = (int)z_percent;
+        if (abs(current_percent - last_displayed_z_percent) >= 5) {
+            if (z_percent_label != NULL) {
+                lv_label_set_text_fmt(z_percent_label, "Z: %d%%", current_percent);
+            }
+            last_displayed_z_percent = current_percent;
         }
-        if (z_feedrate_label != NULL) {
-            lv_label_set_text_fmt(z_feedrate_label, "%d mm/min", z_feedrate);
+        
+        if (abs(z_feedrate - last_displayed_z_feedrate) >= 50) {
+            if (z_feedrate_label != NULL) {
+                lv_label_set_text_fmt(z_feedrate_label, "%d mm/min", z_feedrate);
+            }
+            last_displayed_z_feedrate = z_feedrate;
         }
         
         // Send jog command at regular intervals
@@ -249,7 +276,8 @@ static void z_joystick_event_handler(lv_event_t *e) {
                 last_jog_time = current_time;
                 last_z_percent = z_percent;
                 
-                Serial.printf("Z Jog: %s\n", jog_cmd);
+                // Serial debug disabled for performance (uncomment only when debugging)
+                // Serial.printf("Z Jog: %s", jog_cmd);
             }
         }
         
@@ -266,6 +294,10 @@ static void z_joystick_event_handler(lv_event_t *e) {
         if (z_feedrate_label != NULL) {
             lv_label_set_text(z_feedrate_label, "0 mm/min");
         }
+        
+        // Reset last displayed values so next press updates immediately
+        last_displayed_z_percent = -999;
+        last_displayed_z_feedrate = -1;
         
         // Send jog cancel if we were jogging
         if (z_jogging) {
