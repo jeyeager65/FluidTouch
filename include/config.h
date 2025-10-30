@@ -30,7 +30,7 @@
 #define BUFFER_LINES 480  // Full screen buffer for smooth rendering (with 8MB PSRAM available)
 
 // Timing constants
-#define SPLASH_DURATION_MS 3000
+#define SPLASH_DURATION_MS 2500
 
 // Preferences namespace
 #define PREFS_NAMESPACE "fluidtouch"

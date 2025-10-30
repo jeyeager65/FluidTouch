@@ -13,33 +13,33 @@ void UISplash::show(lv_display_t *disp) {
     // FluidNC Logo Image (365x136 pixels)
     lv_obj_t *logo_img = lv_img_create(splash);
     lv_img_set_src(logo_img, &fluidnc_logo);
-    lv_obj_align(logo_img, LV_ALIGN_CENTER, 0, -60);
+    lv_obj_align(logo_img, LV_ALIGN_CENTER, 0, -70);
     
     // Product name
     lv_obj_t *product_name = lv_label_create(splash);
     lv_label_set_text(product_name, "FluidTouch");
     lv_obj_set_style_text_font(product_name, &lv_font_montserrat_32, 0);
     lv_obj_set_style_text_color(product_name, UITheme::UI_INFO, 0);
-    lv_obj_align(product_name, LV_ALIGN_CENTER, 0, 30);
+    lv_obj_align(product_name, LV_ALIGN_CENTER, 0, 20);
     
-    // Version info (smaller, gray, below product name)
+    // Tagline (below product name)
+    lv_obj_t *tagline = lv_label_create(splash);
+    lv_label_set_text(tagline, "CNC Touch Controller for FluidNC");
+    lv_obj_set_style_text_font(tagline, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(tagline, UITheme::TEXT_LIGHT, 0);
+    lv_obj_align(tagline, LV_ALIGN_CENTER, 0, 55);
+    
+    // Version info (larger font, below tagline)
     lv_obj_t *version = lv_label_create(splash);
     lv_label_set_text(version, FLUIDTOUCH_VERSION);
-    lv_obj_set_style_text_font(version, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(version, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(version, UITheme::TEXT_MEDIUM, 0);
-    lv_obj_align(version, LV_ALIGN_CENTER, 0, 60);
-    
-    // Loading text
-    lv_obj_t *loading = lv_label_create(splash);
-    lv_label_set_text(loading, "Initializing...");
-    lv_obj_set_style_text_font(loading, &lv_font_montserrat_14, 0);
-    lv_obj_set_style_text_color(loading, UITheme::UI_SUCCESS, 0);
-    lv_obj_align(loading, LV_ALIGN_BOTTOM_MID, 0, -40);
+    lv_obj_align(version, LV_ALIGN_CENTER, 0, 85);
     
     // Force LVGL to render the splash screen
     lv_refr_now(disp);
     
-    // Show splash for configured duration
+    // Display splash for configured duration
     delay(SPLASH_DURATION_MS);
     
     // Delete splash screen
