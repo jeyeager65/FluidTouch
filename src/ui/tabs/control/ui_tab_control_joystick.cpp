@@ -296,10 +296,11 @@ void UITabControlJoystick::create(lv_obj_t *parent) {
     lv_obj_set_style_bg_opa(xy_container, LV_OPA_TRANSP, 0);  // Transparent background
     lv_obj_set_style_border_width(xy_container, 0, 0);  // No border
     
-    // XY Label (centered above joystick)
+    // XY Label (centered above joystick) - Settings-style header with XY axis color
     lv_obj_t *xy_label = lv_label_create(xy_container);
-    lv_label_set_text(xy_label, "XY Jog");
+    lv_label_set_text(xy_label, "XY JOG");
     lv_obj_set_style_text_font(xy_label, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(xy_label, UITheme::AXIS_XY, 0);
 
     // Background circle (220x220 with crosshairs)
     lv_obj_t *xy_bg = lv_obj_create(xy_container);
@@ -310,16 +311,16 @@ void UITabControlJoystick::create(lv_obj_t *parent) {
     lv_obj_set_style_border_color(xy_bg, UITheme::JOYSTICK_BORDER, 0);
     lv_obj_clear_flag(xy_bg, LV_OBJ_FLAG_SCROLLABLE);  // Disable scrolling
 
-    // Horizontal crosshair
+    // Horizontal crosshair (extends to circle edge)
     lv_obj_t *xy_h_line = lv_obj_create(xy_bg);
-    lv_obj_set_size(xy_h_line, LV_PCT(100), 2);
+    lv_obj_set_size(xy_h_line, 200, 2);  // 200px width
     lv_obj_set_style_bg_color(xy_h_line, UITheme::JOYSTICK_LINE, 0);
     lv_obj_set_style_border_width(xy_h_line, 0, 0);
     lv_obj_center(xy_h_line);
 
-    // Vertical crosshair
+    // Vertical crosshair (extends to circle edge)
     lv_obj_t *xy_v_line = lv_obj_create(xy_bg);
-    lv_obj_set_size(xy_v_line, 2, LV_PCT(100));
+    lv_obj_set_size(xy_v_line, 2, 200);  // 200px height
     lv_obj_set_style_bg_color(xy_v_line, UITheme::JOYSTICK_LINE, 0);
     lv_obj_set_style_border_width(xy_v_line, 0, 0);
     lv_obj_center(xy_v_line);
@@ -411,10 +412,11 @@ void UITabControlJoystick::create(lv_obj_t *parent) {
     lv_obj_set_style_bg_opa(z_container, LV_OPA_TRANSP, 0);  // Transparent background
     lv_obj_set_style_border_width(z_container, 0, 0);  // No border
     
-    // Z Label (centered above slider)
+    // Z Label (centered above slider) - Settings-style header with Z axis color
     lv_obj_t *z_label = lv_label_create(z_container);
-    lv_label_set_text(z_label, "Z Jog");
+    lv_label_set_text(z_label, "Z JOG");
     lv_obj_set_style_text_font(z_label, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(z_label, UITheme::AXIS_Z, 0);
 
     // Background slider (80x220 vertical)
     lv_obj_t *z_bg = lv_obj_create(z_container);
