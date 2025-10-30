@@ -70,11 +70,38 @@ static void status_bar_left_click_handler(lv_event_t *e) {
     }
 }
 
-// Event handler for status bar right area click (machine selection confirmation)
+// Event handler for status bar right area click (machine selection/connection status)
 static void status_bar_right_click_handler(lv_event_t *e) {
     lv_event_code_t code = lv_event_get_code(e);
     if (code == LV_EVENT_CLICKED) {
-        UICommon::showMachineSelectConfirmDialog();
+        // Check if both WiFi and WebSocket are connected
+        bool wifi_connected = (WiFi.status() == WL_CONNECTED);
+        bool ws_connected = FluidNCClient::isConnected();
+        
+        if (wifi_connected && ws_connected) {
+            // Both connected - show restart confirmation dialog
+            UICommon::showMachineSelectConfirmDialog();
+        } else {
+            // One or both disconnected - show connection error dialog
+            MachineConfig config;
+            if (MachineConfigManager::getSelectedMachine(config)) {
+                char error_msg[300];
+                if (!wifi_connected && !ws_connected) {
+                    snprintf(error_msg, sizeof(error_msg), 
+                            "WiFi and machine are disconnected.\n\n%s\n\nClick Connect to reconnect.",
+                            config.name);
+                } else if (!wifi_connected) {
+                    snprintf(error_msg, sizeof(error_msg), 
+                            "WiFi is disconnected.\n\n%s\n\nClick Connect to reconnect.",
+                            config.name);
+                } else {
+                    snprintf(error_msg, sizeof(error_msg), 
+                            "Machine is disconnected.\n\n%s\nURL: %s:%d\n\nClick Connect to reconnect.",
+                            config.name, config.fluidnc_url, config.websocket_port);
+                }
+                UICommon::showConnectionErrorDialog("Connection Lost", error_msg);
+            }
+        }
     }
 }
 
@@ -126,8 +153,18 @@ void UICommon::createMainUI() {
     lv_obj_t *main_screen = lv_obj_create(nullptr);
     lv_obj_set_style_bg_color(main_screen, UITheme::BG_DARKER, LV_PART_MAIN);
     
-    // Load the new screen
+    // Load the new screen immediately to show user something is happening
     lv_scr_load(main_screen);
+    
+    // Show connecting popup BEFORE creating UI (faster response)
+    // This gives immediate visual feedback while UI is being built
+    if (config.connection_type == CONN_WIRELESS && strlen(config.ssid) > 0) {
+        showConnectingPopup(config.name, config.ssid);
+        lv_refr_now(nullptr);  // Force immediate display update
+    } else if (config.connection_type == CONN_WIRED) {
+        showConnectingPopup(config.name, nullptr);
+        lv_refr_now(nullptr);  // Force immediate display update
+    }
     
     // Create status bar
     createStatusBar();
@@ -141,10 +178,8 @@ void UICommon::createMainUI() {
             Serial.println("\n=== WiFi Connection ===");
             Serial.printf("Connecting to WiFi: %s\n", config.ssid);
             
-            // Show WiFi connecting popup
-            showConnectingPopup(config.name, config.ssid);
-            
             WiFi.mode(WIFI_STA);
+            WiFi.setAutoReconnect(false);  // Disable auto-reconnect - user must manually reconnect
             WiFi.begin(config.ssid, config.password);
             
             // Wait for connection with timeout (10 seconds)
@@ -153,8 +188,7 @@ void UICommon::createMainUI() {
                 delay(500);
                 Serial.print(".");
                 timeout--;
-                // Process LVGL to keep UI responsive
-                lv_timer_handler();
+                lv_timer_handler();  // Keep UI responsive
             }
             
             if (WiFi.status() == WL_CONNECTED) {
@@ -178,9 +212,9 @@ void UICommon::createMainUI() {
                     lv_obj_set_style_text_color(lbl_wifi_symbol, UITheme::STATE_IDLE, 0);
                 }
                 
-                // Hide WiFi popup and show machine connecting popup
+                // Update popup to show machine connection (WiFi is now connected)
                 hideConnectingPopup();
-                showConnectingPopup(config.name, nullptr);
+                showConnectingPopup(config.name, nullptr);  // nullptr = no WiFi name (already connected)
             } else {
                 Serial.println("\nWiFi connection failed!");
                 
@@ -195,13 +229,11 @@ void UICommon::createMainUI() {
             }
         } else {
             Serial.println("UICommon: Warning - Wireless connection selected but no SSID configured");
-            // Show machine connecting popup for wired
-            showConnectingPopup(config.name, nullptr);
+            // Popup already shown at start
         }
     } else {
         Serial.println("UICommon: Wired connection selected, skipping WiFi initialization");
-        // Show machine connecting popup for wired
-        showConnectingPopup(config.name, nullptr);
+        // Popup already shown at start
     }
     
     // Connect to FluidNC using selected machine
@@ -209,7 +241,7 @@ void UICommon::createMainUI() {
                  config.fluidnc_url, config.websocket_port);
     FluidNCClient::connect(config);
     
-    // Start connection timeout monitoring (15 seconds)
+    // Start connection timeout monitoring (10 seconds)
     connection_timeout_start = millis();
     connection_timeout_active = true;
     connection_error_shown = false;
@@ -467,21 +499,21 @@ void UICommon::showMachineSelectConfirmDialog() {
     
     // Icon and title
     lv_obj_t *title = lv_label_create(content);
-    lv_label_set_text(title, LV_SYMBOL_SETTINGS " Change Machine?");
+    lv_label_set_text(title, LV_SYMBOL_SETTINGS " Restart Controller?");
     lv_obj_set_style_text_font(title, &lv_font_montserrat_22, 0);
     lv_obj_set_style_text_color(title, UITheme::ACCENT_PRIMARY, 0);
     
     // Message line 1
     lv_obj_t *msg1_label = lv_label_create(content);
-    lv_label_set_text(msg1_label, "This will restart the controller.");
+    lv_label_set_text(msg1_label, "This will disconnect and restart the");
     lv_obj_set_style_text_font(msg1_label, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(msg1_label, UITheme::TEXT_LIGHT, 0);
     
     // Message line 2
     lv_obj_t *msg2_label = lv_label_create(content);
-    lv_label_set_text(msg2_label, "Continue?");
-    lv_obj_set_style_text_font(msg2_label, &lv_font_montserrat_16, 0);
-    lv_obj_set_style_text_color(msg2_label, UITheme::UI_WARNING, 0);
+    lv_label_set_text(msg2_label, "controller. Continue?");
+    lv_obj_set_style_text_font(msg2_label, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(msg2_label, UITheme::TEXT_LIGHT, 0);
     
     // Button container
     lv_obj_t *btn_container = lv_obj_create(content);
@@ -545,19 +577,13 @@ void UICommon::showConnectingPopup(const char *machine_name, const char *ssid) {
     lv_obj_set_style_pad_gap(content, 20, 0);
     lv_obj_clear_flag(content, LV_OBJ_FLAG_SCROLLABLE);
     
-    // Spinner
-    lv_obj_t *spinner = lv_spinner_create(content);
-    lv_obj_set_size(spinner, 50, 50);
-    lv_obj_set_style_arc_color(spinner, UITheme::ACCENT_PRIMARY, LV_PART_INDICATOR);
-    lv_obj_set_style_arc_width(spinner, 6, LV_PART_INDICATOR);
-    lv_obj_set_style_arc_width(spinner, 6, LV_PART_MAIN);
-    
     // Connection text - use ssid if provided, otherwise machine name
+    // Add "..." to indicate activity without spinner animation
     char conn_text[128];
     if (ssid && strlen(ssid) > 0) {
-        snprintf(conn_text, sizeof(conn_text), "Connecting to %s", ssid);
+        snprintf(conn_text, sizeof(conn_text), "Connecting to %s...", ssid);
     } else {
-        snprintf(conn_text, sizeof(conn_text), "Connecting to %s", machine_name);
+        snprintf(conn_text, sizeof(conn_text), "Connecting to %s...", machine_name);
     }
     
     lv_obj_t *conn_label = lv_label_create(content);
@@ -582,8 +608,75 @@ static void on_connection_error_close(lv_event_t *e) {
     UICommon::hideConnectionErrorDialog();
 }
 
+static void on_connection_error_connect(lv_event_t *e) {
+    Serial.println("UICommon: Reconnecting WiFi and WebSocket...");
+    UICommon::hideConnectionErrorDialog();
+    
+    // Get machine config
+    MachineConfig config;
+    if (!MachineConfigManager::getSelectedMachine(config)) {
+        Serial.println("UICommon: Error - No machine selected!");
+        return;
+    }
+    
+    // Show connecting popup
+    UICommon::showConnectingPopup(config.name, config.ssid);
+    
+    // Disconnect existing connections
+    WiFi.disconnect();
+    FluidNCClient::disconnect();
+    
+    // Small delay to ensure clean disconnect
+    delay(100);
+    lv_timer_handler();
+    
+    // Reconnect WiFi
+    if (config.connection_type == CONN_WIRELESS && strlen(config.ssid) > 0) {
+        Serial.printf("UICommon: Reconnecting to WiFi: %s\n", config.ssid);
+        WiFi.mode(WIFI_STA);
+        WiFi.setAutoReconnect(false);
+        WiFi.begin(config.ssid, config.password);
+        
+        // Wait for WiFi connection with timeout (10 seconds)
+        int timeout = 20;
+        while (WiFi.status() != WL_CONNECTED && timeout > 0) {
+            delay(500);
+            Serial.print(".");
+            timeout--;
+            lv_timer_handler();
+        }
+        
+        if (WiFi.status() == WL_CONNECTED) {
+            Serial.println("\nWiFi reconnected!");
+            Serial.printf("IP Address: %s\n", WiFi.localIP().toString().c_str());
+            
+            // Update status bar WiFi indicator
+            UICommon::updateConnectionStatus(false, true);
+            
+            // Update connecting popup to show machine connection
+            UICommon::hideConnectingPopup();
+            UICommon::showConnectingPopup(config.name, nullptr);
+            
+            // Reconnect to FluidNC
+            Serial.printf("UICommon: Reconnecting to FluidNC at %s:%d\n", 
+                         config.fluidnc_url, config.websocket_port);
+            FluidNCClient::connect(config);
+            
+            // Restart connection timeout monitoring (10 seconds)
+            connection_timeout_start = millis();
+            connection_timeout_active = true;
+            connection_error_shown = false;
+        } else {
+            Serial.println("\nWiFi reconnection failed!");
+            UICommon::hideConnectingPopup();
+            UICommon::showConnectionErrorDialog("WiFi Connection Failed", 
+                "Could not reconnect to WiFi.\n\nCheck network settings and try again.");
+        }
+    }
+}
+
 static void on_connection_error_restart(lv_event_t *e) {
-    Serial.println("UICommon: Restarting due to connection error...");
+    Serial.println("UICommon: Restarting to change machine...");
     UICommon::hideConnectionErrorDialog();
     
     // Show restart message
@@ -655,7 +748,7 @@ void UICommon::showConnectionErrorDialog(const char *title, const char *message)
     
     // Close button
     lv_obj_t *close_btn = lv_btn_create(btn_container);
-    lv_obj_set_size(close_btn, 180, 50);
+    lv_obj_set_size(close_btn, 150, 50);
     lv_obj_set_style_bg_color(close_btn, UITheme::BG_BUTTON, 0);
     lv_obj_add_event_cb(close_btn, on_connection_error_close, LV_EVENT_CLICKED, nullptr);
     
@@ -664,15 +757,26 @@ void UICommon::showConnectionErrorDialog(const char *title, const char *message)
     lv_obj_set_style_text_font(close_label, &lv_font_montserrat_18, 0);
     lv_obj_center(close_label);
     
+    // Connect button
+    lv_obj_t *connect_btn = lv_btn_create(btn_container);
+    lv_obj_set_size(connect_btn, 150, 50);
+    lv_obj_set_style_bg_color(connect_btn, UITheme::BTN_CONNECT, 0);
+    lv_obj_add_event_cb(connect_btn, on_connection_error_connect, LV_EVENT_CLICKED, nullptr);
+    
+    lv_obj_t *connect_label = lv_label_create(connect_btn);
+    lv_label_set_text(connect_label, LV_SYMBOL_REFRESH " Connect");
+    lv_obj_set_style_text_font(connect_label, &lv_font_montserrat_16, 0);
+    lv_obj_center(connect_label);
+    
     // Restart button
     lv_obj_t *restart_btn = lv_btn_create(btn_container);
-    lv_obj_set_size(restart_btn, 180, 50);
+    lv_obj_set_size(restart_btn, 150, 50);
     lv_obj_set_style_bg_color(restart_btn, UITheme::ACCENT_PRIMARY, 0);
     lv_obj_add_event_cb(restart_btn, on_connection_error_restart, LV_EVENT_CLICKED, nullptr);
     
     lv_obj_t *restart_label = lv_label_create(restart_btn);
     lv_label_set_text(restart_label, LV_SYMBOL_POWER " Restart");
-    lv_obj_set_style_text_font(restart_label, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_font(restart_label, &lv_font_montserrat_16, 0);
     lv_obj_center(restart_label);
     
     Serial.printf("UICommon: Connection error dialog shown - %s: %s\n", title, message);
@@ -692,17 +796,18 @@ void UICommon::checkConnectionTimeout() {
         return;
     }
     
-    // If already connected, deactivate timeout and hide error
+    // If already connected, deactivate timeout and hide popups
     if (FluidNCClient::isConnected()) {
         connection_timeout_active = false;
         connection_error_shown = false;
+        hideConnectingPopup();  // Hide connecting popup when connected
         hideConnectionErrorDialog();
         return;
     }
     
-    // Check if timeout exceeded (15 seconds)
+    // Check if timeout exceeded (10 seconds)
     uint32_t elapsed = millis() - connection_timeout_start;
-    if (elapsed >= 15000 && !connection_error_shown) {
+    if (elapsed >= 10000 && !connection_error_shown) {
         connection_error_shown = true;
         
         // Get machine config for error message

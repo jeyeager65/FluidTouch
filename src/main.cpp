@@ -167,6 +167,9 @@ void loop()
         }
     }
     
+    // Check machine connection timeout
+    UICommon::checkConnectionTimeout();
+    
     // Update Terminal tab (batched UI updates every 100ms)
     UITabTerminal::update();
     

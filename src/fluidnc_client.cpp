@@ -37,10 +37,10 @@ bool FluidNCClient::connect(const MachineConfig &config) {
     Serial.printf("[FluidNC] Connecting to %s:%d via WebSocket\n", 
                   config.fluidnc_url, config.websocket_port);
     
-    // Configure WebSocket
+    // Configure WebSocket with 1-second reconnect for initial connection (will change to 24h once connected)
     webSocket.begin(config.fluidnc_url, config.websocket_port, "/");
     webSocket.onEvent(onWebSocketEvent);
-    webSocket.setReconnectInterval(5000);  // Try reconnecting every 5 seconds
+    webSocket.setReconnectInterval(1000);  // 1 second for initial connection attempts
     webSocket.enableHeartbeat(15000, 3000, 2);  // Ping every 15s, timeout 3s, 2 disconnects
     
     currentStatus.is_connected = false;
@@ -135,6 +135,10 @@ void FluidNCClient::onWebSocketEvent(WStype_t type, uint8_t* payload, size_t len
             // Don't set is_connected yet - wait for auto-report confirmation
             currentStatus.state = STATE_IDLE;
             currentStatus.last_update_ms = millis();
+            
+            // Now that we're connected, set reconnect interval to 24 hours to effectively disable auto-reconnect
+            webSocket.setReconnectInterval(86400000);  // 24 hours
+            Serial.println("[FluidNC] Connected - auto-reconnect disabled (24h interval)");
             
             // Enable automatic status reporting at 250ms intervals
             Serial.println("[FluidNC] Enabling automatic reporting (250ms)");
