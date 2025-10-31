@@ -19,12 +19,25 @@ class UITabMacros {
 public:
     static void create(lv_obj_t *tab);
     
+    // Progress display update (public for main loop to call)
+    static void updateProgress(int percent, const char* macro_name, const char* message);
+    static void showProgress();
+    static void hideProgress();
+    
 private:
     static lv_obj_t *parent_tab;
     static lv_obj_t *macro_container;
     static lv_obj_t *btn_edit;
     static lv_obj_t *btn_add;
     static lv_obj_t *btn_done;
+    
+    // Progress display (normal mode)
+    static lv_obj_t *progress_container;
+    static lv_obj_t *lbl_macro_name;
+    static lv_obj_t *bar_progress;
+    static lv_obj_t *lbl_percent;
+    static lv_obj_t *lbl_message;
+    static char running_macro_name[32];  // Store the name of currently running macro
     
     static bool is_edit_mode;
     static MacroConfig macros[MAX_MACROS];

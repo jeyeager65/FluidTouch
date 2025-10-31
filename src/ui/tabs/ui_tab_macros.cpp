@@ -14,6 +14,12 @@ lv_obj_t *UITabMacros::macro_container = nullptr;
 lv_obj_t *UITabMacros::btn_edit = nullptr;
 lv_obj_t *UITabMacros::btn_add = nullptr;
 lv_obj_t *UITabMacros::btn_done = nullptr;
+lv_obj_t *UITabMacros::progress_container = nullptr;
+lv_obj_t *UITabMacros::lbl_macro_name = nullptr;
+lv_obj_t *UITabMacros::bar_progress = nullptr;
+lv_obj_t *UITabMacros::lbl_percent = nullptr;
+lv_obj_t *UITabMacros::lbl_message = nullptr;
+char UITabMacros::running_macro_name[32] = "";
 bool UITabMacros::is_edit_mode = false;
 MacroConfig UITabMacros::macros[MAX_MACROS];
 lv_obj_t *UITabMacros::macro_buttons[MAX_MACROS] = {nullptr};
@@ -43,6 +49,50 @@ void UITabMacros::create(lv_obj_t *tab) {
 
     // Load macros from preferences
     loadMacros();
+
+    // PROGRESS DISPLAY - Top area (hidden by default, shown during macro execution)
+    progress_container = lv_obj_create(tab);
+    lv_obj_set_size(progress_container, 630, 65);  // Increased from 60 to 65
+    lv_obj_set_pos(progress_container, 15, 5);
+    lv_obj_set_style_bg_color(progress_container, UITheme::BG_DARKER, 0);
+    lv_obj_set_style_border_width(progress_container, 1, 0);
+    lv_obj_set_style_border_color(progress_container, UITheme::BORDER_MEDIUM, 0);
+    lv_obj_set_style_pad_all(progress_container, 5, 0);
+    lv_obj_clear_flag(progress_container, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(progress_container, LV_OBJ_FLAG_HIDDEN);  // Hidden by default
+    
+    // Macro name label
+    lbl_macro_name = lv_label_create(progress_container);
+    lv_label_set_text(lbl_macro_name, "Running: Macro Name");
+    lv_obj_set_style_text_font(lbl_macro_name, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(lbl_macro_name, UITheme::TEXT_LIGHT, 0);
+    lv_obj_set_pos(lbl_macro_name, 0, 0);
+    lv_label_set_long_mode(lbl_macro_name, LV_LABEL_LONG_DOT);
+    lv_obj_set_width(lbl_macro_name, 400);
+    
+    // Progress bar
+    bar_progress = lv_bar_create(progress_container);
+    lv_obj_set_size(bar_progress, 500, 15);
+    lv_obj_set_pos(bar_progress, 0, 20);
+    lv_obj_set_style_bg_color(bar_progress, UITheme::BG_BLACK, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(bar_progress, UITheme::UI_SUCCESS, LV_PART_INDICATOR);
+    lv_bar_set_value(bar_progress, 0, LV_ANIM_OFF);
+    
+    // Percentage label
+    lbl_percent = lv_label_create(progress_container);
+    lv_label_set_text(lbl_percent, "0%");
+    lv_obj_set_style_text_font(lbl_percent, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(lbl_percent, UITheme::UI_SUCCESS, 0);
+    lv_obj_set_pos(lbl_percent, 510, 18);
+    
+    // Message label
+    lbl_message = lv_label_create(progress_container);
+    lv_label_set_text(lbl_message, "");
+    lv_obj_set_style_text_font(lbl_message, &lv_font_montserrat_14, 0);  // Increased from 12 to 14
+    lv_obj_set_style_text_color(lbl_message, UITheme::UI_INFO, 0);
+    lv_obj_set_pos(lbl_message, 0, 40);
+    lv_label_set_long_mode(lbl_message, LV_LABEL_LONG_DOT);
+    lv_obj_set_width(lbl_message, 620);
 
     // Edit button (upper right corner, absolute positioning on tab)
     btn_edit = lv_btn_create(tab);
@@ -338,6 +388,7 @@ void UITabMacros::onEditModeToggle(lv_event_t *e) {
         lv_obj_add_flag(btn_edit, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(btn_add, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(btn_done, LV_OBJ_FLAG_HIDDEN);
+        hideProgress();  // Hide progress in edit mode
     } else {
         lv_obj_clear_flag(btn_edit, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(btn_add, LV_OBJ_FLAG_HIDDEN);
@@ -356,6 +407,10 @@ void UITabMacros::onMacroClicked(lv_event_t *e) {
     }
     
     Serial.printf("Macro clicked: %s (%s)\n", macros[index].name, macros[index].file_path);
+    
+    // Store the macro name for progress display
+    strncpy(running_macro_name, macros[index].name, sizeof(running_macro_name) - 1);
+    running_macro_name[sizeof(running_macro_name) - 1] = '\0';
     
     // Build the $SD/Run command with full path
     // FluidNC expects: $SD/Run=/sd/fluidtouch/macros/filename.gcode
@@ -940,4 +995,45 @@ void UITabMacros::loadMacroFilesFromSD() {
     
     // Send command to list files from macros directory
     FluidNCClient::sendCommand("$Files/ListGcode=/sd/fluidtouch/macros\n");
+}
+
+// Update progress display
+void UITabMacros::updateProgress(int percent, const char* macro_name, const char* message) {
+    if (!progress_container || !bar_progress || !lbl_percent || !lbl_macro_name || !lbl_message) return;
+    
+    // Update progress bar
+    lv_bar_set_value(bar_progress, percent, LV_ANIM_OFF);
+    
+    // Update percentage label
+    char percent_text[8];
+    snprintf(percent_text, sizeof(percent_text), "%d%%", percent);
+    lv_label_set_text(lbl_percent, percent_text);
+    
+    // Update macro name - use stored name instead of filename
+    if (running_macro_name[0] != '\0') {
+        char name_text[64];
+        snprintf(name_text, sizeof(name_text), "Running: %s", running_macro_name);
+        lv_label_set_text(lbl_macro_name, name_text);
+    }
+    
+    // Update message
+    if (message && strlen(message) > 0) {
+        lv_label_set_text(lbl_message, message);
+    }
+}
+
+// Show progress display
+void UITabMacros::showProgress() {
+    if (progress_container && !is_edit_mode) {
+        lv_obj_clear_flag(progress_container, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+// Hide progress display
+void UITabMacros::hideProgress() {
+    if (progress_container) {
+        lv_obj_add_flag(progress_container, LV_OBJ_FLAG_HIDDEN);
+        // Clear the running macro name when hiding
+        running_macro_name[0] = '\0';
+    }
 }
