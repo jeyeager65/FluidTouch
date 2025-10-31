@@ -36,8 +36,8 @@ void UITabs::createTabs() {
     lv_obj_clear_flag(lv_tabview_get_content(tabview), LV_OBJ_FLAG_SCROLLABLE);
     
     // Style tab buttons with larger font
-    lv_obj_set_style_text_font(tab_bar, &lv_font_montserrat_18, 0);  // Direct to tab bar
-    lv_obj_set_style_text_font(tabview, &lv_font_montserrat_18, LV_PART_ITEMS);
+    lv_obj_set_style_text_font(tab_bar, &lv_font_montserrat_20, 0);  // Direct to tab bar
+    lv_obj_set_style_text_font(tabview, &lv_font_montserrat_20, LV_PART_ITEMS);
     lv_obj_set_style_bg_color(tabview, UITheme::BG_BUTTON, LV_PART_ITEMS);
     lv_obj_set_style_text_color(tabview, UITheme::TEXT_LIGHT, LV_PART_ITEMS);
     lv_obj_set_style_bg_color(tabview, UITheme::ACCENT_PRIMARY, LV_PART_ITEMS | LV_STATE_CHECKED);
@@ -66,6 +66,21 @@ void UITabs::createTabs() {
     createMacrosTab(tab_macros);
     createTerminalTab(tab_terminal);
     createSettingsTab(tab_settings);
+    
+    // Add event handler for tab changes
+    lv_obj_add_event_cb(tabview, tab_changed_event_cb, LV_EVENT_VALUE_CHANGED, nullptr);
+}
+
+// Tab change event handler
+void UITabs::tab_changed_event_cb(lv_event_t *e) {
+    lv_obj_t *tabview = (lv_obj_t*)lv_event_get_target(e);
+    uint32_t active_tab = lv_tabview_get_tab_active(tabview);
+    
+    // Tab indices: 0=Status, 1=Control, 2=Files, 3=Macros, 4=Terminal, 5=Settings
+    if (active_tab == 2) {  // Files tab
+        // Trigger initial load on first selection
+        UITabFiles::refreshFileList();
+    }
 }
 
 // Create Status tab content (delegated to UITabStatus module)

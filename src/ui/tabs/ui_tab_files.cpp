@@ -12,6 +12,7 @@ lv_obj_t *UITabFiles::path_label = nullptr;
 lv_obj_t *UITabFiles::storage_dropdown = nullptr;
 std::vector<std::string> UITabFiles::file_names;
 std::string UITabFiles::current_path = "/sd/";  // Default to SD card root
+bool UITabFiles::initial_load_done = false;     // Track initial load
 
 // Structure to store file info with size (size=-1 means directory)
 struct FileInfo {
@@ -26,17 +27,11 @@ void UITabFiles::create(lv_obj_t *tab) {
     lv_obj_set_style_pad_all(tab, 10, 0);
 
     // Storage selection dropdown
-    lv_obj_t *storage_label = lv_label_create(tab);
-    lv_label_set_text(storage_label, "Storage:");
-    lv_obj_set_style_text_font(storage_label, &lv_font_montserrat_16, 0);
-    lv_obj_set_style_text_color(storage_label, lv_color_white(), 0);
-    lv_obj_set_pos(storage_label, 5, 5);
-
     storage_dropdown = lv_dropdown_create(tab);
     lv_dropdown_set_options(storage_dropdown, "SD Card\nFlash");
     lv_dropdown_set_selected(storage_dropdown, 0);
-    lv_obj_set_size(storage_dropdown, 150, 40);
-    lv_obj_set_pos(storage_dropdown, 90, 0);
+    lv_obj_set_size(storage_dropdown, 150, 45);
+    lv_obj_set_pos(storage_dropdown, 5, 5);
     lv_obj_set_style_text_font(storage_dropdown, &lv_font_montserrat_16, 0);
     lv_obj_set_style_bg_color(storage_dropdown, UITheme::BG_BUTTON, 0);
     lv_obj_set_style_text_color(storage_dropdown, lv_color_white(), 0);
@@ -50,8 +45,8 @@ void UITabFiles::create(lv_obj_t *tab) {
 
     // Refresh button
     lv_obj_t *btn_refresh = lv_button_create(tab);
-    lv_obj_set_size(btn_refresh, 120, 40);
-    lv_obj_set_pos(btn_refresh, 260, 0);
+    lv_obj_set_size(btn_refresh, 120, 45);
+    lv_obj_set_pos(btn_refresh, 165, 5);
     lv_obj_set_style_bg_color(btn_refresh, UITheme::ACCENT_PRIMARY, 0);
     lv_obj_add_event_cb(btn_refresh, refresh_button_event_cb, LV_EVENT_CLICKED, nullptr);
     
@@ -62,8 +57,8 @@ void UITabFiles::create(lv_obj_t *tab) {
 
     // Up button (navigate to parent directory)
     lv_obj_t *btn_up = lv_button_create(tab);
-    lv_obj_set_size(btn_up, 100, 40);
-    lv_obj_set_pos(btn_up, 400, 0);
+    lv_obj_set_size(btn_up, 100, 45);
+    lv_obj_set_pos(btn_up, 295, 5);
     lv_obj_set_style_bg_color(btn_up, UITheme::BG_BUTTON, 0);
     lv_obj_add_event_cb(btn_up, up_button_event_cb, LV_EVENT_CLICKED, nullptr);
     
@@ -75,35 +70,39 @@ void UITabFiles::create(lv_obj_t *tab) {
     // Path label (shows current directory)
     path_label = lv_label_create(tab);
     lv_label_set_text(path_label, "/sd/");
-    lv_obj_set_style_text_font(path_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(path_label, &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_color(path_label, UITheme::ACCENT_SECONDARY, 0);
-    lv_obj_set_pos(path_label, 520, 10);
+    lv_obj_set_pos(path_label, 415, 9);
     lv_label_set_long_mode(path_label, LV_LABEL_LONG_DOT);
     lv_obj_set_width(path_label, 250);
 
     // Status label
     status_label = lv_label_create(tab);
     lv_label_set_text(status_label, "Click Refresh");
-    lv_obj_set_style_text_font(status_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(status_label, &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_color(status_label, UITheme::UI_INFO, 0);
-    lv_obj_set_pos(status_label, 520, 30);
+    lv_obj_set_pos(status_label, 415, 32);
 
     // File list container with scrolling
     file_list_container = lv_obj_create(tab);
-    lv_obj_set_size(file_list_container, 780, 285);  // Reduced height to fit in tab (360 - 60 top area - 15 padding)
-    lv_obj_set_pos(file_list_container, 5, 60);
+    lv_obj_set_size(file_list_container, 770, 270);
+    lv_obj_set_pos(file_list_container, 5, 65);
     lv_obj_set_style_bg_color(file_list_container, UITheme::BG_DARKER, LV_PART_MAIN);
     lv_obj_set_style_border_color(file_list_container, UITheme::BORDER_LIGHT, LV_PART_MAIN);
     lv_obj_set_style_border_width(file_list_container, 2, LV_PART_MAIN);
-    lv_obj_set_style_pad_all(file_list_container, 10, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(file_list_container, 5, LV_PART_MAIN);
     lv_obj_set_flex_flow(file_list_container, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(file_list_container, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
-    lv_obj_set_style_pad_row(file_list_container, 5, 0);
+    lv_obj_set_style_pad_row(file_list_container, 6, 0);  // 6px spacing between file rows
     lv_obj_set_scroll_dir(file_list_container, LV_DIR_VER);
 }
 
 void UITabFiles::refreshFileList() {
-    refreshFileList(current_path);
+    // Only auto-load once on first tab selection
+    if (!initial_load_done) {
+        initial_load_done = true;
+        refreshFileList(current_path);
+    }
 }
 
 void UITabFiles::refreshFileList(const std::string &path) {
@@ -271,8 +270,15 @@ std::string UITabFiles::getParentPath(const std::string &path) {
         return "/sd/";  // Return root
     }
     
-    // Return path up to (and including) the last slash
-    return p.substr(0, lastSlash + 1);
+    // Return path up to (but not including) the last slash to avoid double slashes
+    std::string parent = p.substr(0, lastSlash);
+    
+    // Remove trailing slash from parent if present (except for root)
+    if (parent.length() > 1 && parent[parent.length() - 1] == '/') {
+        parent = parent.substr(0, parent.length() - 1);
+    }
+    
+    return parent;
 }
 
 void UITabFiles::file_button_event_cb(lv_event_t *e) {
@@ -539,7 +545,7 @@ void UITabFiles::updateFileListUI() {
     if (file_list_with_sizes.empty()) {
         lv_obj_t *empty_label = lv_label_create(file_list_container);
         lv_label_set_text(empty_label, "No files found");
-        lv_obj_set_style_text_font(empty_label, &lv_font_montserrat_16, 0);
+        lv_obj_set_style_text_font(empty_label, &lv_font_montserrat_24, 0);
         lv_obj_set_style_text_color(empty_label, UITheme::TEXT_MEDIUM, 0);
         
         if (status_label) {
@@ -571,7 +577,7 @@ void UITabFiles::updateFileListUI() {
         
         // File/directory row container
         lv_obj_t *file_row = lv_obj_create(file_list_container);
-        lv_obj_set_size(file_row, 750, 50);
+        lv_obj_set_size(file_row, 750, 46);
         lv_obj_set_style_bg_color(file_row, file.is_directory ? UITheme::BG_BUTTON : UITheme::BG_DARKER, 0);
         lv_obj_set_style_border_width(file_row, 1, 0);
         lv_obj_set_style_border_color(file_row, UITheme::BORDER_MEDIUM, 0);
@@ -591,7 +597,7 @@ void UITabFiles::updateFileListUI() {
         lv_obj_t *lbl_filename = lv_label_create(file_row);
         if (file.is_directory) {
             char label_text[256];
-            snprintf(label_text, sizeof(label_text), LV_SYMBOL_DIRECTORY " %s", file.name.c_str());
+            snprintf(label_text, sizeof(label_text), LV_SYMBOL_DIRECTORY " /%s", file.name.c_str());
             lv_label_set_text(lbl_filename, label_text);
             lv_obj_set_style_text_color(lbl_filename, UITheme::ACCENT_SECONDARY, 0);
         } else {
@@ -629,8 +635,8 @@ void UITabFiles::updateFileListUI() {
             lv_obj_add_event_cb(btn_delete, delete_button_event_cb, LV_EVENT_CLICKED, filenames_storage[i]);
             
             lv_obj_t *lbl_delete = lv_label_create(btn_delete);
-            lv_label_set_text(lbl_delete, "Delete");
-            lv_obj_set_style_text_font(lbl_delete, &lv_font_montserrat_14, 0);
+            lv_label_set_text(lbl_delete, LV_SYMBOL_TRASH);
+            lv_obj_set_style_text_font(lbl_delete, &lv_font_montserrat_18, 0);
             lv_obj_center(lbl_delete);
             
             // Play button

@@ -48,7 +48,7 @@ void UITabMacros::create(lv_obj_t *tab) {
     btn_edit = lv_btn_create(tab);
     lv_obj_set_size(btn_edit, 120, 45);
     lv_obj_set_style_bg_color(btn_edit, UITheme::ACCENT_SECONDARY, 0);
-    lv_obj_set_pos(btn_edit, 670, 10);  // Absolute positioning (800 - 120 - 10 = 670)
+    lv_obj_set_pos(btn_edit, 665, 15);
     lv_obj_add_event_cb(btn_edit, onEditModeToggle, LV_EVENT_CLICKED, nullptr);
     
     lv_obj_t *edit_label = lv_label_create(btn_edit);
@@ -60,7 +60,7 @@ void UITabMacros::create(lv_obj_t *tab) {
     btn_add = lv_btn_create(tab);
     lv_obj_set_size(btn_add, 120, 45);
     lv_obj_set_style_bg_color(btn_add, UITheme::BTN_PLAY, 0);
-    lv_obj_set_pos(btn_add, 545, 10);  // Left of Done button
+    lv_obj_set_pos(btn_add, 545, 15);  // Left of Done button
     lv_obj_add_event_cb(btn_add, onAddMacro, LV_EVENT_CLICKED, nullptr);
     lv_obj_add_flag(btn_add, LV_OBJ_FLAG_HIDDEN);
     
@@ -73,7 +73,7 @@ void UITabMacros::create(lv_obj_t *tab) {
     btn_done = lv_btn_create(tab);
     lv_obj_set_size(btn_done, 120, 45);
     lv_obj_set_style_bg_color(btn_done, UITheme::BTN_PLAY, 0);
-    lv_obj_set_pos(btn_done, 670, 10);  // Same position as Edit button
+    lv_obj_set_pos(btn_done, 670, 15);  // Same position as Edit button
     lv_obj_add_event_cb(btn_done, onEditModeToggle, LV_EVENT_CLICKED, nullptr);
     lv_obj_add_flag(btn_done, LV_OBJ_FLAG_HIDDEN);
     
@@ -84,12 +84,13 @@ void UITabMacros::create(lv_obj_t *tab) {
 
     // Macro container for flex layout
     macro_container = lv_obj_create(tab);
-    lv_obj_set_size(macro_container, 780, 283);
-    lv_obj_set_style_bg_color(macro_container, UITheme::BG_MEDIUM, 0);
-    lv_obj_set_style_border_width(macro_container, 1, 0);
+    lv_obj_set_size(macro_container, 770, 270);
+    lv_obj_set_style_bg_color(macro_container, UITheme::BG_DARKER, LV_PART_MAIN);
+    lv_obj_set_style_border_color(macro_container, UITheme::BORDER_LIGHT, LV_PART_MAIN);
+    lv_obj_set_style_border_width(macro_container, 2, LV_PART_MAIN);
     lv_obj_set_style_border_color(macro_container, UITheme::BORDER_MEDIUM, 0);
-    lv_obj_set_style_pad_all(macro_container, 20, 0);
-    lv_obj_set_pos(macro_container, 10, 65);  // Position below Edit button
+    lv_obj_set_style_pad_all(macro_container, 0, 0);
+    lv_obj_set_pos(macro_container, 15, 75);  // Position below Edit button
     lv_obj_clear_flag(macro_container, LV_OBJ_FLAG_SCROLLABLE);
 
     loadMacros();
@@ -197,30 +198,33 @@ void UITabMacros::refreshMacroList() {
     if (is_edit_mode) {
         // EDIT MODE: Absolute positioning with control buttons
         lv_obj_set_layout(macro_container, LV_LAYOUT_NONE);
-        lv_obj_set_style_pad_all(macro_container, 10, 0);
+        lv_obj_set_style_pad_all(macro_container, 5, 0);
+        lv_obj_add_flag(macro_container, LV_OBJ_FLAG_SCROLLABLE);  // Enable scrolling in edit mode
+        lv_obj_set_scroll_dir(macro_container, LV_DIR_VER);  // Vertical scrolling only
         
         int displayed_index = 0;
         for (int i = 0; i < MAX_MACROS; i++) {
             if (!macros[i].is_configured) continue;
             
-            int y_pos = displayed_index * 73; // 70px button + 3px gap
+            int y_pos = displayed_index * 65; // 60px button + 5px gap
             
-            // Macro button (shows name + color) - 40px wider than original (438 + 40 = 478)
+            // Macro button (shows name + color) - increased by 10px to 488px
+            // Note: No click event in edit mode - button is just for display
             macro_buttons[i] = lv_btn_create(macro_container);
-            lv_obj_set_size(macro_buttons[i], 478, 70);  // 438 + 40 = 478
+            lv_obj_set_size(macro_buttons[i], 488, 60);  // Increased from 478 to 488
             lv_obj_set_pos(macro_buttons[i], 0, y_pos);
             lv_obj_set_style_bg_color(macro_buttons[i], getColorByIndex(macros[i].color_index), 0);
-            lv_obj_add_event_cb(macro_buttons[i], onMacroClicked, LV_EVENT_CLICKED, (void*)(intptr_t)i);
+            lv_obj_add_flag(macro_buttons[i], LV_OBJ_FLAG_CLICKABLE);  // Make non-clickable
             
             lv_obj_t *btn_label = lv_label_create(macro_buttons[i]);
             lv_label_set_text(btn_label, macros[i].name);
             lv_obj_set_style_text_font(btn_label, &lv_font_montserrat_22, 0);
             lv_obj_align(btn_label, LV_ALIGN_LEFT_MID, 10, 0);
             
-            // Up button - shifted 40px right
+            // Up button
             up_buttons[i] = lv_btn_create(macro_container);
-            lv_obj_set_size(up_buttons[i], 60, 70);
-            lv_obj_set_pos(up_buttons[i], 483, y_pos);  // 443 + 40 = 483
+            lv_obj_set_size(up_buttons[i], 60, 60);
+            lv_obj_set_pos(up_buttons[i], 493, y_pos);  // Shifted right by 10px (was 483)
             lv_obj_set_style_bg_color(up_buttons[i], UITheme::BG_BUTTON, 0);
             lv_obj_add_event_cb(up_buttons[i], onMoveUpMacro, LV_EVENT_CLICKED, (void*)(intptr_t)i);
             
@@ -233,10 +237,10 @@ void UITabMacros::refreshMacroList() {
             lv_obj_set_style_text_font(up_label, &lv_font_montserrat_22, 0);
             lv_obj_center(up_label);
             
-            // Down button - shifted 40px right
+            // Down button
             down_buttons[i] = lv_btn_create(macro_container);
-            lv_obj_set_size(down_buttons[i], 60, 70);
-            lv_obj_set_pos(down_buttons[i], 548, y_pos);  // 508 + 40 = 548
+            lv_obj_set_size(down_buttons[i], 60, 60);
+            lv_obj_set_pos(down_buttons[i], 558, y_pos);  // Shifted right by 10px (was 548)
             lv_obj_set_style_bg_color(down_buttons[i], UITheme::BG_BUTTON, 0);
             lv_obj_add_event_cb(down_buttons[i], onMoveDownMacro, LV_EVENT_CLICKED, (void*)(intptr_t)i);
             
@@ -254,10 +258,10 @@ void UITabMacros::refreshMacroList() {
             lv_obj_set_style_text_font(down_label, &lv_font_montserrat_22, 0);
             lv_obj_center(down_label);
             
-            // Edit button - shifted 40px right
+            // Edit button - same width as ordering buttons
             edit_buttons[i] = lv_btn_create(macro_container);
-            lv_obj_set_size(edit_buttons[i], 70, 70);
-            lv_obj_set_pos(edit_buttons[i], 613, y_pos);  // 573 + 40 = 613
+            lv_obj_set_size(edit_buttons[i], 60, 60);  // Increased from 55 to 60
+            lv_obj_set_pos(edit_buttons[i], 623, y_pos);  // Shifted right by 10px (was 613)
             lv_obj_set_style_bg_color(edit_buttons[i], UITheme::ACCENT_SECONDARY, 0);
             lv_obj_add_event_cb(edit_buttons[i], onEditMacro, LV_EVENT_CLICKED, (void*)(intptr_t)i);
             
@@ -266,10 +270,10 @@ void UITabMacros::refreshMacroList() {
             lv_obj_set_style_text_font(edit_label, &lv_font_montserrat_22, 0);
             lv_obj_center(edit_label);
             
-            // Delete button - shifted 40px right
+            // Delete button - same width as ordering buttons
             delete_buttons[i] = lv_btn_create(macro_container);
-            lv_obj_set_size(delete_buttons[i], 70, 70);
-            lv_obj_set_pos(delete_buttons[i], 688, y_pos);  // 648 + 40 = 688
+            lv_obj_set_size(delete_buttons[i], 60, 60);  // Increased from 55 to 60
+            lv_obj_set_pos(delete_buttons[i], 688, y_pos);  // Shifted right by 15px (was 673)
             lv_obj_set_style_bg_color(delete_buttons[i], UITheme::STATE_ALARM, 0);
             lv_obj_add_event_cb(delete_buttons[i], onDeleteMacro, LV_EVENT_CLICKED, (void*)(intptr_t)i);
             
@@ -282,17 +286,18 @@ void UITabMacros::refreshMacroList() {
         }
     } else {
         // NORMAL MODE: 3x3 flex grid
+        lv_obj_clear_flag(macro_container, LV_OBJ_FLAG_SCROLLABLE);  // Disable scrolling in normal mode
         lv_obj_set_layout(macro_container, LV_LAYOUT_FLEX);
         lv_obj_set_flex_flow(macro_container, LV_FLEX_FLOW_ROW_WRAP);
         lv_obj_set_flex_align(macro_container, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
-        lv_obj_set_style_pad_all(macro_container, 20, 0);
-        lv_obj_set_style_pad_gap(macro_container, 12, 0);
+        lv_obj_set_style_pad_all(macro_container, 10, 0);
+        lv_obj_set_style_pad_gap(macro_container, 13, 0);
         
         for (int i = 0; i < MAX_MACROS; i++) {
             if (!macros[i].is_configured) continue;
             
             macro_buttons[i] = lv_btn_create(macro_container);
-            lv_obj_set_size(macro_buttons[i], 236, 72);
+            lv_obj_set_size(macro_buttons[i], 240, 73);
             lv_obj_set_style_bg_color(macro_buttons[i], getColorByIndex(macros[i].color_index), 0);
             lv_obj_set_style_pad_all(macro_buttons[i], 10, 0);
             lv_obj_add_event_cb(macro_buttons[i], onMacroClicked, LV_EVENT_CLICKED, (void*)(intptr_t)i);

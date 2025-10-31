@@ -18,6 +18,7 @@ private:
     static lv_obj_t *storage_dropdown;
     static std::vector<std::string> file_names;
     static std::string current_path;  // Track current directory path
+    static bool initial_load_done;    // Track if initial file list has been loaded
     
     static void refresh_button_event_cb(lv_event_t *e);
     static void file_button_event_cb(lv_event_t *e);

@@ -29,6 +29,9 @@ private:
     static lv_obj_t *tab_macros;
     static lv_obj_t *tab_terminal;
     static lv_obj_t *tab_settings;
+    
+    // Event handler for tab changes
+    static void tab_changed_event_cb(lv_event_t *e);
 };
 
 #endif // UI_TABS_H

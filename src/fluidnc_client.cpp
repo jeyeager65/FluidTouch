@@ -144,15 +144,16 @@ void FluidNCClient::onWebSocketEvent(WStype_t type, uint8_t* payload, size_t len
             Serial.println("[FluidNC] Enabling automatic reporting (250ms)");
             webSocket.sendTXT("$Report/Interval=250\n");
             
+            // Save for later when implementing manual polling fallback - not needed for auto-reporting
             // Small delay to let the command process
-            delay(50);
+            //delay(50);
             
             // Request initial status with realtime command
-            Serial.println("[FluidNC] Requesting initial status");
-            webSocket.sendTXT("?");
+            //Serial.println("[FluidNC] Requesting initial status");
+            //webSocket.sendTXT("?");
             
             // Request initial GCode parser state
-            webSocket.sendTXT("$G\n");
+            //webSocket.sendTXT("$G\n");
             break;
             
         case WStype_TEXT:
