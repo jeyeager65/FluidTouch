@@ -11,6 +11,11 @@ uint32_t FluidNCClient::lastStatusRequestMs = 0;
 bool FluidNCClient::initialized = false;
 MessageCallback FluidNCClient::messageCallback = nullptr;
 MessageCallback FluidNCClient::terminalCallback = nullptr;
+bool FluidNCClient::autoReportingEnabled = false;
+bool FluidNCClient::autoReportingAttempted = false;
+uint32_t FluidNCClient::lastPollingMs = 0;
+uint32_t FluidNCClient::lastGCodePollMs = 0;
+uint32_t FluidNCClient::lastAutoReportAttemptMs = 0;
 
 void FluidNCClient::init() {
     if (initialized) return;
@@ -41,7 +46,11 @@ bool FluidNCClient::connect(const MachineConfig &config) {
     webSocket.begin(config.fluidnc_url, config.websocket_port, "/");
     webSocket.onEvent(onWebSocketEvent);
     webSocket.setReconnectInterval(1000);  // 1 second for initial connection attempts
-    webSocket.enableHeartbeat(15000, 3000, 2);  // Ping every 15s, timeout 3s, 2 disconnects
+    
+    // Disable heartbeat pings - they can interfere with bulk message transfers like $SS
+    // FluidNC already has its own keepalive mechanism via status reporting
+    webSocket.enableHeartbeat(0, 0, 0);  // Disabled
+    Serial.println("[FluidNC] WebSocket configured (heartbeat disabled for bulk transfers)");
     
     currentStatus.is_connected = false;
     
@@ -59,14 +68,37 @@ bool FluidNCClient::isConnected() {
     return currentStatus.is_connected;
 }
 
+bool FluidNCClient::isAutoReporting() {
+    return autoReportingEnabled;
+}
+
 void FluidNCClient::loop() {
     if (!initialized) return;
     
     // Handle WebSocket events
     webSocket.loop();
     
-    // Automatic reporting is enabled via $Report/Interval=250\n command
-    // No need for polling - FluidNC will send status updates automatically
+    // Only check auto-reporting and polling if WebSocket is connected
+    if (!webSocket.isConnected()) {
+        return;
+    }
+    
+    // Check if auto-reporting timed out (no status received within 2 seconds of attempt)
+    if (autoReportingAttempted && !autoReportingEnabled) {
+        uint32_t now = millis();
+        if (now - lastAutoReportAttemptMs >= 2000) {
+            // No status received - assume auto-reporting failed
+            Serial.println("[FluidNC] Auto-reporting timeout - switching to fallback polling");
+            autoReportingAttempted = false;  // Allow fallback polling to start
+        }
+    }
+    
+    // Only perform fallback polling if:
+    // 1. Auto-reporting attempt completed (either succeeded or timed out)
+    // 2. Auto-reporting is not enabled
+    if (!autoReportingAttempted && !autoReportingEnabled) {
+        performFallbackPolling();
+    }
 }
 
 const FluidNCStatus& FluidNCClient::getStatus() {
@@ -115,7 +147,7 @@ void FluidNCClient::onWebSocketEvent(WStype_t type, uint8_t* payload, size_t len
         case WStype_DISCONNECTED:
             Serial.println("[FluidNC] WebSocket disconnected");
             
-            // If we were previously connected, show error
+            // If we were previously connected, show error and disable auto-reconnect
             if (currentStatus.is_connected) {
                 // Build error message
                 char error_msg[256];
@@ -124,15 +156,20 @@ void FluidNCClient::onWebSocketEvent(WStype_t type, uint8_t* payload, size_t len
                 
                 // Show error dialog
                 UICommon::showConnectionErrorDialog("Machine Disconnected", error_msg);
+                
+                currentStatus.is_connected = false;
+                currentStatus.state = STATE_DISCONNECTED;
+            } else {
+                // Not yet connected - keep trying with 1-second reconnect interval
+                Serial.println("[FluidNC] Connection attempt failed, retrying...");
+                webSocket.setReconnectInterval(1000);  // Keep trying every 1 second
+                currentStatus.state = STATE_DISCONNECTED;
             }
-            
-            currentStatus.is_connected = false;
-            currentStatus.state = STATE_DISCONNECTED;
             break;
             
         case WStype_CONNECTED:
             Serial.printf("[FluidNC] WebSocket connected to: %s\n", payload);
-            // Don't set is_connected yet - wait for auto-report confirmation
+            // Don't set is_connected yet - wait for first status report
             currentStatus.state = STATE_IDLE;
             currentStatus.last_update_ms = millis();
             
@@ -140,20 +177,13 @@ void FluidNCClient::onWebSocketEvent(WStype_t type, uint8_t* payload, size_t len
             webSocket.setReconnectInterval(86400000);  // 24 hours
             Serial.println("[FluidNC] Connected - auto-reconnect disabled (24h interval)");
             
-            // Enable automatic status reporting at 250ms intervals
-            Serial.println("[FluidNC] Enabling automatic reporting (250ms)");
-            webSocket.sendTXT("$Report/Interval=250\n");
+            // Initialize polling timestamps to allow immediate fallback polling if auto-reporting fails
+            // Set to (now - 1000) so first poll happens right after 2s auto-reporting timeout
+            lastPollingMs = millis() - 1000;
+            lastGCodePollMs = millis() - 10000;
             
-            // Save for later when implementing manual polling fallback - not needed for auto-reporting
-            // Small delay to let the command process
-            //delay(50);
-            
-            // Request initial status with realtime command
-            //Serial.println("[FluidNC] Requesting initial status");
-            //webSocket.sendTXT("?");
-            
-            // Request initial GCode parser state
-            //webSocket.sendTXT("$G\n");
+            // Attempt to enable automatic status reporting
+            attemptEnableAutoReporting();
             break;
             
         case WStype_TEXT:
@@ -195,7 +225,8 @@ void FluidNCClient::onWebSocketEvent(WStype_t type, uint8_t* payload, size_t len
             break;
             
         case WStype_ERROR:
-            Serial.printf("[FluidNC] WebSocket error: %s\n", payload);
+            // Log error but don't disconnect - let the connection recover
+            Serial.printf("[FluidNC] WebSocket error (non-fatal): %s\n", payload);
             break;
             
         case WStype_PING:
@@ -215,6 +246,26 @@ void FluidNCClient::parseStatusReport(const char* message) {
     // Example: <Idle|MPos:0.000,0.000,0.000|FS:0,0|Ov:100,100,100>
     // Or with WCO: <Idle|MPos:0.000,0.000,0.000|FS:0,0|WCO:0.000,0.000,0.000>
     
+    // If we receive a status report while auto-reporting was attempted, mark it as enabled
+    if (autoReportingAttempted && !autoReportingEnabled) {
+        autoReportingEnabled = true;
+        autoReportingAttempted = false;  // Clear the attempt flag
+        Serial.println("[FluidNC] ✓ Auto-reporting confirmed (status received)");
+    }
+    
+    // If we receive ANY status report and not connected yet, mark as connected
+    // This handles both auto-reporting and fallback polling
+    if (!currentStatus.is_connected) {
+        currentStatus.is_connected = true;
+        Serial.println("[FluidNC] ✓ Connection established (status received)");
+        
+        // Hide connecting popup
+        UICommon::hideConnectingPopup();
+        
+        // Also hide error dialog if showing
+        UICommon::hideConnectionErrorDialog();
+    }
+    
     // Only log status every 5 seconds to reduce spam
     static uint32_t lastStatusLog = 0;
     uint32_t now = millis();
@@ -225,26 +276,42 @@ void FluidNCClient::parseStatusReport(const char* message) {
     
     currentStatus.last_update_ms = millis();
     
+    // Track previous state for state change detection
+    static MachineState previousState = STATE_DISCONNECTED;
+    MachineState newState = currentStatus.state;
+    
     // Parse machine state
     if (strstr(message, "<Idle")) {
-        currentStatus.state = STATE_IDLE;
+        newState = STATE_IDLE;
     } else if (strstr(message, "<Run")) {
-        currentStatus.state = STATE_RUN;
+        newState = STATE_RUN;
     } else if (strstr(message, "<Hold")) {
-        currentStatus.state = STATE_HOLD;
+        newState = STATE_HOLD;
     } else if (strstr(message, "<Jog")) {
-        currentStatus.state = STATE_JOG;
+        newState = STATE_JOG;
     } else if (strstr(message, "<Alarm")) {
-        currentStatus.state = STATE_ALARM;
+        newState = STATE_ALARM;
     } else if (strstr(message, "<Door")) {
-        currentStatus.state = STATE_DOOR;
+        newState = STATE_DOOR;
     } else if (strstr(message, "<Check")) {
-        currentStatus.state = STATE_CHECK;
+        newState = STATE_CHECK;
     } else if (strstr(message, "<Home")) {
-        currentStatus.state = STATE_HOME;
+        newState = STATE_HOME;
     } else if (strstr(message, "<Sleep")) {
-        currentStatus.state = STATE_SLEEP;
+        newState = STATE_SLEEP;
     }
+    
+    // Detect state change to IDLE from HOLD or RUN - retry auto-reporting
+    if (newState == STATE_IDLE && (previousState == STATE_HOLD || previousState == STATE_RUN)) {
+        if (!autoReportingEnabled) {
+            Serial.println("[FluidNC] Machine returned to IDLE - retrying auto-reporting");
+            attemptEnableAutoReporting();
+        }
+    }
+    
+    // Update state and track for next comparison
+    currentStatus.state = newState;
+    previousState = newState;
     
     // Parse machine position (MPos:x,y,z)
     const char* mpos = strstr(message, "MPos:");
@@ -373,9 +440,12 @@ void FluidNCClient::parseRealtimeFeedback(const char* message) {
     
     // Check for auto-report confirmation message
     if (strstr(message, "websocket auto report interval set") != nullptr) {
+        Serial.println("[FluidNC] ✓ Auto-report confirmed - automatic reporting enabled");
+        autoReportingEnabled = true;
+        
         if (!currentStatus.is_connected) {
             currentStatus.is_connected = true;
-            Serial.println("[FluidNC] ✓ Auto-report confirmed - connection established");
+            Serial.println("[FluidNC] ✓ Connection established");
             
             // Hide connecting popup
             UICommon::hideConnectingPopup();
@@ -517,3 +587,36 @@ void FluidNCClient::extractString(const char* str, const char* key, char* dest, 
     strncpy(dest, pos, len);
     dest[len] = '\0';
 }
+
+void FluidNCClient::attemptEnableAutoReporting() {
+    Serial.println("[FluidNC] Attempting to enable automatic reporting (250ms)");
+    webSocket.sendTXT("$Report/Interval=250\n");
+    
+    autoReportingAttempted = true;
+    autoReportingEnabled = false;  // Will be set true when we receive status
+    lastAutoReportAttemptMs = millis();
+}
+
+void FluidNCClient::performFallbackPolling() {
+    // If auto-reporting is enabled, no need to poll
+    if (autoReportingEnabled) {
+        return;
+    }
+    
+    uint32_t now = millis();
+    
+    // Send status poll ("?") every 1 second
+    if (now - lastPollingMs >= 1000) {
+        Serial.println("[FluidNC] Fallback polling: sending '?'");
+        webSocket.sendTXT("?");
+        lastPollingMs = now;
+    }
+    
+    // Send GCode parser state poll ("$G") every 10 seconds
+    if (now - lastGCodePollMs >= 10000) {
+        Serial.println("[FluidNC] Fallback polling: sending '$G'");
+        webSocket.sendTXT("$G\n");
+        lastGCodePollMs = now;
+    }
+}
+

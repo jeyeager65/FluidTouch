@@ -462,10 +462,20 @@ void UICommon::updateMachineState(const char *state) {
 }
 
 void UICommon::updateConnectionStatus(bool machine_connected, bool wifi_connected) {
-    // Update machine symbol color
+    // Update machine symbol color with three states:
+    // - Red (STATE_ALARM): Disconnected
+    // - Orange (UI_WARNING): Connected with fallback polling (degraded)
+    // - Green (STATE_IDLE): Connected with auto-reporting (optimal)
     if (lbl_machine_symbol) {
-        lv_obj_set_style_text_color(lbl_machine_symbol, 
-            machine_connected ? UITheme::STATE_IDLE : UITheme::STATE_ALARM, 0);
+        lv_color_t color;
+        if (!machine_connected) {
+            color = UITheme::STATE_ALARM;  // Red: Disconnected
+        } else if (!FluidNCClient::isAutoReporting()) {
+            color = UITheme::UI_WARNING;   // Orange: Fallback polling (1s updates)
+        } else {
+            color = UITheme::STATE_IDLE;   // Green: Auto-reporting (250ms updates)
+        }
+        lv_obj_set_style_text_color(lbl_machine_symbol, color, 0);
     }
     
     // Update WiFi symbol color

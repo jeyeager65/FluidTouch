@@ -102,6 +102,9 @@ public:
     // Check if connected
     static bool isConnected();
     
+    // Check if using auto-reporting (true) or fallback polling (false)
+    static bool isAutoReporting();
+    
     // Main loop - call regularly to handle WebSocket events
     static void loop();
     
@@ -135,6 +138,13 @@ private:
     static MessageCallback messageCallback;  // Optional callback for raw messages
     static MessageCallback terminalCallback; // Optional callback for terminal display
     
+    // Auto-reporting and fallback polling
+    static bool autoReportingEnabled;     // True if auto-reporting is active
+    static bool autoReportingAttempted;   // True if we tried to enable auto-reporting
+    static uint32_t lastPollingMs;        // Last time we sent "?" for fallback polling
+    static uint32_t lastGCodePollMs;      // Last time we sent "$G" for GCode state
+    static uint32_t lastAutoReportAttemptMs; // Last time we tried to enable auto-reporting
+    
     // WebSocket event handler
     static void onWebSocketEvent(WStype_t type, uint8_t* payload, size_t length);
     
@@ -146,6 +156,10 @@ private:
     
     // Parse realtime feedback
     static void parseRealtimeFeedback(const char* message);
+    
+    // Auto-reporting and polling helpers
+    static void attemptEnableAutoReporting();
+    static void performFallbackPolling();
     
     // Helper to extract float value from status report
     static float extractFloat(const char* str, const char* key);
