@@ -29,6 +29,20 @@ static int last_displayed_z_feedrate = -1;
 static const unsigned long JOG_INTERVAL_MS = 50;  // Send jog command every 50ms (20Hz for balance of smoothness and performance)
 static const float JOG_TIME_INCREMENT = 0.050f;   // 50ms in seconds (nominal dt)
 
+// Apply response curve to joystick input for fine-grained control near center
+// Uses quadratic curve: output = sign(input) * (input/100)^2 * 100
+// This gives smooth, precise control near center and quick ramp-up at edges
+static float applyJoystickCurve(float percent) {
+    if (fabs(percent) < 0.1f) return 0.0f;  // Dead zone for stability
+    
+    // Normalize to 0-1 range, apply quadratic curve, scale back
+    float normalized = percent / 100.0f;
+    float curved = normalized * normalized;  // Quadratic curve
+    
+    // Preserve sign and scale back to percentage
+    return (percent >= 0.0f ? 1.0f : -1.0f) * curved * 100.0f;
+}
+
 // Send jog cancel command (realtime command 0x85)
 static void sendJogCancel() {
     // Send as null-terminated string (same format as jog tab uses)
@@ -94,16 +108,23 @@ static void xy_joystick_event_handler(lv_event_t *e) {
         float radial_percent = (distance * 100.0f) / max_radius;
         if (radial_percent > 100.0f) radial_percent = 100.0f;
         
-        // Calculate individual axis percentages for direction (-100 to +100)
-        float x_percent = (dx * 100.0f) / max_radius;
-        float y_percent = -(dy * 100.0f) / max_radius;  // Invert Y axis
+        // Apply response curve to radial distance for fine-grained control near center
+        float radial_percent_curved = applyJoystickCurve(radial_percent);
         
-        // Calculate feedrate based on radial distance (use max feedrate from settings)
+        // Calculate direction angle (preserve exact direction)
+        float angle = atan2(dy, dx);
+        
+        // Decompose curved magnitude back to X and Y components
+        // This ensures we reach 100% at the edge regardless of angle
+        float x_percent_curved = (radial_percent_curved / 100.0f) * cos(angle) * 100.0f;
+        float y_percent_curved = -(radial_percent_curved / 100.0f) * sin(angle) * 100.0f;  // Invert Y axis
+        
+        // Calculate feedrate based on curved radial distance (use max feedrate from settings)
         int max_xy_feed = UITabSettingsJog::getMaxXYFeed();
-        int xy_feedrate = (int)(radial_percent * max_xy_feed / 100.0f);
+        int xy_feedrate = (int)(radial_percent_curved * max_xy_feed / 100.0f);
         
         // Update labels ONLY if values changed significantly (reduce LVGL redraws)
-        int current_percent = (int)radial_percent;
+        int current_percent = (int)radial_percent_curved;  // Display curved percentage
         if (abs(current_percent - last_displayed_xy_percent) >= 5) {
             if (xy_percent_label != NULL) {
                 lv_label_set_text_fmt(xy_percent_label, "XY: %d%%", current_percent);
@@ -124,10 +145,10 @@ static void xy_joystick_event_handler(lv_event_t *e) {
             // Calculate actual time delta for accurate positioning
             float actual_dt = xy_jogging ? ((current_time - last_jog_time) / 1000.0f) : JOG_TIME_INCREMENT;
             
-            // Calculate feed rate components (mm/min) using max feedrate from settings
+            // Calculate feed rate components (mm/min) using curved percentages and max feedrate from settings
             int max_xy_feed = UITabSettingsJog::getMaxXYFeed();
-            float v_x = (x_percent / 100.0f) * max_xy_feed;  // mm/min
-            float v_y = (y_percent / 100.0f) * max_xy_feed;  // mm/min
+            float v_x = (x_percent_curved / 100.0f) * max_xy_feed;  // mm/min (curved)
+            float v_y = (y_percent_curved / 100.0f) * max_xy_feed;  // mm/min (curved)
             float feed_rate = sqrt(v_x * v_x + v_y * v_y);   // Vector magnitude
             
             if (feed_rate > 1.0f) {  // Only send if moving significantly
@@ -147,8 +168,8 @@ static void xy_joystick_event_handler(lv_event_t *e) {
                 
                 xy_jogging = true;
                 last_jog_time = current_time;
-                last_xy_x_percent = x_percent;
-                last_xy_y_percent = y_percent;
+                last_xy_x_percent = x_percent_curved;
+                last_xy_y_percent = y_percent_curved;
                 
                 // Serial debug disabled for performance (uncomment only when debugging)
                 // Serial.printf("XY Jog: %s", jog_cmd);
@@ -229,12 +250,15 @@ static void z_joystick_event_handler(lv_event_t *e) {
         // Calculate joystick percentage (-100 to +100, inverted for Z)
         float z_percent = -(dy * 100.0f) / max_offset;  // Negative dy = Z+
         
-        // Calculate feedrate (absolute value for display) using max feedrate from settings
+        // Apply response curve for fine-grained control near center
+        float z_percent_curved = applyJoystickCurve(z_percent);
+        
+        // Calculate feedrate (absolute value for display) using curved percentage and max feedrate from settings
         int max_z_feed = UITabSettingsJog::getMaxZFeed();
-        int z_feedrate = (int)(fabs(z_percent) * max_z_feed / 100.0f);
+        int z_feedrate = (int)(fabs(z_percent_curved) * max_z_feed / 100.0f);
         
         // Update labels ONLY if values changed significantly (reduce LVGL redraws)
-        int current_percent = (int)z_percent;
+        int current_percent = (int)z_percent_curved;  // Display curved percentage
         if (abs(current_percent - last_displayed_z_percent) >= 5) {
             if (z_percent_label != NULL) {
                 lv_label_set_text_fmt(z_percent_label, "Z: %d%%", current_percent);
@@ -255,9 +279,9 @@ static void z_joystick_event_handler(lv_event_t *e) {
             // Calculate actual time delta for accurate positioning
             float actual_dt = z_jogging ? ((current_time - last_jog_time) / 1000.0f) : JOG_TIME_INCREMENT;
             
-            // Calculate feed rate with sign (mm/min) using max feedrate from settings
+            // Calculate feed rate with sign (mm/min) using curved percentage and max feedrate from settings
             int max_z_feed = UITabSettingsJog::getMaxZFeed();
-            float v_z = (z_percent / 100.0f) * max_z_feed;  // mm/min (with sign)
+            float v_z = (z_percent_curved / 100.0f) * max_z_feed;  // mm/min (with sign, curved)
             float feed_rate = fabs(v_z);  // Absolute value for F parameter
             
             if (feed_rate > 1.0f) {  // Only send if moving significantly
