@@ -1,7 +1,12 @@
 # FluidTouch - AI Coding Agent Instructions
 
 ## Project Overview
-FluidTouch is an ESP32-S3 embedded touchscreen CNC controller for FluidNC machines, running on the Elecrow CrowPanel 7" display (800x480). The project uses PlatformIO, LVGL 9.3 for UI, and LovyanGFX for hardware-accelerated display rendering.
+FluidTouch is an ESP32-S3 embedded touchscreen CNC controller for FluidNC machines, running on the Elecrow CrowPanel 7" Basic display (800x480). The project uses PlatformIO, LVGL 9.4 for UI, and LovyanGFX for hardware-accelerated display rendering.
+
+**Hardware**: Elecrow CrowPanel ESP32 7" HMI Display (Basic Version)
+- Product: https://www.elecrow.com/esp32-display-7-inch-hmi-display-rgb-tft-lcd-touch-screen-support-lvgl.html
+- Display: 800x480 RGB TFT LCD with GT911 capacitive touch
+- MCU: ESP32-S3-WROOM-1-N4R8 (4MB Flash + 8MB Octal PSRAM)
 
 **Status**: Active development - core architecture complete, features in progress.
 
@@ -30,6 +35,12 @@ The codebase follows a **strict modular pattern** with clear separation:
    - `UITabs` - Main tabview orchestrator, delegates to tab modules
    - `UITab*` - Individual tab modules (`UITabStatus`, `UITabControl`, `UITabTerminal`, etc.)
    - **Nested tabs**: `UITabControl` contains sub-modules in `tabs/control/` (Actions, Jog, Joystick, Probe, Overrides)
+   - **Control sub-tabs**:
+     - Actions: Machine control (Home, Zero, Unlock, Reset)
+     - Jog: Button-based jogging with XY/Z sections, step selection, and feed rate controls
+     - Joystick: Analog-style jogging with circular XY pad and vertical Z slider with quadratic response curve
+     - Probe: Touch probe operations with axis-colored buttons, parameter inputs (feed rate, max distance, retract, thickness), and 2-line result display (16pt font)
+     - Overrides: Feed/Rapid/Spindle override controls
    - **Terminal tab**: `UITabTerminal` - Raw WebSocket message display (currently disabled via commented callback)
 
 3. **Module Naming Convention**:
@@ -141,12 +152,9 @@ The codebase follows a **strict modular pattern** with clear separation:
 # ALWAYS use --target upload to flash after building
 & "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run --target upload
 
-# Or use the explicit path with quotes:
-& "C:\Users\USERNAME\.platformio\penv\Scripts\platformio.exe" run --target upload
-
-# Build and upload to ESP32-S3 (via USB) - DEFAULT COMMAND
-& "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run --target upload
-& "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run --target upload
+# Environment name changed to reflect hardware
+# Previous: env:esp32dev
+# Current: env:elecrow-crowpanel-7-basic
 
 # Serial monitor (115200 baud)
 & "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" device monitor -b 115200
@@ -225,7 +233,7 @@ All other hardcoded values live in `include/config.h`:
 
 ## Key Files & Patterns
 
-- **`platformio.ini`**: Flash/PSRAM config (`dio_opi`), partition tables, build flags
+- **`platformio.ini`**: Flash/PSRAM config (`dio_opi`), partition tables, build flags, environment name `elecrow-crowpanel-7-basic`
 - **`include/lv_conf.h`**: LVGL configuration (color depth, memory, features) - 1400+ lines
 - **`src/main.cpp`**: Entry point, initialization sequence, main loop with LVGL tick handling
 - **`src/display_driver.cpp`**: LovyanGFX RGB parallel setup (lines 11-63 are pin mappings)
@@ -236,6 +244,48 @@ All other hardcoded values live in `include/config.h`:
 - **`src/ui/ui_common.cpp`**: Status bar implementation with separate axis labels, delta checking for smooth updates, clickable left/right areas for navigation and machine switching, and modal HOLD/ALARM state popups with dismissal tracking
 - **`src/ui/ui_machine_select.cpp`**: Machine selection screen with reordering, edit, delete, and add functionality (up to 5 machines stored in Preferences)
 - **`src/ui/tabs/ui_tab_status.cpp`**: Status tab with delta-checked position displays, feed/spindle rates with overrides, 8 modal state fields, message display, and SD card file progress (filename, progress bar, elapsed/estimated time)
+
+### Control Sub-Tabs Layout
+
+#### Jog Tab (ui_tab_control_jog.cpp)
+- **Layout**: XY section (left) + Z section (right)
+- **Headers**: "XY JOG" (18pt, AXIS_XY color, x=167) and "Z JOG" (18pt, AXIS_Z color, x=467)
+- **XY Section**:
+  - Step label: "XY Step" at (5, 9) - 14pt font
+  - Step buttons: 6 vertical buttons (0.1, 1, 10, 50, 100, 500) at x=10, starting y=30, 45×45px, 14pt font
+  - Jog pad: 3×3 grid at (85, 30), 70×70px buttons, diagonal buttons with AXIS_XY color, N/S with AXIS_Y, E/W with AXIS_X
+  - Center button: Step display (non-clickable, BG_DARKER)
+  - Feed control: Label + value display + mm/min unit (14pt) at y=280, adjustment buttons (±100, ±1000) at y=300, 14pt font
+- **Z Section**:
+  - Step label: "Z Step" at (395, 9) - 14pt font
+  - Step buttons: 3 vertical buttons (0.1, 1, 10) at x=395, starting y=30, 45×45px, 14pt font
+  - Z+ button: 70×70px at (460, 30), AXIS_Z color
+  - Step display: 70×70px at (460, 110), BG_DARKER background
+  - Z- button: 70×70px at (460, 190), AXIS_Z color
+  - Feed control: Label + value display + mm/min unit (14pt) at y=280, adjustment buttons at y=300, 14pt font
+- **Cancel button**: Octagon "STOP" button at (560, 110), 70×70px
+
+#### Joystick Tab (ui_tab_control_joystick.cpp)
+- **Layout**: Horizontal flex layout (XY joystick, info center, Z slider)
+- **XY Joystick**: 220×220px circular pad with crosshairs, draggable knob with quadratic response curve
+- **Z Slider**: 80×220px vertical slider with draggable knob, quadratic response curve
+- **Response Curve**: output = sign(input) × (input/100)² × 100 for fine control near center
+- **Info Display**: Current percentage, feed rate (mm/min), and max feed rate from settings
+
+#### Probe Tab (ui_tab_control_probe.cpp)
+- **Layout**: Left column (0-220px) for probe buttons, right column (260-620px) for parameters and results
+- **Axis Sections**:
+  - Headers: "X-AXIS", "Y-AXIS", "Z-AXIS" in TEXT_DISABLED color (gray)
+  - Buttons: 100×50px, colored with axis colors (AXIS_X/Y/Z), only negative directions + Z- only
+- **Parameters Section** (y=45-210):
+  - Labels at x=260, 18pt font, vertically centered at y+11 from field top
+  - Input fields: 120×45px at x=420, 18pt font
+  - Units: 18pt font at x=550, vertically centered with fields
+  - Fields: Feed Rate, Max Distance, Retract, Probe Thickness
+- **Results Section** (y=295):
+  - Field: 370×50px textarea, 16pt font, 3px padding for 2-line display
+  - Format: "SUCCESS\nZ: -137.505 mm" or "FAILED\nNo contact detected"
+  - Only shows the probed axis value, not all three axes
 
 ### Status Tab Layout (ui_tab_status.cpp)
 - **Top Section**: STATE (left, x=0) + FILE PROGRESS (spans columns 2-4, x=230-780, hidden when not printing)
