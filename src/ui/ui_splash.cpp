@@ -31,7 +31,7 @@ void UISplash::show(lv_display_t *disp) {
     
     // Version info (larger font, below tagline)
     lv_obj_t *version = lv_label_create(splash);
-    lv_label_set_text(version, FLUIDTOUCH_VERSION);
+    lv_label_set_text(version, "Version: " FLUIDTOUCH_VERSION);
     lv_obj_set_style_text_font(version, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(version, UITheme::TEXT_MEDIUM, 0);
     lv_obj_align(version, LV_ALIGN_CENTER, 0, 85);

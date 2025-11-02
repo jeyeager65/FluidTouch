@@ -14,6 +14,7 @@
 #include "ui/tabs/ui_tab_status.h" // Status tab for updates
 #include "ui/tabs/ui_tab_macros.h" // Macros tab for progress updates
 #include "ui/tabs/ui_tab_terminal.h" // Terminal tab for updates
+#include "ui/tabs/settings/ui_tab_settings_about.h" // About tab for screenshot URL updates
 #include "ui/tabs/control/ui_tab_control_actions.h" // Actions tab for pause button updates
 #include "ui/tabs/control/ui_tab_control_override.h" // Override tab for updates
 #include "ui/machine_config.h"  // Machine configuration manager
@@ -123,6 +124,9 @@ void loop()
         
         // Update connection status symbols (always update, even if not connected)
         UICommon::updateConnectionStatus(machine_connected, wifi_connected);
+        
+        // Update About tab screenshot server URL (in case WiFi status changed)
+        UITabSettingsAbout::update();
         
         // Only update other status info if machine is connected
         if (machine_connected) {
