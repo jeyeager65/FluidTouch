@@ -590,21 +590,21 @@
 
 /* Montserrat fonts with ASCII range and some symbols using bpp = 4
  * https://fonts.google.com/specimen/Montserrat */
-#define LV_FONT_MONTSERRAT_8  1
-#define LV_FONT_MONTSERRAT_10 1
-#define LV_FONT_MONTSERRAT_12 1
-#define LV_FONT_MONTSERRAT_14 1
-#define LV_FONT_MONTSERRAT_16 1
-#define LV_FONT_MONTSERRAT_18 1
-#define LV_FONT_MONTSERRAT_20 1
-#define LV_FONT_MONTSERRAT_22 1
-#define LV_FONT_MONTSERRAT_24 1
-#define LV_FONT_MONTSERRAT_26 1
-#define LV_FONT_MONTSERRAT_28 1
-#define LV_FONT_MONTSERRAT_30 1
-#define LV_FONT_MONTSERRAT_32 1
-#define LV_FONT_MONTSERRAT_34 1
-#define LV_FONT_MONTSERRAT_36 1
+#define LV_FONT_MONTSERRAT_8  0  // Disabled: Not used in UI
+#define LV_FONT_MONTSERRAT_10 0  // Disabled: Not used in UI
+#define LV_FONT_MONTSERRAT_12 1  // Used: Status tab file progress labels
+#define LV_FONT_MONTSERRAT_14 1  // Used: Jog controls, step labels, status labels
+#define LV_FONT_MONTSERRAT_16 1  // Used: Files tab, settings, probe results, dialogs
+#define LV_FONT_MONTSERRAT_18 1  // Used: Tab headers, status bar, common UI, settings
+#define LV_FONT_MONTSERRAT_20 1  // Used: Main tabs, probe buttons, status values, keyboards
+#define LV_FONT_MONTSERRAT_22 1  // Used: Machine select, dialogs, state popups
+#define LV_FONT_MONTSERRAT_24 1  // Used: State popup messages, empty state messages
+#define LV_FONT_MONTSERRAT_26 1  // Used: Machine select connection label
+#define LV_FONT_MONTSERRAT_28 0  // Disabled: Not used in UI
+#define LV_FONT_MONTSERRAT_30 0  // Disabled: Not used in UI
+#define LV_FONT_MONTSERRAT_32 1  // Used: Page titles, state labels, large value displays
+#define LV_FONT_MONTSERRAT_34 0  // Disabled: Not used in UI
+#define LV_FONT_MONTSERRAT_36 0  // Disabled: Not used in UI
 #define LV_FONT_MONTSERRAT_38 0
 #define LV_FONT_MONTSERRAT_40 0
 #define LV_FONT_MONTSERRAT_42 0
@@ -719,7 +719,7 @@
 
 #define LV_USE_BUTTONMATRIX  1
 
-#define LV_USE_CALENDAR   1
+#define LV_USE_CALENDAR   0  // Disabled: Not used in CNC controller
 #if LV_USE_CALENDAR
     #define LV_CALENDAR_WEEK_STARTS_MONDAY 0
     #if LV_CALENDAR_WEEK_STARTS_MONDAY
@@ -736,7 +736,7 @@
 
 #define LV_USE_CANVAS     1
 
-#define LV_USE_CHART      1
+#define LV_USE_CHART      0  // Disabled: Not used in CNC controller
 
 #define LV_USE_CHECKBOX   1
 
