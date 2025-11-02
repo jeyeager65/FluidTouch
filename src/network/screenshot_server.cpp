@@ -1,6 +1,6 @@
-#include "screenshot_server.h"
+#include "network/screenshot_server.h"
 #include "config.h"
-#include "display_driver.h"
+#include "core/display_driver.h"
 #include <WiFi.h>
 #include <WebServer.h>
 #include <lvgl.h>

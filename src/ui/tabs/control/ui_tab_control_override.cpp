@@ -1,7 +1,7 @@
 #include "ui/tabs/control/ui_tab_control_override.h"
 #include "ui/ui_theme.h"
 #include "config.h"
-#include "fluidnc_client.h"
+#include "network/fluidnc_client.h"
 
 // Static label pointers
 lv_obj_t* UITabControlOverride::lbl_feed_value = nullptr;

@@ -1,6 +1,6 @@
 #include "ui/tabs/control/ui_tab_control_actions.h"
 #include "ui/ui_theme.h"
-#include "fluidnc_client.h"
+#include "network/fluidnc_client.h"
 
 // Static member initialization
 lv_obj_t *UITabControlActions::btn_pause = nullptr;

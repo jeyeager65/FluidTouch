@@ -1,6 +1,6 @@
 #include "ui/ui_splash.h"
 #include "ui/ui_theme.h"
-#include "fluidnc_logo.h"
+#include "ui/images/fluidnc_logo.h"
 #include "config.h"
 
 void UISplash::show(lv_display_t *disp) {

@@ -2,10 +2,10 @@
 #include <lvgl.h>
 #include <WiFi.h>
 #include <Preferences.h>
-#include "display_driver.h"     // Display driver module
-#include "touch_driver.h"       // Touch driver module
-#include "screenshot_server.h"  // Screenshot web server
-#include "fluidnc_client.h"     // FluidNC WebSocket client
+#include "core/display_driver.h"     // Display driver module
+#include "core/touch_driver.h"       // Touch driver module
+#include "network/screenshot_server.h"  // Screenshot web server
+#include "network/fluidnc_client.h"     // FluidNC WebSocket client
 #include "ui/ui_theme.h"        // UI theme colors
 #include "ui/ui_splash.h"       // Splash screen module
 #include "ui/ui_machine_select.h" // Machine selection screen

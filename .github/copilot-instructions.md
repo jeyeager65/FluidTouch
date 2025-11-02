@@ -22,28 +22,35 @@ FluidTouch is an ESP32-S3 embedded touchscreen CNC controller for FluidNC machin
 ### Module Organization Pattern
 The codebase follows a **strict modular pattern** with clear separation:
 
-1. **Driver Modules** (`src/` + `include/`):
-   - `DisplayDriver` - LovyanGFX RGB parallel display with LVGL integration
-   - `TouchDriver` - GT911 I2C touch controller with LVGL input device
-   - `ScreenshotServer` - WiFi web server for remote screenshots via LovyanGFX `readRect()`
-   - `FluidNCClient` - WebSocket client for FluidNC communication with automatic status reporting
+1. **Driver Modules** (`core/` subdirectory):
+   - `DisplayDriver` - LovyanGFX RGB parallel display with LVGL integration (`core/display_driver.h/cpp`)
+   - `TouchDriver` - GT911 I2C touch controller with LVGL input device (`core/touch_driver.h/cpp`)
 
-2. **UI Module Hierarchy** (all under `ui/` subdirectory):
-   - `UICommon` - Shared status bar with machine/WiFi info and position displays
-   - `UIMachineSelect` - Machine selection screen (appears after splash, before main UI)
-   - `UISplash` - Startup splash screen (2.5s duration)
-   - `UITabs` - Main tabview orchestrator, delegates to tab modules
-   - `UITab*` - Individual tab modules (`UITabStatus`, `UITabControl`, `UITabTerminal`, etc.)
-   - **Nested tabs**: `UITabControl` contains sub-modules in `tabs/control/` (Actions, Jog, Joystick, Probe, Overrides)
-   - **Control sub-tabs**:
-     - Actions: Machine control (Home, Zero, Unlock, Reset)
-     - Jog: Button-based jogging with XY/Z sections, step selection, and feed rate controls
-     - Joystick: Analog-style jogging with circular XY pad and vertical Z slider with quadratic response curve
-     - Probe: Touch probe operations with axis-colored buttons, parameter inputs (feed rate, max distance, retract, thickness), and 2-line result display (16pt font)
-     - Overrides: Feed/Rapid/Spindle override controls
-   - **Terminal tab**: `UITabTerminal` - Raw WebSocket message display (currently disabled via commented callback)
+2. **Network Modules** (`network/` subdirectory):
+   - `ScreenshotServer` - WiFi web server for remote screenshots via LovyanGFX `readRect()` (`network/screenshot_server.h/cpp`)
+   - `FluidNCClient` - WebSocket client for FluidNC communication with automatic status reporting (`network/fluidnc_client.h/cpp`)
 
-3. **Module Naming Convention**:
+3. **UI Module Hierarchy** (all under `ui/` subdirectory):
+   - **Assets**:
+     - `ui/fonts/` - Font assets (jetbrains_mono_16 for terminal)
+     - `ui/images/` - Image assets (fluidnc_logo for splash screen)
+   - **Core UI**:
+     - `UICommon` - Shared status bar with machine/WiFi info and position displays
+     - `UIMachineSelect` - Machine selection screen (appears after splash, before main UI)
+     - `UISplash` - Startup splash screen (2.5s duration)
+     - `UITabs` - Main tabview orchestrator, delegates to tab modules
+   - **Tab Modules**:
+     - `UITab*` - Individual tab modules (`UITabStatus`, `UITabControl`, `UITabTerminal`, etc.)
+     - **Nested tabs**: `UITabControl` contains sub-modules in `tabs/control/` (Actions, Jog, Joystick, Probe, Overrides)
+     - **Control sub-tabs**:
+       - Actions: Machine control (Home, Zero, Unlock, Reset)
+       - Jog: Button-based jogging with XY/Z sections, step selection, and feed rate controls
+       - Joystick: Analog-style jogging with circular XY pad and vertical Z slider with quadratic response curve
+       - Probe: Touch probe operations with axis-colored buttons, parameter inputs (feed rate, max distance, retract, thickness), and 2-line result display (16pt font)
+       - Overrides: Feed/Rapid/Spindle override controls
+     - **Terminal tab**: `UITabTerminal` - Raw WebSocket message display (currently disabled via commented callback)
+
+4. **Module Naming Convention**:
    - Class files: `ui_tab_control.h/cpp` → class `UITabControl`
    - All UI classes use static `create(lv_obj_t *parent)` factory methods
    - Headers in `include/`, implementations in `src/` (matching structure)
@@ -233,17 +240,31 @@ All other hardcoded values live in `include/config.h`:
 
 ## Key Files & Patterns
 
+**Core Structure**:
 - **`platformio.ini`**: Flash/PSRAM config (`dio_opi`), partition tables, build flags, environment name `elecrow-crowpanel-7-basic`
 - **`include/lv_conf.h`**: LVGL configuration (color depth, memory, features) - 1400+ lines
-- **`src/main.cpp`**: Entry point, initialization sequence, main loop with LVGL tick handling
-- **`src/display_driver.cpp`**: LovyanGFX RGB parallel setup (lines 11-63 are pin mappings)
 - **`include/config.h`**: Central configuration for ALL hardcoded values (BUFFER_LINES=480 for full-screen buffering)
-- **`src/screenshot_server.cpp`**: WiFi setup, BMP conversion from RGB565 frame buffer
-- **`src/fluidnc_client.cpp`**: FluidNC WebSocket client with automatic reporting (no polling), status parsing, WCO handling, F/S parsing from both status reports and GCode state, and SD card file progress tracking. Terminal callback currently disabled.
-- **`src/ui/tabs/ui_tab_terminal.cpp`**: Terminal tab with WebSocket message display, auto-scroll toggle, 8KB buffer with batched UI updates (currently disabled via commented callback in FluidNCClient)
+
+**Hardware/Core Modules** (`core/`):
+- **`src/core/display_driver.cpp`**: LovyanGFX RGB parallel setup (lines 11-63 are pin mappings)
+- **`src/core/touch_driver.cpp`**: GT911 I2C touch controller with LVGL input device
+
+**Network Modules** (`network/`):
+- **`src/network/screenshot_server.cpp`**: WiFi setup, BMP conversion from RGB565 frame buffer
+- **`src/network/fluidnc_client.cpp`**: FluidNC WebSocket client with automatic reporting (no polling), status parsing, WCO handling, F/S parsing from both status reports and GCode state, and SD card file progress tracking. Terminal callback currently disabled.
+
+**UI Assets**:
+- **`src/ui/fonts/jetbrains_mono_16.c`**: Monospace font for terminal display
+- **`src/ui/images/fluidnc_logo.c`**: FluidNC logo for splash screen
+
+**Main Application**:
+- **`src/main.cpp`**: Entry point, initialization sequence, main loop with LVGL tick handling
+
+**UI Modules** (`ui/`):
 - **`src/ui/ui_common.cpp`**: Status bar implementation with separate axis labels, delta checking for smooth updates, clickable left/right areas for navigation and machine switching, and modal HOLD/ALARM state popups with dismissal tracking
 - **`src/ui/ui_machine_select.cpp`**: Machine selection screen with reordering, edit, delete, and add functionality (up to 5 machines stored in Preferences)
 - **`src/ui/tabs/ui_tab_status.cpp`**: Status tab with delta-checked position displays, feed/spindle rates with overrides, 8 modal state fields, message display, and SD card file progress (filename, progress bar, elapsed/estimated time)
+- **`src/ui/tabs/ui_tab_terminal.cpp`**: Terminal tab with WebSocket message display, auto-scroll toggle, 8KB buffer with batched UI updates (currently disabled via commented callback in FluidNCClient)
 
 ### Control Sub-Tabs Layout
 

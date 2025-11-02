@@ -1,8 +1,8 @@
 #include "ui/tabs/ui_tab_terminal.h"
 #include "ui/ui_theme.h"
-#include "fluidnc_client.h"
+#include "network/fluidnc_client.h"
 #include "config.h"
-#include "jetbrains_mono_16.h"
+#include "ui/fonts/jetbrains_mono_16.h"
 
 // Static member initialization
 lv_obj_t *UITabTerminal::terminal_text = nullptr;

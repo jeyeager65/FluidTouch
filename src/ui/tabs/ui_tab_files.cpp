@@ -1,6 +1,6 @@
 #include "ui/tabs/ui_tab_files.h"
 #include "ui/ui_theme.h"
-#include "fluidnc_client.h"
+#include "network/fluidnc_client.h"
 #include <Arduino.h>
 #include <algorithm>
 #include <ArduinoJson.h>

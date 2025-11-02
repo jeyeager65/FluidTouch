@@ -6,7 +6,7 @@
 #include "ui/tabs/ui_tab_macros.h"
 #include "ui/tabs/ui_tab_terminal.h"
 #include "ui/tabs/ui_tab_settings.h"
-#include "fluidnc_client.h"
+#include "network/fluidnc_client.h"
 
 // Static member initialization
 lv_obj_t *UITabs::tabview = nullptr;

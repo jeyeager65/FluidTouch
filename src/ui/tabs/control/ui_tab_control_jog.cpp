@@ -1,7 +1,7 @@
 #include "ui/tabs/control/ui_tab_control_jog.h"
 #include "ui/tabs/settings/ui_tab_settings_jog.h"
 #include "ui/ui_theme.h"
-#include "fluidnc_client.h"
+#include "network/fluidnc_client.h"
 #include <Arduino.h>
 
 // Static member initialization

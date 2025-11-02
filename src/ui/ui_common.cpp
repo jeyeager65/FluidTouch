@@ -3,9 +3,9 @@
 #include "ui/ui_theme.h"
 #include "ui/machine_config.h"
 #include "ui/ui_machine_select.h"
-#include "fluidnc_client.h"
-#include "display_driver.h"
-#include "screenshot_server.h"
+#include "network/fluidnc_client.h"
+#include "core/display_driver.h"
+#include "network/screenshot_server.h"
 #include "config.h"
 #include <Preferences.h>
 #include <WiFi.h>

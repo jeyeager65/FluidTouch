@@ -2,7 +2,7 @@
 #include "ui/ui_theme.h"
 #include "ui/machine_config.h"
 #include "config.h"
-#include "fluidnc_client.h"
+#include "network/fluidnc_client.h"
 #include <Arduino.h>
 #include <Preferences.h>
 #include <ArduinoJson.h>

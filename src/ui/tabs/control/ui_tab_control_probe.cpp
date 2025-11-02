@@ -1,7 +1,7 @@
 #include "ui/tabs/control/ui_tab_control_probe.h"
 #include "ui/tabs/settings/ui_tab_settings_probe.h"
 #include "ui/ui_theme.h"
-#include "fluidnc_client.h"
+#include "network/fluidnc_client.h"
 #include "config.h"
 #include <lvgl.h>
 

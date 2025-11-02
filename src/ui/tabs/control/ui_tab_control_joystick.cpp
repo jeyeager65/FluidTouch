@@ -1,7 +1,7 @@
 #include "ui/tabs/control/ui_tab_control_joystick.h"
 #include "ui/tabs/settings/ui_tab_settings_jog.h"
 #include "ui/ui_theme.h"
-#include "fluidnc_client.h"
+#include "network/fluidnc_client.h"
 #include <lvgl.h>
 #include <math.h>
 
@@ -175,8 +175,6 @@ static void xy_joystick_event_handler(lv_event_t *e) {
                 // Serial.printf("XY Jog: %s", jog_cmd);
             }
         }
-        
-        // TODO: Legacy comment - command sending now implemented above
     }
     else if (code == LV_EVENT_RELEASED) {
         // Return knob to center when released
@@ -304,8 +302,6 @@ static void z_joystick_event_handler(lv_event_t *e) {
                 // Serial.printf("Z Jog: %s", jog_cmd);
             }
         }
-        
-        // TODO: Legacy comment - command sending now implemented above
     }
     else if (code == LV_EVENT_RELEASED) {
         // Return knob to center when released

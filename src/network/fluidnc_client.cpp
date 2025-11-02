@@ -1,4 +1,4 @@
-#include "fluidnc_client.h"
+#include "network/fluidnc_client.h"
 #include "ui/ui_common.h"
 #include "ui/tabs/control/ui_tab_control_probe.h"
 #include <WiFi.h>
