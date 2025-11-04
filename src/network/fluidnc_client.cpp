@@ -16,6 +16,7 @@ bool FluidNCClient::autoReportingAttempted = false;
 uint32_t FluidNCClient::lastPollingMs = 0;
 uint32_t FluidNCClient::lastGCodePollMs = 0;
 uint32_t FluidNCClient::lastAutoReportAttemptMs = 0;
+bool FluidNCClient::everConnectedSuccessfully = false;
 
 void FluidNCClient::init() {
     if (initialized) return;
@@ -148,8 +149,9 @@ void FluidNCClient::onWebSocketEvent(WStype_t type, uint8_t* payload, size_t len
         case WStype_DISCONNECTED:
             Serial.println("[FluidNC] WebSocket disconnected");
             
-            // If we were previously connected, show error and disable auto-reconnect
-            if (currentStatus.is_connected) {
+            // Only show popup if we've ever successfully received a status report
+            // This prevents false alarms during initial connection handshake
+            if (everConnectedSuccessfully) {
                 // Build error message
                 char error_msg[256];
                 snprintf(error_msg, sizeof(error_msg), 
@@ -161,9 +163,10 @@ void FluidNCClient::onWebSocketEvent(WStype_t type, uint8_t* payload, size_t len
                 currentStatus.is_connected = false;
                 currentStatus.state = STATE_DISCONNECTED;
             } else {
-                // Not yet connected - keep trying with 1-second reconnect interval
+                // Not yet successfully connected - keep trying with 1-second reconnect interval
                 Serial.println("[FluidNC] Connection attempt failed, retrying...");
                 webSocket.setReconnectInterval(1000);  // Keep trying every 1 second
+                currentStatus.is_connected = false;
                 currentStatus.state = STATE_DISCONNECTED;
             }
             break;
@@ -276,6 +279,14 @@ void FluidNCClient::parseStatusReport(const char* message) {
     }
     
     currentStatus.last_update_ms = millis();
+    
+    // Mark that we've successfully received at least one status report
+    // This flag is used to distinguish between initial connection handshake failures
+    // and actual disconnections after successful communication
+    if (!everConnectedSuccessfully) {
+        everConnectedSuccessfully = true;
+        Serial.println("[FluidNC] ✓ First status report received - connection validated");
+    }
     
     // Track previous state for state change detection
     static MachineState previousState = STATE_DISCONNECTED;

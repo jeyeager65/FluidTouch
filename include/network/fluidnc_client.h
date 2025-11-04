@@ -145,6 +145,9 @@ private:
     static uint32_t lastGCodePollMs;      // Last time we sent "$G" for GCode state
     static uint32_t lastAutoReportAttemptMs; // Last time we tried to enable auto-reporting
     
+    // Connection tracking
+    static bool everConnectedSuccessfully; // True once first status report received, never reset
+    
     // WebSocket event handler
     static void onWebSocketEvent(WStype_t type, uint8_t* payload, size_t length);
     
