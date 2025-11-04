@@ -350,7 +350,7 @@ All other hardcoded values live in `include/config.h`:
 15. **Terminal callback**: Terminal updates can be enabled/disabled by commenting/uncommenting the `terminalCallback()` call in `fluidnc_client.cpp` WebSocket event handler
 16. **State popup buttons**: Resume and Clear Alarm buttons send commands but do NOT manually close popups - popups auto-close when FluidNC state actually changes, providing visual feedback that command was sent
 17. **Connection error handling**: Only show disconnect error dialogs if `everConnectedSuccessfully` flag is true - prevents false alarms during initial connection handshake when connection attempts are still in progress
-16. **State popup buttons**: Resume and Clear Alarm buttons send commands but do NOT manually close popups - popups auto-close when FluidNC state actually changes, providing visual feedback that command was sent
+18. **State popup buttons**: Resume and Clear Alarm buttons send commands but do NOT manually close popups - popups auto-close when FluidNC state actually changes, providing visual feedback that command was sent
 
 ## External Dependencies
 
