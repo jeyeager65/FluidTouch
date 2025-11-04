@@ -139,11 +139,11 @@ void UIMachineSelect::refreshMachineList() {
         int displayed_index = 0;
         for (int i = 0; i < MAX_MACHINES; i++) {
             if (machines[i].is_configured) {
-                int y_pos = (displayed_index * 73); // 70px button + 3px gap
+                int y_pos = (displayed_index * 65); // 60px button + 5px gap (matches macro list)
                 
-                // Machine button - narrower to accommodate control buttons (438px = 450 - 12)
+                // Machine button - 30px shorter to accommodate control buttons
                 machine_buttons[i] = lv_btn_create(list_container);
-                lv_obj_set_size(machine_buttons[i], 438, 70);  // Was 450, now 438 (-12px)
+                lv_obj_set_size(machine_buttons[i], 458, 60);  // Reduced from 488 to 458 (-30px)
                 lv_obj_set_pos(machine_buttons[i], 0, y_pos);
                 lv_obj_set_style_bg_color(machine_buttons[i], UITheme::ACCENT_PRIMARY, 0);
                 lv_obj_set_style_bg_color(machine_buttons[i], UITheme::ACCENT_SECONDARY, LV_STATE_PRESSED);
@@ -157,10 +157,10 @@ void UIMachineSelect::refreshMachineList() {
                 lv_obj_set_style_text_font(label, &lv_font_montserrat_22, 0);
                 lv_obj_align(label, LV_ALIGN_LEFT_MID, 10, 0);
                 
-                // Move Up button
+                // Move Up button (5px gap from machine button)
                 move_up_buttons[i] = lv_btn_create(list_container);
-                lv_obj_set_size(move_up_buttons[i], 60, 70);
-                lv_obj_set_pos(move_up_buttons[i], 443, y_pos);  // Was 455, now 443 (-12px)
+                lv_obj_set_size(move_up_buttons[i], 60, 60);  // Match macro list: 60×60
+                lv_obj_set_pos(move_up_buttons[i], 463, y_pos);  // 458 + 5px gap
                 lv_obj_set_style_bg_color(move_up_buttons[i], UITheme::BG_BUTTON, 0);
                 lv_obj_add_event_cb(move_up_buttons[i], onMoveUpMachine, LV_EVENT_CLICKED, (void*)(intptr_t)i);
                 
@@ -174,10 +174,10 @@ void UIMachineSelect::refreshMachineList() {
                 lv_obj_set_style_text_font(up_label, &lv_font_montserrat_22, 0);
                 lv_obj_center(up_label);
                 
-                // Move Down button
+                // Move Down button (5px gap from up button)
                 move_down_buttons[i] = lv_btn_create(list_container);
-                lv_obj_set_size(move_down_buttons[i], 60, 70);
-                lv_obj_set_pos(move_down_buttons[i], 508, y_pos);  // Was 520, now 508 (-12px)
+                lv_obj_set_size(move_down_buttons[i], 60, 60);  // Match macro list: 60×60
+                lv_obj_set_pos(move_down_buttons[i], 528, y_pos);  // 463 + 60 + 5px gap
                 lv_obj_set_style_bg_color(move_down_buttons[i], UITheme::BG_BUTTON, 0);
                 lv_obj_add_event_cb(move_down_buttons[i], onMoveDownMachine, LV_EVENT_CLICKED, (void*)(intptr_t)i);
                 
@@ -191,10 +191,10 @@ void UIMachineSelect::refreshMachineList() {
                 lv_obj_set_style_text_font(down_label, &lv_font_montserrat_22, 0);
                 lv_obj_center(down_label);
                 
-                // Edit button
+                // Edit button (5px gap from down button)
                 edit_buttons[i] = lv_btn_create(list_container);
-                lv_obj_set_size(edit_buttons[i], 70, 70);
-                lv_obj_set_pos(edit_buttons[i], 573, y_pos);  // Was 585, now 573 (-12px)
+                lv_obj_set_size(edit_buttons[i], 60, 60);  // Match macro list: 60×60
+                lv_obj_set_pos(edit_buttons[i], 593, y_pos);  // 528 + 60 + 5px gap
                 lv_obj_set_style_bg_color(edit_buttons[i], UITheme::ACCENT_SECONDARY, 0);
                 lv_obj_add_event_cb(edit_buttons[i], onEditMachine, LV_EVENT_CLICKED, (void*)(intptr_t)i);
                 
@@ -203,10 +203,10 @@ void UIMachineSelect::refreshMachineList() {
                 lv_obj_set_style_text_font(edit_label, &lv_font_montserrat_22, 0);
                 lv_obj_center(edit_label);
                 
-                // Delete button
+                // Delete button (5px gap from edit button)
                 delete_buttons[i] = lv_btn_create(list_container);
-                lv_obj_set_size(delete_buttons[i], 70, 70);
-                lv_obj_set_pos(delete_buttons[i], 648, y_pos);  // Was 660, now 648 (-12px)
+                lv_obj_set_size(delete_buttons[i], 60, 60);  // Match macro list: 60×60
+                lv_obj_set_pos(delete_buttons[i], 658, y_pos);  // 593 + 60 + 5px gap
                 lv_obj_set_style_bg_color(delete_buttons[i], UITheme::STATE_ALARM, 0);
                 lv_obj_add_event_cb(delete_buttons[i], onDeleteMachine, LV_EVENT_CLICKED, (void*)(intptr_t)i);
                 
@@ -510,119 +510,77 @@ void UIMachineSelect::showConfigDialog(int index) {
     lv_obj_set_style_bg_color(dialog_content, UITheme::BG_MEDIUM, 0);
     lv_obj_set_style_border_color(dialog_content, UITheme::BORDER_MEDIUM, 0);
     lv_obj_set_style_border_width(dialog_content, 2, 0);
-    lv_obj_set_flex_flow(dialog_content, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_flex_align(dialog_content, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+    lv_obj_set_layout(dialog_content, LV_LAYOUT_NONE);  // Use absolute positioning instead of flex
     lv_obj_set_style_pad_all(dialog_content, 20, 0);
-    lv_obj_set_style_pad_gap(dialog_content, 10, 0);
+    lv_obj_clear_flag(dialog_content, LV_OBJ_FLAG_SCROLLABLE);  // Disable scrolling
     
-    // Optimize scroll performance - disable animations for smoother scrolling
-    lv_obj_set_style_anim_time(dialog_content, 0, LV_PART_SCROLLBAR);
-    lv_obj_set_scroll_snap_y(dialog_content, LV_SCROLL_SNAP_NONE);
-    
-    // Title
+    // Title (uppercase, gray like settings section titles)
     lv_obj_t *dlg_title = lv_label_create(dialog_content);
-    lv_label_set_text(dlg_title, is_new ? "Add Machine" : "Edit Machine");
-    lv_obj_set_style_text_font(dlg_title, &lv_font_montserrat_20, 0);
-    lv_obj_set_width(dlg_title, LV_PCT(100));
+    lv_label_set_text(dlg_title, is_new ? "ADD MACHINE" : "EDIT MACHINE");
+    lv_obj_set_style_text_font(dlg_title, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(dlg_title, UITheme::TEXT_DISABLED, 0);  // Gray color
+    lv_obj_set_pos(dlg_title, 0, 0);
+    lv_obj_set_width(dlg_title, 740);  // 780 - 40px padding
+    
+    // Main 2-column container for fields
+    lv_obj_t *fields_container = lv_obj_create(dialog_content);
+    lv_obj_set_size(fields_container, 740, LV_SIZE_CONTENT);  // 780 - 40px padding
+    lv_obj_set_pos(fields_container, 0, 35);  // Below title
+    lv_obj_set_flex_flow(fields_container, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(fields_container, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+    lv_obj_set_style_pad_all(fields_container, 0, 0);
+    lv_obj_set_style_border_width(fields_container, 0, 0);
+    lv_obj_set_style_bg_opa(fields_container, LV_OPA_TRANSP, 0);
+    
+    // LEFT COLUMN (2/3 width): Name, WiFi SSID, FluidNC URL
+    lv_obj_t *left_col = lv_obj_create(fields_container);
+    lv_obj_set_size(left_col, LV_PCT(64), LV_SIZE_CONTENT);
+    lv_obj_set_flex_flow(left_col, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(left_col, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+    lv_obj_set_style_pad_all(left_col, 0, 0);
+    lv_obj_set_style_pad_gap(left_col, 10, 0);
+    lv_obj_set_style_border_width(left_col, 0, 0);
+    lv_obj_set_style_bg_opa(left_col, LV_OPA_TRANSP, 0);
     
     // Name field
-    lv_obj_t *lbl_name = lv_label_create(dialog_content);
+    lv_obj_t *lbl_name = lv_label_create(left_col);
     lv_label_set_text(lbl_name, "Name:");
+    lv_obj_set_style_text_font(lbl_name, &lv_font_montserrat_18, 0);
     
-    ta_name = lv_textarea_create(dialog_content);
+    ta_name = lv_textarea_create(left_col);
     lv_obj_set_width(ta_name, LV_PCT(100));
     lv_obj_set_height(ta_name, 40);
     lv_textarea_set_one_line(ta_name, true);
     lv_textarea_set_max_length(ta_name, 31);
+    lv_obj_set_style_text_font(ta_name, &lv_font_montserrat_18, 0);
     if (!is_new) lv_textarea_set_text(ta_name, machines[index].name);
     lv_obj_add_event_cb(ta_name, onTextareaFocused, LV_EVENT_FOCUSED, nullptr);
     
-    // Connection Type
-    lv_obj_t *lbl_type = lv_label_create(dialog_content);
-    lv_label_set_text(lbl_type, "Connection:");
-    
-    dd_connection_type = lv_dropdown_create(dialog_content);
-    lv_obj_set_width(dd_connection_type, 200);
-    lv_obj_set_height(dd_connection_type, 40);
-    lv_dropdown_set_options(dd_connection_type, "Wireless");  // Wired option hidden for now, reserved for future
-    if (!is_new) lv_dropdown_set_selected(dd_connection_type, machines[index].connection_type);
-    lv_obj_add_event_cb(dd_connection_type, onConnectionTypeChanged, LV_EVENT_VALUE_CHANGED, nullptr);
-    
-    // Wireless credentials container (horizontal layout for SSID and Password)
-    lv_obj_t *wifi_container = lv_obj_create(dialog_content);
-    lv_obj_set_width(wifi_container, LV_PCT(100));
-    lv_obj_set_height(wifi_container, LV_SIZE_CONTENT);
-    lv_obj_set_flex_flow(wifi_container, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(wifi_container, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
-    lv_obj_set_style_pad_all(wifi_container, 0, 0);
-    lv_obj_set_style_border_width(wifi_container, 0, 0);
-    lv_obj_set_style_bg_opa(wifi_container, LV_OPA_TRANSP, 0);
-    
-    // SSID column
-    lv_obj_t *ssid_col = lv_obj_create(wifi_container);
-    lv_obj_set_size(ssid_col, LV_PCT(48), LV_SIZE_CONTENT);
-    lv_obj_set_flex_flow(ssid_col, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_style_pad_all(ssid_col, 0, 0);
-    lv_obj_set_style_border_width(ssid_col, 0, 0);
-    lv_obj_set_style_bg_opa(ssid_col, LV_OPA_TRANSP, 0);
-    
-    lv_obj_t *lbl_ssid = lv_label_create(ssid_col);
+    // WiFi SSID field
+    lv_obj_t *lbl_ssid = lv_label_create(left_col);
     lv_label_set_text(lbl_ssid, "WiFi SSID:");
+    lv_obj_set_style_text_font(lbl_ssid, &lv_font_montserrat_18, 0);
     
-    ta_ssid = lv_textarea_create(ssid_col);
+    ta_ssid = lv_textarea_create(left_col);
     lv_obj_set_width(ta_ssid, LV_PCT(100));
     lv_obj_set_height(ta_ssid, 40);
     lv_textarea_set_one_line(ta_ssid, true);
     lv_textarea_set_max_length(ta_ssid, 32);
+    lv_obj_set_style_text_font(ta_ssid, &lv_font_montserrat_18, 0);
     if (!is_new) lv_textarea_set_text(ta_ssid, machines[index].ssid);
     lv_obj_add_event_cb(ta_ssid, onTextareaFocused, LV_EVENT_FOCUSED, nullptr);
     
-    // Password column
-    lv_obj_t *pwd_col = lv_obj_create(wifi_container);
-    lv_obj_set_size(pwd_col, LV_PCT(48), LV_SIZE_CONTENT);
-    lv_obj_set_flex_flow(pwd_col, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_style_pad_all(pwd_col, 0, 0);
-    lv_obj_set_style_border_width(pwd_col, 0, 0);
-    lv_obj_set_style_bg_opa(pwd_col, LV_OPA_TRANSP, 0);
-    
-    lv_obj_t *lbl_pwd = lv_label_create(pwd_col);
-    lv_label_set_text(lbl_pwd, "Password:");
-    
-    ta_password = lv_textarea_create(pwd_col);
-    lv_obj_set_width(ta_password, LV_PCT(100));
-    lv_obj_set_height(ta_password, 40);
-    lv_textarea_set_one_line(ta_password, true);
-    lv_textarea_set_max_length(ta_password, 63);
-    lv_textarea_set_password_mode(ta_password, true);
-    if (!is_new) lv_textarea_set_text(ta_password, machines[index].password);
-    lv_obj_add_event_cb(ta_password, onTextareaFocused, LV_EVENT_FOCUSED, nullptr);
-    
-    // FluidNC connection container (horizontal layout for URL and Port)
-    lv_obj_t *fluidnc_container = lv_obj_create(dialog_content);
-    lv_obj_set_width(fluidnc_container, LV_PCT(100));
-    lv_obj_set_height(fluidnc_container, LV_SIZE_CONTENT);
-    lv_obj_set_flex_flow(fluidnc_container, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(fluidnc_container, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
-    lv_obj_set_style_pad_all(fluidnc_container, 0, 0);
-    lv_obj_set_style_border_width(fluidnc_container, 0, 0);
-    lv_obj_set_style_bg_opa(fluidnc_container, LV_OPA_TRANSP, 0);
-    
-    // URL column
-    lv_obj_t *url_col = lv_obj_create(fluidnc_container);
-    lv_obj_set_size(url_col, LV_PCT(65), LV_SIZE_CONTENT);
-    lv_obj_set_flex_flow(url_col, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_style_pad_all(url_col, 0, 0);
-    lv_obj_set_style_border_width(url_col, 0, 0);
-    lv_obj_set_style_bg_opa(url_col, LV_OPA_TRANSP, 0);
-    
-    lv_obj_t *lbl_url = lv_label_create(url_col);
+    // FluidNC URL field
+    lv_obj_t *lbl_url = lv_label_create(left_col);
     lv_label_set_text(lbl_url, "FluidNC URL:");
+    lv_obj_set_style_text_font(lbl_url, &lv_font_montserrat_18, 0);
     
-    ta_url = lv_textarea_create(url_col);
+    ta_url = lv_textarea_create(left_col);
     lv_obj_set_width(ta_url, LV_PCT(100));
     lv_obj_set_height(ta_url, 40);
     lv_textarea_set_one_line(ta_url, true);
     lv_textarea_set_max_length(ta_url, 127);
+    lv_obj_set_style_text_font(ta_url, &lv_font_montserrat_18, 0);
     if (!is_new) {
         lv_textarea_set_text(ta_url, machines[index].fluidnc_url);
     } else {
@@ -630,23 +588,57 @@ void UIMachineSelect::showConfigDialog(int index) {
     }
     lv_obj_add_event_cb(ta_url, onTextareaFocused, LV_EVENT_FOCUSED, nullptr);
     
-    // Port column
-    lv_obj_t *port_col = lv_obj_create(fluidnc_container);
-    lv_obj_set_size(port_col, LV_PCT(30), LV_SIZE_CONTENT);
-    lv_obj_set_flex_flow(port_col, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_style_pad_all(port_col, 0, 0);
-    lv_obj_set_style_border_width(port_col, 0, 0);
-    lv_obj_set_style_bg_opa(port_col, LV_OPA_TRANSP, 0);
+    // RIGHT COLUMN (1/3 width): Connection, Password, Port
+    lv_obj_t *right_col = lv_obj_create(fields_container);
+    lv_obj_set_size(right_col, LV_PCT(33), LV_SIZE_CONTENT);
+    lv_obj_set_flex_flow(right_col, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(right_col, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+    lv_obj_set_style_pad_all(right_col, 0, 0);
+    lv_obj_set_style_pad_gap(right_col, 10, 0);
+    lv_obj_set_style_border_width(right_col, 0, 0);
+    lv_obj_set_style_bg_opa(right_col, LV_OPA_TRANSP, 0);
     
-    lv_obj_t *lbl_port = lv_label_create(port_col);
+    // Connection Type
+    lv_obj_t *lbl_type = lv_label_create(right_col);
+    lv_label_set_text(lbl_type, "Connection:");
+    lv_obj_set_style_text_font(lbl_type, &lv_font_montserrat_18, 0);
+    
+    dd_connection_type = lv_dropdown_create(right_col);
+    lv_obj_set_width(dd_connection_type, LV_PCT(100));
+    lv_obj_set_height(dd_connection_type, 48);
+    lv_obj_set_style_text_font(dd_connection_type, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_pad_top(dd_connection_type, 12, LV_PART_MAIN);  // Adjust top padding to vertically center text
+    lv_dropdown_set_options(dd_connection_type, "Wireless");  // Wired option hidden for now, reserved for future
+    if (!is_new) lv_dropdown_set_selected(dd_connection_type, machines[index].connection_type);
+    lv_obj_add_event_cb(dd_connection_type, onConnectionTypeChanged, LV_EVENT_VALUE_CHANGED, nullptr);
+    
+    // Password field
+    lv_obj_t *lbl_pwd = lv_label_create(right_col);
+    lv_label_set_text(lbl_pwd, "Password:");
+    lv_obj_set_style_text_font(lbl_pwd, &lv_font_montserrat_18, 0);
+    
+    ta_password = lv_textarea_create(right_col);
+    lv_obj_set_width(ta_password, LV_PCT(100));
+    lv_obj_set_height(ta_password, 40);
+    lv_textarea_set_one_line(ta_password, true);
+    lv_textarea_set_max_length(ta_password, 63);
+    lv_textarea_set_password_mode(ta_password, true);
+    lv_obj_set_style_text_font(ta_password, &lv_font_montserrat_18, 0);
+    if (!is_new) lv_textarea_set_text(ta_password, machines[index].password);
+    lv_obj_add_event_cb(ta_password, onTextareaFocused, LV_EVENT_FOCUSED, nullptr);
+    
+    // Port field
+    lv_obj_t *lbl_port = lv_label_create(right_col);
     lv_label_set_text(lbl_port, "Port:");
+    lv_obj_set_style_text_font(lbl_port, &lv_font_montserrat_18, 0);
     
-    ta_port = lv_textarea_create(port_col);
+    ta_port = lv_textarea_create(right_col);
     lv_obj_set_width(ta_port, LV_PCT(100));
     lv_obj_set_height(ta_port, 40);
     lv_textarea_set_one_line(ta_port, true);
     lv_textarea_set_max_length(ta_port, 5);
     lv_textarea_set_accepted_chars(ta_port, "0123456789");
+    lv_obj_set_style_text_font(ta_port, &lv_font_montserrat_18, 0);
     if (!is_new) {
         char port_str[6];
         snprintf(port_str, sizeof(port_str), "%d", machines[index].websocket_port);
@@ -656,10 +648,10 @@ void UIMachineSelect::showConfigDialog(int index) {
     }
     lv_obj_add_event_cb(ta_port, onTextareaFocused, LV_EVENT_FOCUSED, nullptr);
     
-    // Button container
+    // Button container at bottom with absolute positioning
     lv_obj_t *btn_container = lv_obj_create(dialog_content);
-    lv_obj_set_width(btn_container, LV_PCT(100));
-    lv_obj_set_height(btn_container, LV_SIZE_CONTENT);
+    lv_obj_set_size(btn_container, 740, 50);  // 780 - 40px padding
+    lv_obj_set_pos(btn_container, 0, 370);  // 460 - 20 padding - 50 height - 20 gap = 370
     lv_obj_set_flex_flow(btn_container, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(btn_container, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
     lv_obj_set_style_pad_all(btn_container, 0, 0);
