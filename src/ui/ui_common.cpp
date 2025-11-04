@@ -310,50 +310,54 @@ void UICommon::createStatusBar() {
     lv_label_set_text(lbl_wpos_label, "WPos:");
     lv_obj_set_style_text_font(lbl_wpos_label, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_wpos_label, UITheme::POS_WORK, 0);  // Orange - primary data
-    lv_obj_align(lbl_wpos_label, LV_ALIGN_TOP_MID, -198, 3);  // -210 + 2 + 10 = -198
+    lv_obj_set_style_text_align(lbl_wpos_label, LV_TEXT_ALIGN_RIGHT, 0);
+    lv_obj_set_width(lbl_wpos_label, 60);  // Fixed width for right alignment
+    lv_obj_set_pos(lbl_wpos_label, 200, 3);  // Top line
 
     lbl_wpos_x = lv_label_create(status_bar);
-    lv_label_set_text(lbl_wpos_x, "X:----.---");
+    lv_label_set_text(lbl_wpos_x, "X ----.---");
     lv_obj_set_style_text_font(lbl_wpos_x, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_wpos_x, UITheme::AXIS_X, 0);
-    lv_obj_align(lbl_wpos_x, LV_ALIGN_TOP_MID, -110, 3);  // -120 + 10 = -110
+    lv_obj_set_pos(lbl_wpos_x, 270, 3);
 
     lbl_wpos_y = lv_label_create(status_bar);
-    lv_label_set_text(lbl_wpos_y, "Y:----.---");
+    lv_label_set_text(lbl_wpos_y, "Y ----.---");
     lv_obj_set_style_text_font(lbl_wpos_y, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_wpos_y, UITheme::AXIS_Y, 0);
-    lv_obj_align(lbl_wpos_y, LV_ALIGN_TOP_MID, 0, 3);  // -10 + 10 = 0
+    lv_obj_set_pos(lbl_wpos_y, 380, 3);
 
     lbl_wpos_z = lv_label_create(status_bar);
-    lv_label_set_text(lbl_wpos_z, "Z:----.---");
+    lv_label_set_text(lbl_wpos_z, "Z ----.---");
     lv_obj_set_style_text_font(lbl_wpos_z, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_wpos_z, UITheme::AXIS_Z, 0);
-    lv_obj_align(lbl_wpos_z, LV_ALIGN_TOP_MID, 110, 3);  // 100 + 10 = 110
+    lv_obj_set_pos(lbl_wpos_z, 490, 3);
 
     // Machine Position - Line 2
     lbl_mpos_label = lv_label_create(status_bar);
     lv_label_set_text(lbl_mpos_label, "MPos:");
     lv_obj_set_style_text_font(lbl_mpos_label, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_mpos_label, UITheme::POS_MACHINE, 0);  // Cyan - secondary data
-    lv_obj_align(lbl_mpos_label, LV_ALIGN_BOTTOM_MID, -198, -3);  // -210 + 2 + 10 = -198
+    lv_obj_set_style_text_align(lbl_mpos_label, LV_TEXT_ALIGN_RIGHT, 0);
+    lv_obj_set_width(lbl_mpos_label, 60);  // Fixed width for right alignment
+    lv_obj_set_pos(lbl_mpos_label, 200, 27);  // Bottom line, aligned with WiFi name
 
     lbl_mpos_x = lv_label_create(status_bar);
-    lv_label_set_text(lbl_mpos_x, "X:----.---");
+    lv_label_set_text(lbl_mpos_x, "X ----.---");
     lv_obj_set_style_text_font(lbl_mpos_x, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_mpos_x, UITheme::AXIS_X, 0);
-    lv_obj_align(lbl_mpos_x, LV_ALIGN_BOTTOM_MID, -110, -3);  // -120 + 10 = -110
+    lv_obj_set_pos(lbl_mpos_x, 270, 27);
 
     lbl_mpos_y = lv_label_create(status_bar);
-    lv_label_set_text(lbl_mpos_y, "Y:----.---");
+    lv_label_set_text(lbl_mpos_y, "Y ----.---");
     lv_obj_set_style_text_font(lbl_mpos_y, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_mpos_y, UITheme::AXIS_Y, 0);
-    lv_obj_align(lbl_mpos_y, LV_ALIGN_BOTTOM_MID, 0, -3);  // -10 + 10 = 0
+    lv_obj_set_pos(lbl_mpos_y, 380, 27);
 
     lbl_mpos_z = lv_label_create(status_bar);
-    lv_label_set_text(lbl_mpos_z, "Z:----.---");
+    lv_label_set_text(lbl_mpos_z, "Z ----.---");
     lv_obj_set_style_text_font(lbl_mpos_z, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_mpos_z, UITheme::AXIS_Z, 0);
-    lv_obj_align(lbl_mpos_z, LV_ALIGN_BOTTOM_MID, 110, -3);  // 100 + 10 = 110
+    lv_obj_set_pos(lbl_mpos_z, 490, 27);
 
     // Right side Line 1: Machine name with symbol
     // Get selected machine from config manager
@@ -432,27 +436,27 @@ void UICommon::updateMachinePosition(float x, float y, float z) {
     
     if (status_bar && lbl_mpos_x && x != last_mpos_x) {
         if (x <= -9999.0f) {
-            lv_label_set_text(lbl_mpos_x, "X:----.---");
+            lv_label_set_text(lbl_mpos_x, "X ----.---");
         } else {
-            snprintf(buf, sizeof(buf), "X:%04.3f", x);
+            snprintf(buf, sizeof(buf), "X %04.3f", x);
             lv_label_set_text(lbl_mpos_x, buf);
         }
         last_mpos_x = x;
     }
     if (status_bar && lbl_mpos_y && y != last_mpos_y) {
         if (y <= -9999.0f) {
-            lv_label_set_text(lbl_mpos_y, "Y:----.---");
+            lv_label_set_text(lbl_mpos_y, "Y ----.---");
         } else {
-            snprintf(buf, sizeof(buf), "Y:%04.3f", y);
+            snprintf(buf, sizeof(buf), "Y %04.3f", y);
             lv_label_set_text(lbl_mpos_y, buf);
         }
         last_mpos_y = y;
     }
     if (status_bar && lbl_mpos_z && z != last_mpos_z) {
         if (z <= -9999.0f) {
-            lv_label_set_text(lbl_mpos_z, "Z:----.---");
+            lv_label_set_text(lbl_mpos_z, "Z ----.---");
         } else {
-            snprintf(buf, sizeof(buf), "Z:%04.3f", z);
+            snprintf(buf, sizeof(buf), "Z %04.3f", z);
             lv_label_set_text(lbl_mpos_z, buf);
         }
         last_mpos_z = z;
@@ -469,27 +473,27 @@ void UICommon::updateWorkPosition(float x, float y, float z) {
     
     if (status_bar && lbl_wpos_x && x != last_wpos_x) {
         if (x <= -9999.0f) {
-            lv_label_set_text(lbl_wpos_x, "X:----.---");
+            lv_label_set_text(lbl_wpos_x, "X ----.---");
         } else {
-            snprintf(buf, sizeof(buf), "X:%04.3f", x);
+            snprintf(buf, sizeof(buf), "X %04.3f", x);
             lv_label_set_text(lbl_wpos_x, buf);
         }
         last_wpos_x = x;
     }
     if (status_bar && lbl_wpos_y && y != last_wpos_y) {
         if (y <= -9999.0f) {
-            lv_label_set_text(lbl_wpos_y, "Y:----.---");
+            lv_label_set_text(lbl_wpos_y, "Y ----.---");
         } else {
-            snprintf(buf, sizeof(buf), "Y:%04.3f", y);
+            snprintf(buf, sizeof(buf), "Y %04.3f", y);
             lv_label_set_text(lbl_wpos_y, buf);
         }
         last_wpos_y = y;
     }
     if (status_bar && lbl_wpos_z && z != last_wpos_z) {
         if (z <= -9999.0f) {
-            lv_label_set_text(lbl_wpos_z, "Z:----.---");
+            lv_label_set_text(lbl_wpos_z, "Z ----.---");
         } else {
-            snprintf(buf, sizeof(buf), "Z:%04.3f", z);
+            snprintf(buf, sizeof(buf), "Z %04.3f", z);
             lv_label_set_text(lbl_wpos_z, buf);
         }
         last_wpos_z = z;
