@@ -651,81 +651,15 @@
             }
         });
 
-        // Progress simulation for demonstration
-        const installButton = document.getElementById('install-button');
-        if (installButton) {
-            // Progress tracking (simulated - ESP Web Tools doesn't expose detailed progress)
-            let progressInterval;
-            installButton.addEventListener('click', () => {
-                setTimeout(() => {
-                    const progressContainer = document.getElementById('progress-container');
-                    if (progressContainer) {
-                        progressContainer.classList.add('active');
-                        simulateProgress();
-                    }
-                }, 1000);
-            });
-        }
-
-        function simulateProgress() {
-            let progress = 0;
-            const steps = ['step-connect', 'step-erase', 'step-write', 'step-verify'];
-            let currentStep = 0;
-            
-            const interval = setInterval(() => {
-                progress += Math.random() * 5;
-                if (progress > 100) progress = 100;
-                
-                updateProgress(progress);
-                
-                // Update step icons
-                const stepProgress = progress / 25; // 4 steps
-                if (stepProgress > currentStep && currentStep < steps.length) {
-                    const prevStep = steps[currentStep];
-                    document.querySelector(`#${prevStep} .progress-icon`).classList.remove('active');
-                    document.querySelector(`#${prevStep} .progress-icon`).classList.add('complete');
-                    document.querySelector(`#${prevStep} .progress-icon`).textContent = '✓';
-                    
-                    currentStep++;
-                    if (currentStep < steps.length) {
-                        document.querySelector(`#${steps[currentStep]} .progress-icon`).classList.add('active');
-                    }
-                }
-                
-                if (progress >= 100) {
-                    clearInterval(interval);
-                }
-            }, 200);
-        }
-
         // ESP Web Tools event monitoring
         document.querySelector('esp-web-install-button').addEventListener('state-changed', (ev) => {
             const state = ev.detail;
-            const statusDot = document.getElementById('connection-status');
-            const statusText = document.getElementById('status-text');
             const progressContainer = document.getElementById('progress-container');
 
             if (state === 'CONNECTED') {
-                statusDot.className = 'status-dot connected';
-                statusText.textContent = 'Device connected';
                 progressContainer.style.display = 'block';
-                simulateProgress();
-            } else if (state === 'DISCONNECTED') {
-                statusDot.className = 'status-dot disconnected';
-                statusText.textContent = 'Device disconnected';
-            } else if (state === 'ERROR') {
-                statusDot.className = 'status-dot disconnected';
-                statusText.textContent = 'Connection error';
             }
         });
-
-        function updateProgress(percent) {
-            const fill = document.getElementById('progress-bar-fill');
-            const text = document.getElementById('progress-percent');
-            
-            fill.style.width = percent + '%';
-            text.textContent = Math.round(percent) + '%';
-        }
     </script>
     </div> <!-- .page-wrapper -->
 </body>
