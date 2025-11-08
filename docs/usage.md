@@ -180,15 +180,6 @@ Before first use, home your machine:
 - If using probe plate, enter thickness in **Probe Thickness**
 - FluidTouch automatically accounts for thickness in result
 
-### Probe Safety
-
-⚠️ **Important Safety Notes:**
-- Always test probe connection before use
-- Start with conservative Max Distance
-- Ensure probe is properly grounded
-- Never probe faster than recommended
-- Use retract distance to clear chips
-
 ---
 
 ## Running Jobs
@@ -204,7 +195,7 @@ Before first use, home your machine:
 
 ### Starting a Job
 
-1. In FluidNC WebUI, start the G-code file
+1. On the Files tab, start the G-code file
 2. FluidTouch Status tab shows:
    - File name
    - Progress bar (0-100%)
@@ -215,15 +206,13 @@ Before first use, home your machine:
 ### During a Job
 
 **Feed Hold (Pause):**
-- Press FluidNC feed hold button or send `!` command
+- Press Pause button (Control → Actions)
 - FluidTouch shows HOLD popup
 - Tap **Resume** to continue
 
-**Emergency Stop:**
-- Press FluidNC reset or panic button
-- Or send Ctrl+X via Terminal
-- Machine enters ALARM state
-- Clear alarm and restart job from beginning
+**Stop:**
+- Press Stop button (Control → Actions)
+- Not to be used as an Emergency stop
 
 ### Job Monitoring
 
@@ -244,13 +233,6 @@ Status tab displays:
 - SSID and password are correct (case-sensitive)
 - WiFi network is 2.4GHz (ESP32 doesn't support 5GHz)
 - Router is in range and operational
-- No special characters in password causing issues
-
-**Try:**
-- Restart FluidTouch device
-- Forget and re-add WiFi credentials
-- Check router logs for connection attempts
-- Use static IP instead of DHCP if available
 
 ### Can't Connect to FluidNC
 
@@ -259,101 +241,11 @@ Status tab displays:
 - IP address/hostname is correct
 - Port is correct (default: 81)
 - Both devices on same WiFi network
-- Firewall not blocking WebSocket connections
 
 **Try:**
-- Ping FluidNC IP from computer
 - Access FluidNC WebUI from browser
 - Check FluidNC YAML configuration for WebSocket port
 - Restart both FluidTouch and FluidNC
-
-### Machine Won't Move
-
-**Check:**
-- Machine state is IDLE (not ALARM or HOLD)
-- Limits switches not triggered
-- Stepper drivers enabled
-- FluidNC configuration correct
-- Emergency stop not engaged
-
-**Try:**
-- Clear any alarms (Control → Actions → Unlock)
-- Home machine if required
-- Check FluidNC terminal for error messages
-- Verify motor cables and connections
-
-### Touch Screen Not Responding
-
-**Check:**
-- Touch controller properly initialized (check serial log)
-- No physical damage to screen
-- Firmware uploaded successfully
-
-**Try:**
-- Restart device
-- Re-upload firmware
-- Check for loose ribbon cable connections
-- Test with screenshot server to verify display works
-
-### Position Values Wrong
-
-**Check:**
-- Machine has been homed (required for machine coordinates)
-- Work coordinate system set correctly (G54-G59)
-- No lost steps (check mechanical issues)
-- FluidNC steps/mm configured correctly
-
-**Try:**
-- Home machine (Control → Actions → Home All)
-- Zero work coordinates at known position
-- Check FluidNC YAML for axis configuration
-- Verify mechanical backlash/binding
-
-### Screenshot Server Not Working
-
-**Check:**
-- WiFi is connected
-- IP address shown in About tab
-- Port 80 not blocked by firewall
-- Browser can access FluidTouch IP
-
-**Try:**
-- Visit http://[FluidTouch-IP]/screenshot
-- Scan QR code in Settings → About
-- Check router DHCP assignment
-- Restart WiFi connection
-
----
-
-## Advanced Tips
-
-### Multi-Machine Workflow
-
-Save different machine profiles for:
-- Different physical machines (router, laser, mill)
-- Different FluidNC configurations
-- Testing vs. production setups
-- Multiple locations/shops
-
-### Settings Optimization
-
-**Jog Settings:**
-- Set max feed rates based on machine capabilities
-- Lower rates for heavy/delicate materials
-- Higher rates for rapid positioning
-
-**Probe Settings:**
-- Save common probe setups
-- Adjust feed rate for material hardness
-- Use generous max distance for first contact
-
-### Position Monitoring
-
-Watch for:
-- Unexpected position changes (lost steps)
-- Work vs. machine coordinate differences
-- Override percentages affecting feed/speed
-- Modal state changes during operations
 
 ---
 

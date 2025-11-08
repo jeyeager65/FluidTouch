@@ -67,10 +67,10 @@ static bool ever_connected_successfully = false;  // Track if we've connected at
 static void status_bar_left_click_handler(lv_event_t *e) {
     lv_event_code_t code = lv_event_get_code(e);
     if (code == LV_EVENT_CLICKED) {
-        // Switch to Status tab (index 0)
+        // Switch to Status tab (index 0) without animation
         lv_obj_t *tabview = UITabs::getTabview();
         if (tabview) {
-            lv_tabview_set_active(tabview, 0, LV_ANIM_ON);
+            lv_tabview_set_active(tabview, 0, LV_ANIM_OFF);
         }
     }
 }

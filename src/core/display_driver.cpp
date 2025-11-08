@@ -1,5 +1,6 @@
 #include "core/display_driver.h"
 #include <esp_heap_caps.h>
+#include <Wire.h>
 
 // LovyanGFX constructor
 LGFX::LGFX(void) {
@@ -7,6 +8,48 @@ LGFX::LGFX(void) {
         auto cfg = _bus_instance.config();
         cfg.panel = &_panel_instance;
         
+#ifdef HARDWARE_ADVANCE
+        // Advance: IPS LCD (800x480) - Per Elecrow official example
+        cfg.pin_d0  = GPIO_NUM_21; // B0
+        cfg.pin_d1  = GPIO_NUM_47; // B1
+        cfg.pin_d2  = GPIO_NUM_48; // B2
+        cfg.pin_d3  = GPIO_NUM_45; // B3
+        cfg.pin_d4  = GPIO_NUM_38; // B4
+        
+        cfg.pin_d5  = GPIO_NUM_9;  // G0
+        cfg.pin_d6  = GPIO_NUM_10; // G1
+        cfg.pin_d7  = GPIO_NUM_11; // G2
+        cfg.pin_d8  = GPIO_NUM_12; // G3
+        cfg.pin_d9  = GPIO_NUM_13; // G4
+        cfg.pin_d10 = GPIO_NUM_14; // G5
+        
+        cfg.pin_d11 = GPIO_NUM_7;  // R0
+        cfg.pin_d12 = GPIO_NUM_17; // R1
+        cfg.pin_d13 = GPIO_NUM_18; // R2
+        cfg.pin_d14 = GPIO_NUM_3;  // R3
+        cfg.pin_d15 = GPIO_NUM_46; // R4
+
+        cfg.pin_henable = GPIO_NUM_42;
+        cfg.pin_vsync   = GPIO_NUM_41;
+        cfg.pin_hsync   = GPIO_NUM_40;
+        cfg.pin_pclk    = GPIO_NUM_39;
+        cfg.freq_write  = 14000000;  // 14MHz - best stability
+
+        cfg.hsync_polarity    = 1;  // Different from Basic!
+        cfg.hsync_front_porch = 8;
+        cfg.hsync_pulse_width = 4;
+        cfg.hsync_back_porch  = 8;
+        
+        cfg.vsync_polarity    = 1;  // Different from Basic!
+        cfg.vsync_front_porch = 8;
+        cfg.vsync_pulse_width = 4;
+        cfg.vsync_back_porch  = 8;
+
+        cfg.pclk_active_neg   = 0;  // Not explicitly set in example, using default
+        cfg.de_idle_high      = 0;
+        cfg.pclk_idle_high    = 1;  // Set to 1 per Elecrow example
+#else
+        // Basic: TN LCD (800x480)
         cfg.pin_d0  = GPIO_NUM_15; // B0
         cfg.pin_d1  = GPIO_NUM_7;  // B1
         cfg.pin_d2  = GPIO_NUM_6;  // B2
@@ -30,7 +73,7 @@ LGFX::LGFX(void) {
         cfg.pin_vsync   = GPIO_NUM_40;
         cfg.pin_hsync   = GPIO_NUM_39;
         cfg.pin_pclk    = GPIO_NUM_0;
-        cfg.freq_write  = 10000000;  // 10MHz - optimal balance (no glitching, good performance)
+        cfg.freq_write  = 10000000;  // 10MHz
 
         cfg.hsync_polarity    = 0;
         cfg.hsync_front_porch = 40;
@@ -45,6 +88,7 @@ LGFX::LGFX(void) {
         cfg.pclk_active_neg   = 1;
         cfg.de_idle_high      = 0;
         cfg.pclk_idle_high    = 0;
+#endif
 
         _bus_instance.config(cfg);
     }
@@ -60,8 +104,50 @@ LGFX::LGFX(void) {
         _panel_instance.config(cfg);
     }
     
+#ifdef HARDWARE_ADVANCE
+    // Enable PSRAM usage for Advance hardware (per Elecrow example)
+    {
+        auto cfg = _panel_instance.config_detail();
+        cfg.use_psram = 1;
+        _panel_instance.config_detail(cfg);
+    }
+#endif
+    
     _panel_instance.setBus(&_bus_instance);
     setPanel(&_panel_instance);
+    
+    // Configure GT911 touch panel
+    {
+        auto cfg = _touch_instance.config();
+        cfg.x_min      = 0;
+        cfg.x_max      = 799;
+        cfg.y_min      = 0;
+        cfg.y_max      = 479;
+        cfg.pin_int    = -1;   // Not used
+        cfg.bus_shared = true;
+        cfg.offset_rotation = 0;
+
+#ifdef HARDWARE_ADVANCE
+        // Advance: Touch on different I2C pins
+        cfg.i2c_port   = 0;
+        cfg.i2c_addr   = 0x5D;
+        cfg.pin_sda    = TOUCH_SDA;  // GPIO 15
+        cfg.pin_scl    = TOUCH_SCL;  // GPIO 16
+        cfg.pin_rst    = -1;  // Reset handled by STC8H1K28 via I2C
+        cfg.freq       = 400000;
+#else
+        // Basic: Touch I2C configuration
+        cfg.i2c_port   = 0;
+        cfg.i2c_addr   = 0x5D;
+        cfg.pin_sda    = TOUCH_SDA;  // GPIO 19
+        cfg.pin_scl    = TOUCH_SCL;  // GPIO 20
+        cfg.pin_rst    = 38;  // GPIO 38 for reset
+        cfg.freq       = 400000;
+#endif
+
+        _touch_instance.config(cfg);
+        _panel_instance.setTouch(&_touch_instance);
+    }
 }
 
 // DisplayDriver constructor
@@ -70,12 +156,88 @@ DisplayDriver::DisplayDriver() : disp(nullptr), disp_draw_buf(nullptr), disp_dra
 
 // Initialize display
 bool DisplayDriver::init() {
-    // Initialize backlight first
+    // Initialize I2C bus first (shared by backlight and touch on Advance)
+    // Touch driver will call Wire.begin() again but that's safe if already initialized
+    
+    // Initialize backlight based on hardware variant
+#ifdef BACKLIGHT_PWM
+    // Basic: PWM backlight on GPIO2
     pinMode(2, OUTPUT);
     ledcSetup(1, 300, 8);
     ledcAttachPin(2, 1);
     ledcWrite(1, 255);
-    Serial.println("Backlight ON");
+    Serial.println("Backlight ON (PWM)");
+#elif defined(BACKLIGHT_I2C)
+    // Advance: I2C backlight controller (STC8H1K28 at address 0x30)
+    // No GPIO manipulation - backlight controlled purely via I2C
+    Serial.println("Initializing Advance hardware (I2C backlight control)...");
+    
+    // Initialize I2C for STC8H1K28 communication
+    Wire.begin(TOUCH_SDA, TOUCH_SCL);
+    Wire.setClock(100000);  // 100kHz for compatibility
+    Wire.setTimeOut(100);   // Prevent hangs
+    delay(50);  // Give I2C time to stabilize
+    
+    // Wake STC8H1K28 microcontroller (per Elecrow example)
+    Serial.println("Waking STC8H1K28 microcontroller...");
+    Wire.beginTransmission(0x30);
+    Wire.write(0x19);  // Wake command
+    uint8_t wakeError = Wire.endTransmission();
+    Serial.printf("  Wake result: %d\n", wakeError);
+    delay(10);
+    
+    // STC8H1K28 handles GT911 reset internally - no GPIO manipulation needed
+    // Just send configuration commands
+    Serial.println("Configuring STC8H1K28 for GT911 reset...");
+    
+    // Send reset command sequence to STC8H1K28
+    Wire.beginTransmission(0x30);
+    Wire.write(0x10);  // Config command 1
+    Wire.endTransmission();
+    delay(10);
+    
+    Wire.beginTransmission(0x30);
+    Wire.write(0x18);  // Config command 2  
+    Wire.endTransmission();
+    delay(100);  // Give GT911 time to initialize after STC8H1K28 reset
+    
+    // Scan I2C to confirm GT911 is present
+    Serial.println("Scanning I2C for GT911...");
+    int deviceCount = 0;
+    bool gt911_found = false;
+    for (uint8_t addr = 1; addr < 127; addr++) {
+        Wire.beginTransmission(addr);
+        if (Wire.endTransmission() == 0) {
+            Serial.printf("  Found device at 0x%02X\n", addr);
+            if (addr == 0x5D || addr == 0x14) gt911_found = true;
+            deviceCount++;
+        }
+        delay(1);
+    }
+    Serial.printf("Found %d I2C device(s), GT911: %s\n", deviceCount, gt911_found ? "YES" : "NO");
+    
+    // Turn on backlight via STC8H1K28
+    // The STC8H1K28 controls LCD backlight via P3.5 and brightness via P1.1
+    // All control is via I2C commands to address 0x30
+    Serial.println("Enabling backlight via STC8H1K28...");
+    
+    // Try sending brightness value (0 = brightest, 245 = off)
+    Wire.beginTransmission(0x30);
+    Wire.write(0x00);  // Maximum brightness
+    uint8_t blResult = Wire.endTransmission();
+    Serial.printf("  Brightness command result: %d\n", blResult);
+    delay(10);
+    
+    // Also try the "buzzer off" command in case backlight shares control
+    Wire.beginTransmission(0x30);
+    Wire.write(0xF7);  // 247 = buzzer off (per docs)
+    Wire.endTransmission();
+    delay(10);
+    
+    Serial.println("Backlight initialization complete");
+#else
+    #error "No backlight type defined! Use -DBACKLIGHT_PWM or -DBACKLIGHT_I2C"
+#endif
     
     // Initialize LovyanGFX
     lcd.init();

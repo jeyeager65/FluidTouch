@@ -39,36 +39,51 @@ jobs:
         python -m pip install --upgrade pip
         pip install platformio
         
-    - name: Build firmware
-      run: platformio run
+    - name: Build firmware (Basic)
+      run: platformio run --environment elecrow-crowpanel-7-basic
+      
+    - name: Build firmware (Advance)
+      run: platformio run --environment elecrow-crowpanel-7-advance
       
     - name: Prepare firmware files
       run: |
-        mkdir -p web/firmware
-        cp .pio/build/elecrow-crowpanel-7-basic/firmware.bin web/firmware/
-        cp .pio/build/elecrow-crowpanel-7-basic/bootloader.bin web/firmware/
-        cp .pio/build/elecrow-crowpanel-7-basic/partitions.bin web/firmware/
+        # Create directories for both hardware variants
+        mkdir -p web/firmware/basic
+        mkdir -p web/firmware/advance
         
-        # boot_app0.bin location varies, try common paths
+        # Copy Basic variant firmware
+        cp .pio/build/elecrow-crowpanel-7-basic/firmware.bin web/firmware/basic/
+        cp .pio/build/elecrow-crowpanel-7-basic/bootloader.bin web/firmware/basic/
+        cp .pio/build/elecrow-crowpanel-7-basic/partitions.bin web/firmware/basic/
+        
+        # Copy Advance variant firmware
+        cp .pio/build/elecrow-crowpanel-7-advance/firmware.bin web/firmware/advance/
+        cp .pio/build/elecrow-crowpanel-7-advance/bootloader.bin web/firmware/advance/
+        cp .pio/build/elecrow-crowpanel-7-advance/partitions.bin web/firmware/advance/
+        
+        # boot_app0.bin location varies, try common paths (same for both)
         if [ -f ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin ]; then
-          cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin web/firmware/
+          cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin web/firmware/basic/
+          cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin web/firmware/advance/
         fi
         
     - name: Extract version from tag
       id: version
       run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
       
-    - name: Update manifest.json with version
+    - name: Update manifest files with version
       run: |
-        sed -i 's/"version": ".*"/"version": "${{ steps.version.outputs.VERSION }}"/' web/manifest.json
+        sed -i 's/"version": ".*"/"version": "${{ steps.version.outputs.VERSION }}"/' web/manifest_basic.json
+        sed -i 's/"version": ".*"/"version": "${{ steps.version.outputs.VERSION }}"/' web/manifest_advance.json
         
     - name: Upload firmware artifacts
       uses: actions/upload-artifact@v4
       with:
         name: firmware-${{ steps.version.outputs.VERSION }}
         path: |
-          web/firmware/*.bin
-          web/manifest.json
+          web/firmware/**/*.bin
+          web/manifest_basic.json
+          web/manifest_advance.json
           web/index.html
           
     - name: Create Release
@@ -77,23 +92,27 @@ jobs:
       with:
         files: |
           .pio/build/elecrow-crowpanel-7-basic/firmware.bin
+          .pio/build/elecrow-crowpanel-7-advance/firmware.bin
         body: |
           ## FluidTouch ${{ steps.version.outputs.VERSION }}
           
           ### Web Installer
           Install directly from your browser: [FluidTouch Web Installer](https://jeyeager65.github.io/FluidTouch/)
           
+          Select your hardware variant during installation:
+          - **Basic**: Elecrow CrowPanel 7" Basic (4MB flash, PWM backlight)
+          - **Advance**: Elecrow CrowPanel 7" Advance (16MB flash, IPS display, I2C backlight)
+          
           ### Manual Installation
-          Download `firmware.bin` and flash using:
-          - [ESP Web Flasher](https://esp.huhn.me/)
-          - [ESPHome Flasher](https://github.com/esphome/esphome-flasher)
-          - esptool.py: `esptool.py --chip esp32s3 write_flash 0x10000 firmware.bin`
+          Download the appropriate `firmware.bin` for your hardware and flash using:
+          - [esptool.py](https://docs.espressif.com/projects/esptool/en/latest/esp32s3/index.html): `esptool.py --chip esp32s3 write_flash 0x10000 firmware.bin`
           
           ### Hardware Requirements
-          - Elecrow CrowPanel 7" Basic ESP32-S3 HMI Display
+          - Elecrow CrowPanel 7" ESP32-S3 HMI Display (Basic or Advance variant)
           - USB-C cable with data support
           
           ### Installation Notes
+          - **IMPORTANT**: Choose the correct firmware for your hardware variant
           - First-time installation will erase existing data
           - WiFi credentials will need to be reconfigured
           - Machine configurations stored in preferences
@@ -127,12 +146,16 @@ jobs:
         echo "=== Artifact structure ==="
         find artifacts -type f
         echo "=== Copying firmware files ==="
-        mkdir -p web/firmware
-        find artifacts -name "*.bin" -exec cp {} web/firmware/ \;
-        cp artifacts/firmware-*/web/manifest.json web/ 2>/dev/null || true
+        mkdir -p web/firmware/basic
+        mkdir -p web/firmware/advance
+        find artifacts -path "*/basic/*.bin" -exec cp {} web/firmware/basic/ \;
+        find artifacts -path "*/advance/*.bin" -exec cp {} web/firmware/advance/ \;
+        cp artifacts/firmware-*/web/manifest_basic.json web/ 2>/dev/null || true
+        cp artifacts/firmware-*/web/manifest_advance.json web/ 2>/dev/null || true
         cp artifacts/firmware-*/web/index.html web/ 2>/dev/null || true
         echo "=== Final web/firmware contents ==="
-        ls -la web/firmware/
+        ls -la web/firmware/basic/
+        ls -la web/firmware/advance/
         
     - name: Setup Pages
       uses: actions/configure-pages@v4

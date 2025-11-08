@@ -40,7 +40,7 @@ void setup()
     // Initialize Touch Driver
     Serial.println("Initializing touch driver...");
     static TouchDriver touchDriver;
-    if (!touchDriver.init()) {
+    if (!touchDriver.init(displayDriver.getLCD())) {
         Serial.println("ERROR: Failed to initialize touch!");
         while (1) delay(1000);
     }

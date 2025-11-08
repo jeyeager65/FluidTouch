@@ -146,11 +146,11 @@ private:
 **Constants:**
 ```cpp
 // config.h
-#define SCREEN_WIDTH 800       // SCREAMING_SNAKE_CASE
+#define SCREEN_WIDTH 800
 
 // ui_theme.h
 namespace UITheme {
-    static constexpr lv_color_t ACCENT_PRIMARY = ...;  // SCREAMING_SNAKE_CASE
+    static constexpr lv_color_t ACCENT_PRIMARY = ...;
 }
 ```
 
@@ -173,7 +173,7 @@ lv_obj_set_style_text_color(obj, lv_color_hex(0x00FF00), 0);  // ❌ Bad
 
 **Event Handling:**
 ```cpp
-// Use LV_EVENT_CLICKED for touch interactions (more forgiving)
+// Use LV_EVENT_CLICKED for touch interactions
 lv_obj_add_event_cb(btn, event_handler, LV_EVENT_CLICKED, nullptr);
 ```
 
@@ -249,7 +249,7 @@ Serial.printf("Free heap: %d, Free PSRAM: %d\n",
 
 ### Screenshot Server
 
-Access live display at `http://[ESP32-IP]/screenshot`
+Access live display at `http://[ESP32-IP]`
 
 **Benefits:**
 - No serial connection needed
@@ -358,7 +358,6 @@ Serial.printf("LVGL used: %d KB\n", mon.total_size - mon.free_size);
 **FluidTouch:**
 - [GitHub Repository](https://github.com/jeyeager65/FluidTouch)
 - [Issues](https://github.com/jeyeager65/FluidTouch/issues)
-- [Discussions](https://github.com/jeyeager65/FluidTouch/discussions)
 
 **Dependencies:**
 - [LVGL Documentation](https://docs.lvgl.io/)

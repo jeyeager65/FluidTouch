@@ -5,6 +5,7 @@
 #include <LovyanGFX.hpp>
 #include <lgfx/v1/platforms/esp32s3/Panel_RGB.hpp>
 #include <lgfx/v1/platforms/esp32s3/Bus_RGB.hpp>
+#include <lgfx/v1/touch/Touch_GT911.hpp>
 #include "config.h"
 
 // LovyanGFX configuration for Elecrow CrowPanel 7"
@@ -13,6 +14,7 @@ class LGFX : public lgfx::LGFX_Device
 public:
   lgfx::Bus_RGB     _bus_instance;
   lgfx::Panel_RGB   _panel_instance;
+  lgfx::Touch_GT911 _touch_instance;
 
   LGFX(void);
 };

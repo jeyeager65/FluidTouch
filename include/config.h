@@ -4,16 +4,29 @@
 #include <Arduino.h>
 
 // Version
-#define FLUIDTOUCH_VERSION "0.9.1"
+#define FLUIDTOUCH_VERSION "0.9.2"
 
 // Display settings
 #define SCREEN_WIDTH  800
 #define SCREEN_HEIGHT 480
 
-// Touch controller pins and I2C address
+// Hardware-specific pin configurations
+#ifdef HARDWARE_ADVANCE
+// CrowPanel 7" Advance - per Elecrow example code
+// https://www.elecrow.com/pub/wiki/ESP32_Display-7.0_inch%28Advance_Series%29wiki.html
+#define TOUCH_SDA  15
+#define TOUCH_SCL  16
+#define TOUCH_RST  -1  // Reset handled by STC8H1K28 microcontroller via I2C
+#define TOUCH_INT  -1  // Not used
+#else
+// CrowPanel 7" Basic
 #define TOUCH_SDA  19
 #define TOUCH_SCL  20
 #define TOUCH_RST  38
+#define TOUCH_INT  -1
+#endif
+
+// Touch controller I2C address
 #define GT911_ADDR 0x5D
 
 // GT911 register addresses

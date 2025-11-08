@@ -33,13 +33,7 @@
 
 ![Splash Screen](./images/splash-screen.png)
 
-On startup, FluidTouch displays a splash screen showing:
-- FluidNC logo
-- Product name: "FluidTouch"
-- Tagline: "CNC Touch Controller for FluidNC"
-- Version number
-
-The splash screen appears for 2.5 seconds before proceeding to machine selection.
+On startup, FluidTouch displays a splash screen before proceeding to machine selection.
 
 ---
 
@@ -56,7 +50,8 @@ The machine selection screen allows you to:
 
 Each machine configuration stores:
 - Machine name
-- FluidNC IP address or hostname
+- Connection (currently only Wireless is supported)
+- FluidNC IP address
 - WebSocket port (default: 81)
 
 ---
@@ -229,7 +224,7 @@ Real-time override controls:
 
 ![Files Tab](./images/files-tab.png)
 
-*(Placeholder - SD card file management to be implemented)*
+List and manage files on the SD card and flash memory of the FluidNC controller.
 
 ---
 
@@ -237,7 +232,7 @@ Real-time override controls:
 
 ![Macros Tab](./images/macros-tab.png)
 
-*(Placeholder - Macro management to be implemented)*
+Store up to 9 file-based macros with Name, filename (selectable from dropdown of existing files in /sd/FluidTouch/Macros), and a color.
 
 ---
 
@@ -248,10 +243,7 @@ Real-time override controls:
 Raw WebSocket message display:
 - Live message stream from FluidNC
 - Auto-scroll toggle
-- 8KB circular buffer
-- Batched UI updates for performance
-
-*(Currently disabled - enable by uncommenting terminalCallback in fluidnc_client.cpp)*
+- Excludes messages such as status updates to prevent performance issues.
 
 ---
 
@@ -263,11 +255,8 @@ The Settings tab contains four sub-tabs for configuration:
 
 ![Settings General](./images/settings-general.png)
 
-WiFi configuration:
-- SSID (network name)
-- Password (hidden)
-- Connect/Disconnect button
-- Connection status display
+Machine Selection:
+- Whether or not to show the machine selection screen.  If skipped, it will automatically load the configuration for the first machine.
 
 ### Jog Settings
 
@@ -295,16 +284,14 @@ Probe operation defaults:
 Project information:
 - FluidTouch version
 - GitHub link with QR code
-- Screenshot server link with QR code (when WiFi connected)
+- Screenshot server link with QR code
 
 **GitHub QR Code:**
-- Always visible
 - Points to repository
 
 **Screenshot Server QR Code:**
 - Appears when WiFi connects
-- Shows http://[IP]/screenshot URL
-- Hidden when offline
+- Shows http://[IP] URL
 
 ---
 

@@ -8,16 +8,17 @@ FluidTouch provides an intuitive 800×480 touchscreen interface for controlling 
 ![Platform](https://img.shields.io/badge/platform-ESP32--S3-green)
 ![License](https://img.shields.io/badge/license-MIT-orange)
 
----
+![FluidTouch Status](./docs/images/status-tab.png)
 
 ## ✨ Key Features
 
 - **Real-time Machine Control** - Monitor position, state, feed/spindle rates with live updates
 - **Intuitive Jogging** - Button-based and analog joystick interfaces with configurable step sizes
 - **Touch Probe Operations** - Automated probing with customizable parameters
+- **Macro Support** - Configure and store up to 9 file-based macros
 - **Multi-Machine Support** - Store and switch between up to 4 different CNC configurations
-- **WiFi Connectivity** - WebSocket connection to FluidNC for reliable communication
-- **Screenshot Server** - Remote display viewing for debugging and documentation
+- **Terminal** - For running custom commands and debugging
+- **WiFi Connectivity** - WebSocket connection to FluidNC
 
 ---
 
@@ -27,7 +28,7 @@ FluidTouch provides an intuitive 800×480 touchscreen interface for controlling 
 
 The easiest way to install FluidTouch is using our web-based installer:
 
-1. **Visit:** [https://jeyeager65.github.io/FluidTouch/](https://jeyeager65.github.io/FluidTouch/)
+1. **Visit:** [FluidTouch Web Installer](https://jeyeager65.github.io/FluidTouch/)
 2. **Click:** "Install FluidTouch" button
 3. **Connect:** Your ESP32-S3 device via USB-C
 4. **Done!** Firmware flashes automatically in 30-60 seconds
@@ -44,16 +45,7 @@ Download the latest firmware from [Releases](https://github.com/jeyeager65/Fluid
 
 ### Option 3: Build from Source
 
-**Prerequisites:**
-- [PlatformIO](https://platformio.org/)
-- Git
-
-**Steps:**
-```bash
-git clone https://github.com/jeyeager65/FluidTouch.git
-cd FluidTouch
-platformio run --target upload
-```
+Refer to the **[Development Guide](./docs/development.md)** for additional instructions.
 
 ---
 
@@ -80,13 +72,18 @@ Detailed documentation is available in the [`docs/`](./docs/) folder:
 
 ## 🔧 First-Time Setup
 
-1. **Power on** the device
-2. **Configure WiFi** in Settings → General
-3. **Add Machine** in machine selection screen:
-   - Machine name
-   - FluidNC IP address or hostname
+1. Power on the device
+2. On the "Select Machine" screen, click the Edit button.
+3. Click the "Add" button to add a new machine:
+   - Name
+   - Connection (currently only Wireless is supported)
+   - WiFi SSID and Password (machine-specific)
+   - FluidNC IP address or hostname (e.g. 192.168.0.1 or fluidnc.local)
    - WebSocket port (default: 81)
-4. **Connect** to your CNC machine
+     - Port 82 is used by WebUI v3 and can also be used.  FluidNC only allows one connection at a time but it will switch cleanly back and forth.
+4. Click the "Save" button.
+5. Click the "Done" button.
+6. Click on the created machine.
 
 ---
 
@@ -116,5 +113,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📧 Support
 
 - **Issues:** [GitHub Issues](https://github.com/jeyeager65/FluidTouch/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/jeyeager65/FluidTouch/discussions)
-
