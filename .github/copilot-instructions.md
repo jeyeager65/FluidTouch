@@ -24,7 +24,12 @@ FluidTouch is an ESP32-S3 embedded touchscreen CNC controller for FluidNC machin
 - `platformio run -e elecrow-crowpanel-7-basic` (4MB flash, PWM backlight)
 - `platformio run -e elecrow-crowpanel-7-advance` (16MB flash, I2C backlight)
 
-**Status**: Active development - dual hardware support complete, features in progress.
+**Dual Hardware Support**: COMPLETE
+- Conditional compilation via `#ifdef HARDWARE_ADVANCE` handles hardware-specific code
+- Separate firmware builds for each hardware variant
+- GitHub Actions builds both variants automatically
+- Web installer allows users to select their hardware variant (manifest_basic.json / manifest_advance.json)
+- Touch, display, and backlight fully working on both hardware variants
 
 ## Architecture & Design Patterns
 
@@ -49,16 +54,18 @@ The project uses conditional compilation (`#ifdef HARDWARE_ADVANCE`) to support 
 
 3. **Touch Controller**:
    - Both use GT911 at 0x5D, but different I2C pins
-   - Basic: Direct GPIO reset on pin 38
-   - Advance: STC8H1K28 manages reset via I2C (no GPIO manipulation)
-   - LovyanGFX handles GT911 initialization for both variants
+   - Basic: SDA=19, SCL=20, RST=38
+   - Advance: SDA=15, SCL=16, RST=-1 (handled by STC8H1K28 via I2C)
+   - **Touch panel configured in LGFX class** (display_driver.cpp) with `lgfx::Touch_GT911 _touch_instance`
+   - LovyanGFX provides GT911 initialization and touch reading via `lcd->getTouch()`
+   - TouchDriver delegates to LovyanGFX using `lcd_instance->getTouch(&x, &y)` in callback
 
 ### Module Organization Pattern
 The codebase follows a **strict modular pattern** with clear separation:
 
 1. **Driver Modules** (`core/` subdirectory):
-   - `DisplayDriver` - LovyanGFX RGB parallel display with LVGL integration (`core/display_driver.h/cpp`)
-   - `TouchDriver` - GT911 I2C touch controller with LVGL input device (`core/touch_driver.h/cpp`)
+   - `DisplayDriver` - LovyanGFX RGB parallel display with LVGL integration and GT911 touch panel configuration (`core/display_driver.h/cpp`)
+   - `TouchDriver` - LVGL input device that delegates touch reading to LovyanGFX (`core/touch_driver.h/cpp`)
 
 2. **Network Modules** (`network/` subdirectory):
    - `ScreenshotServer` - WiFi web server for remote screenshots via LovyanGFX `readRect()` (`network/screenshot_server.h/cpp`)
@@ -197,11 +204,12 @@ The codebase follows a **strict modular pattern** with clear separation:
 ```powershell
 # Windows: Full path to platformio.exe - MUST use quotes and call operator (&)
 # ALWAYS use --target upload to flash after building
-& "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run --target upload
 
-# Environment name changed to reflect hardware
-# Previous: env:esp32dev
-# Current: env:elecrow-crowpanel-7-basic
+# Build and upload for Basic hardware (4MB flash, PWM backlight)
+& "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run --environment elecrow-crowpanel-7-basic --target upload
+
+# Build and upload for Advance hardware (16MB flash, I2C backlight)
+& "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run --environment elecrow-crowpanel-7-advance --target upload
 
 # Serial monitor (115200 baud)
 & "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" device monitor -b 115200
@@ -286,8 +294,8 @@ All other hardcoded values live in `include/config.h`:
 - **`include/config.h`**: Central configuration for ALL hardcoded values (BUFFER_LINES=480 for full-screen buffering)
 
 **Hardware/Core Modules** (`core/`):
-- **`src/core/display_driver.cpp`**: LovyanGFX RGB parallel setup (lines 11-63 are pin mappings)
-- **`src/core/touch_driver.cpp`**: GT911 I2C touch controller with LVGL input device
+- **`src/core/display_driver.cpp`**: LovyanGFX RGB parallel setup (lines 11-63 are pin mappings) and GT911 touch panel configuration (I2C pins, address, panel linkage)
+- **`src/core/touch_driver.cpp`**: LVGL input device that delegates to LovyanGFX's `lcd->getTouch()` method
 
 **Network Modules** (`network/`):
 - **`src/network/screenshot_server.cpp`**: WiFi setup, BMP conversion from RGB565 frame buffer
@@ -389,6 +397,7 @@ All other hardcoded values live in `include/config.h`:
 18. **Hardware-specific builds**: Always use correct environment (`-e elecrow-crowpanel-7-basic` or `-e elecrow-crowpanel-7-advance`) - RGB pin mappings are completely different and will not work if mixed
 19. **Advance display timing**: 14MHz pixel clock provides best stability for Advance hardware - 18MHz (from Elecrow example) may cause glitching depending on signal integrity
 20. **STC8H1K28 control**: Advance backlight and touch reset are controlled via I2C to STC8H1K28 at 0x30 - no direct GPIO manipulation needed
+21. **Touch panel configuration**: GT911 touch panel MUST be configured in LGFX class (display_driver.cpp) - add `lgfx::Touch_GT911 _touch_instance`, configure with I2C pins, and call `_panel_instance.setTouch(&_touch_instance)`. Touch driver only delegates to LovyanGFX via `lcd->getTouch()` - it doesn't initialize GT911 itself
 
 ## External Dependencies
 
