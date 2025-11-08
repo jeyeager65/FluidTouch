@@ -105,9 +105,7 @@ jobs:
           
           ### Manual Installation
           Download the appropriate `firmware.bin` for your hardware and flash using:
-          - [ESP Web Flasher](https://esp.huhn.me/)
-          - [ESPHome Flasher](https://github.com/esphome/esphome-flasher)
-          - esptool.py: `esptool.py --chip esp32s3 write_flash 0x10000 firmware.bin`
+          - [esptool.py](https://docs.espressif.com/projects/esptool/en/latest/esp32s3/index.html): `esptool.py --chip esp32s3 write_flash 0x10000 firmware.bin`
           
           ### Hardware Requirements
           - Elecrow CrowPanel 7" ESP32-S3 HMI Display (Basic or Advance variant)
