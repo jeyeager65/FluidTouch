@@ -158,10 +158,10 @@ static void on_power_off_confirm(lv_event_t *e) {
     FluidNCClient::disconnect();
     delay(100);
     
-    // Turn off backlight
+    // Power down display and peripherals (Elecrow-specific)
     DisplayDriver *display_driver = UICommon::getDisplayDriver();
     if (display_driver) {
-        display_driver->setBacklightOff();
+        display_driver->powerDown();
     }
     delay(100);
     
@@ -170,8 +170,28 @@ static void on_power_off_confirm(lv_event_t *e) {
     WiFi.mode(WIFI_OFF);
     delay(100);
     
+    // Disable Bluetooth (reduces power even if not used)
+    btStop();
+    
+    // Disable all wakeup sources except reset button
+    esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
+    
+    // Disable RTC peripherals to save power
+    esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_OFF);
+    esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_SLOW_MEM, ESP_PD_OPTION_OFF);
+    esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_FAST_MEM, ESP_PD_OPTION_OFF);
+    
+    // Disable unused GPIO power domains
+    esp_sleep_pd_config(ESP_PD_DOMAIN_XTAL, ESP_PD_OPTION_OFF);
+    
+    // Isolate GPIO pins to prevent current leakage
+    gpio_deep_sleep_hold_en();
+    
     // Enter deep sleep (only reset button can wake)
-    Serial.println("Entering deep sleep...");
+    Serial.println("Entering deep sleep with maximum power savings...");
+    Serial.flush();
+    delay(100);
+    
     esp_deep_sleep_start();
 }
 

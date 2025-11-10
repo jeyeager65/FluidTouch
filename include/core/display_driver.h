@@ -34,6 +34,9 @@ public:
     void setBacklightOn();
     void setBacklightOff();
     
+    // Power management - deep sleep preparation
+    void powerDown();
+    
 private:
     LGFX lcd;
     lv_display_t *disp;
