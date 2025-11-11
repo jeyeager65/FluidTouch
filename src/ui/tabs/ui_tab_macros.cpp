@@ -154,7 +154,7 @@ void UITabMacros::create(lv_obj_t *tab) {
     lv_obj_center(lbl_empty_message);  // Center both horizontally and vertically
     lv_obj_add_flag(lbl_empty_message, LV_OBJ_FLAG_HIDDEN);  // Hidden by default
 
-    loadMacros();
+    // Macros already loaded at line 52, just refresh the display
     refreshMacroList();
 }
 

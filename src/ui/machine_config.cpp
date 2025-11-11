@@ -3,7 +3,18 @@
 #include <Preferences.h>
 #include <Arduino.h>
 
+// Static cache members
+MachineConfig MachineConfigManager::cached_machines[MAX_MACHINES];
+bool MachineConfigManager::cache_valid = false;
+
 void MachineConfigManager::loadMachines(MachineConfig machines[MAX_MACHINES]) {
+    // If cache is valid, copy from cache instead of reading NVS
+    if (cache_valid) {
+        Serial.println("MachineConfigManager: Using cached machines");
+        memcpy(machines, cached_machines, sizeof(MachineConfig) * MAX_MACHINES);
+        return;
+    }
+    
     Preferences prefs;
     prefs.begin(PREFS_NAMESPACE, true); // Read-only
     
@@ -44,6 +55,15 @@ void MachineConfigManager::loadMachines(MachineConfig machines[MAX_MACHINES]) {
     
     prefs.end();
     Serial.println("MachineConfigManager: Load complete");
+    
+    // Cache the loaded data
+    memcpy(cached_machines, machines, sizeof(MachineConfig) * MAX_MACHINES);
+    cache_valid = true;
+}
+
+void MachineConfigManager::reloadMachines() {
+    Serial.println("MachineConfigManager: Clearing cache, forcing reload");
+    cache_valid = false;
 }
 
 void MachineConfigManager::saveMachines(const MachineConfig machines[MAX_MACHINES]) {
@@ -80,6 +100,9 @@ void MachineConfigManager::saveMachines(const MachineConfig machines[MAX_MACHINE
     }
     
     prefs.end();
+    
+    // Invalidate cache since machines were modified
+    cache_valid = false;
 }
 
 bool MachineConfigManager::getMachine(int index, MachineConfig &config) {

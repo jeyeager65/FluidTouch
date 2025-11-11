@@ -49,8 +49,11 @@ struct MachineConfig {
 
 class MachineConfigManager {
 public:
-    // Load all machines from Preferences
+    // Load all machines from Preferences (with caching)
     static void loadMachines(MachineConfig machines[MAX_MACHINES]);
+    
+    // Force reload from NVS (clears cache)
+    static void reloadMachines();
     
     // Save all machines to Preferences
     static void saveMachines(const MachineConfig machines[MAX_MACHINES]);
@@ -75,6 +78,10 @@ public:
     
     // Check if machines are configured
     static bool hasConfiguredMachines();
+    
+private:
+    static MachineConfig cached_machines[MAX_MACHINES];
+    static bool cache_valid;
 };
 
 #endif // MACHINE_CONFIG_H
