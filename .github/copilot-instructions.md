@@ -66,6 +66,13 @@ The codebase follows a **strict modular pattern** with clear separation:
 1. **Driver Modules** (`core/` subdirectory):
    - `DisplayDriver` - LovyanGFX RGB parallel display with LVGL integration and GT911 touch panel configuration (`core/display_driver.h/cpp`)
    - `TouchDriver` - LVGL input device that delegates touch reading to LovyanGFX (`core/touch_driver.h/cpp`)
+   - `PowerManager` - Power management for battery-powered operation with three power states (`core/power_manager.h/cpp`)
+     - **States**: FULL_BRIGHTNESS → DIMMED → SCREEN_OFF → DEEP_SLEEP (optional)
+     - **Settings stored in NVS**: `pm_enabled`, `pm_dim_timeout`, `pm_sleep_timeout`, `pm_deep_sleep_timeout`, `pm_normal_brightness`, `pm_dim_brightness`
+     - **State-aware**: Only applies power saving in IDLE and DISCONNECTED states - all other states (RUN, ALARM, HOLD, JOG) stay at full brightness
+     - **User activity**: Touch events call `onUserActivity()` to reset timer and restore full brightness
+     - **Deep sleep**: Enters ESP32 deep sleep after timeout (0 = disabled), only reset button wakes
+     - **Display control**: Uses `DisplayDriver::setBrightness()` for dimming, `DisplayDriver::powerDown()` for sleep
 
 2. **Network Modules** (`network/` subdirectory):
    - `ScreenshotServer` - WiFi web server for remote screenshots via LovyanGFX `readRect()` (`network/screenshot_server.h/cpp`)
@@ -177,7 +184,16 @@ The codebase follows a **strict modular pattern** with clear separation:
      - Layout: Absolute positioning for main container prevents keyboard-triggered shifts
      - Buttons: Fixed at bottom (y=370) with Save (left) and Cancel (right)
 
-4. **Status Bar Layout** (60px height, 18pt font, split into clickable areas):
+5. **Settings → General Tab**:
+   - **FILES Section** (second column at x=360):
+     - "Folders on Top" toggle switch controls file browser sorting behavior
+     - Preference: `PREFS_SYSTEM_NAMESPACE`, key `"folders_on_top"` (bool, default: false)
+     - When enabled: Folders appear first in Files tab (alphabetically, then files alphabetically)
+     - When disabled: Files appear first, then folders (original behavior)
+     - Implementation: Conditional `std::sort()` in `ui_tab_files.cpp` parseFileList()
+     - Switch UI: Label + switch + description text, follows standard settings layout pattern
+
+6. **Status Bar Layout** (60px height, 18pt font, split into clickable areas):
    - **Left area** (550px): Machine state (IDLE/RUN/ALARM) - 32pt uppercase, vertically centered, color-coded
      - Clicking navigates to Status tab (LV_EVENT_CLICKED)
    - **Center**: Work Position (top line, orange label) and Machine Position (bottom line, cyan label)
@@ -187,12 +203,12 @@ The codebase follows a **strict modular pattern** with clear separation:
      - Clicking shows confirmation dialog "This will restart the controller. Continue?" with "⚡ Restart" button
      - Confirmation triggers ESP32 restart to cleanly reload with new machine selection (LV_EVENT_CLICKED)
 
-5. **Tab creation delegation**:
+7. **Tab creation delegation**:
    - `UITabs` creates tabview structure, delegates content to `UITab*::create()`
    - Each tab module is responsible for its own layout and event handlers
    - Nested tabviews use `LV_DIR_LEFT` for vertical tabs (see `UITabControl`)
 
-6. **Serial debugging**: All modules use `Serial.println/printf` at 115200 baud with heap/PSRAM monitoring
+8. **Serial debugging**: All modules use `Serial.println/printf` at 115200 baud with heap/PSRAM monitoring
 
 ## Development Workflows
 
@@ -339,10 +355,18 @@ All other hardcoded values live in `include/config.h`:
 
 #### Joystick Tab (ui_tab_control_joystick.cpp)
 - **Layout**: Horizontal flex layout (XY joystick, info center, Z slider)
-- **XY Joystick**: 220×220px circular pad with crosshairs, draggable knob with quadratic response curve
+- **Axis Selection**: Three mode buttons (XY, X, Y) below joystick with white 3px border indicating selected mode
+  - MODE_XY: Circular joystick (220×220px) with crosshairs for simultaneous XY movement
+  - MODE_X: Horizontal slider (220×80px) with center line for X-axis only movement
+  - MODE_Y: Vertical slider (80×220px) with center line for Y-axis only movement
+  - All controls centered in container for smooth visual transitions between modes
+- **Dynamic Labels**:
+  - xy_jog_label: Updates text ("XY JOG", "X JOG", "Y JOG") and color based on selected mode
+  - xy_percent_label: Updates color (JOYSTICK_XY=cyan, AXIS_X=cyan, AXIS_Y=green)
 - **Z Slider**: 80×220px vertical slider with draggable knob, quadratic response curve
 - **Response Curve**: output = sign(input) × (input/100)² × 100 for fine control near center
 - **Info Display**: Current percentage, feed rate (mm/min), and max feed rate from settings
+- **Positioning**: Parent container 20px top padding, info container 50px top padding for vertical alignment
 
 #### Probe Tab (ui_tab_control_probe.cpp)
 - **Layout**: Left column (0-220px) for probe buttons, right column (260-620px) for parameters and results
@@ -398,6 +422,8 @@ All other hardcoded values live in `include/config.h`:
 19. **Advance display timing**: 14MHz pixel clock provides best stability for Advance hardware - 18MHz (from Elecrow example) may cause glitching depending on signal integrity
 20. **STC8H1K28 control**: Advance backlight and touch reset are controlled via I2C to STC8H1K28 at 0x30 - no direct GPIO manipulation needed
 21. **Touch panel configuration**: GT911 touch panel MUST be configured in LGFX class (display_driver.cpp) - add `lgfx::Touch_GT911 _touch_instance`, configure with I2C pins, and call `_panel_instance.setTouch(&_touch_instance)`. Touch driver only delegates to LovyanGFX via `lcd->getTouch()` - it doesn't initialize GT911 itself
+22. **Preferences usage**: Always read preferences at point of use rather than caching globally - prevents stale data when settings change. Examples: Files tab reads `folders_on_top` preference in parseFileList(), ensuring fresh value on every directory refresh
+23. **Power management state awareness**: PowerManager only applies power saving (dim/sleep) when machine is in IDLE or DISCONNECTED states - all other states (RUN, ALARM, HOLD, JOG) keep full brightness for operator safety and visibility
 
 ## External Dependencies
 
