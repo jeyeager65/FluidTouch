@@ -115,13 +115,13 @@ void UITabSettingsPower::create(lv_obj_t *tab) {
     lv_obj_set_pos(normal_brightness_dropdown, 420, 56);
     lv_obj_set_style_text_font(normal_brightness_dropdown, &lv_font_montserrat_18, 0);
     
-    // Set current normal brightness selection
-    uint8_t normal_bright = PowerManager::getNormalBrightness();
+    // Set current normal brightness selection (now uses percentages directly)
+    uint8_t normal_bright = PowerManager::getNormalBrightness();  // 0-100
     uint16_t normal_idx = 3;  // Default to 100%
-    if (normal_bright <= 64) normal_idx = 0;       // 25%
-    else if (normal_bright <= 128) normal_idx = 1;  // 50%
-    else if (normal_bright <= 191) normal_idx = 2;  // 75%
-    else normal_idx = 3;                            // 100%
+    if (normal_bright <= 25) normal_idx = 0;       // 25%
+    else if (normal_bright <= 50) normal_idx = 1;  // 50%
+    else if (normal_bright <= 75) normal_idx = 2;  // 75%
+    else normal_idx = 3;                           // 100%
     lv_dropdown_set_selected(normal_brightness_dropdown, normal_idx);
     
     // Dim brightness dropdown
@@ -138,12 +138,12 @@ void UITabSettingsPower::create(lv_obj_t *tab) {
     lv_obj_set_pos(dim_brightness_dropdown, 420, 107);
     lv_obj_set_style_text_font(dim_brightness_dropdown, &lv_font_montserrat_18, 0);
     
-    // Set current dim brightness selection
-    uint8_t dim_bright = PowerManager::getDimBrightness();
+    // Set current dim brightness selection (now uses percentages directly)
+    uint8_t dim_bright = PowerManager::getDimBrightness();  // 0-100
     uint16_t bright_idx = 2;  // Default to 25%
-    if (dim_bright <= 13) bright_idx = 0;      // 5%
-    else if (dim_bright <= 25) bright_idx = 1;  // 10%
-    else if (dim_bright <= 64) bright_idx = 2;  // 25%
+    if (dim_bright <= 5) bright_idx = 0;       // 5%
+    else if (dim_bright <= 10) bright_idx = 1;  // 10%
+    else if (dim_bright <= 25) bright_idx = 2;  // 25%
     else bright_idx = 3;                        // 50%
     lv_dropdown_set_selected(dim_brightness_dropdown, bright_idx);
     
@@ -243,16 +243,16 @@ static void btn_save_power_event_handler(lv_event_t *e) {
             PowerManager::setSleepTimeout(sleep_seconds[sleep_idx]);
         }
         
-        // Get normal brightness from dropdown
+        // Get normal brightness from dropdown (now just percentages)
         uint16_t normal_idx = lv_dropdown_get_selected(normal_brightness_dropdown);
-        uint8_t normal_brightness_values[] = {64, 128, 191, 255};  // 25%, 50%, 75%, 100%
+        uint8_t normal_brightness_values[] = {25, 50, 75, 100};  // 25%, 50%, 75%, 100%
         if (normal_idx < 4) {
             PowerManager::setNormalBrightness(normal_brightness_values[normal_idx]);
         }
         
-        // Get dim brightness from dropdown
+        // Get dim brightness from dropdown (now just percentages) (now just percentages)
         uint16_t bright_idx = lv_dropdown_get_selected(dim_brightness_dropdown);
-        uint8_t brightness_values[] = {13, 25, 64, 128};  // 5%, 10%, 25%, 50%
+        uint8_t brightness_values[] = {5, 10, 25, 50};  // 5%, 10%, 25%, 50%
         if (bright_idx < 4) {
             PowerManager::setDimBrightness(brightness_values[bright_idx]);
         }
@@ -266,6 +266,9 @@ static void btn_save_power_event_handler(lv_event_t *e) {
         
         // Save power manager settings to NVS
         PowerManager::saveSettings();
+        
+        // Apply the new normal brightness immediately
+        PowerManager::applyNormalBrightness();
         
         if (status_label != NULL) {
             lv_label_set_text(status_label, "Settings saved!");

@@ -172,8 +172,22 @@ bool DisplayDriver::init() {
     // No GPIO manipulation - backlight controlled purely via I2C
     Serial.println("Initializing Advance hardware (I2C backlight control)...");
     
-    // Initialize I2C for STC8H1K28 communication
-    Wire.begin(TOUCH_SDA, TOUCH_SCL);
+    // NOTE: Do NOT call Wire.begin() here - LovyanGFX will initialize the I2C bus
+    // for the touch panel first, then we can use it for STC8H1K28 communication
+    
+    // We'll initialize the backlight AFTER LovyanGFX init
+#else
+    #error "No backlight type defined! Use -DBACKLIGHT_PWM or -DBACKLIGHT_I2C"
+#endif
+    
+    // Initialize LovyanGFX (this will initialize I2C for touch panel on Advance)
+    lcd.init();
+    lcd.setColorDepth(16);
+    lcd.setBrightness(255);
+    lcd.fillScreen(0x0000);  // Clear screen to black
+    
+#ifdef BACKLIGHT_I2C
+    // Now initialize STC8H1K28 backlight (I2C already initialized by LovyanGFX)
     Wire.setClock(100000);  // 100kHz for compatibility
     Wire.setTimeOut(100);   // Prevent hangs
     delay(50);  // Give I2C time to stabilize
@@ -235,15 +249,7 @@ bool DisplayDriver::init() {
     delay(10);
     
     Serial.println("Backlight initialization complete");
-#else
-    #error "No backlight type defined! Use -DBACKLIGHT_PWM or -DBACKLIGHT_I2C"
 #endif
-    
-    // Initialize LovyanGFX
-    lcd.init();
-    lcd.setColorDepth(16);
-    lcd.setBrightness(255);
-    lcd.fillScreen(0x0000);  // Clear screen to black
     
     // Initialize LVGL
     lv_init();
@@ -285,19 +291,25 @@ void DisplayDriver::my_disp_flush(lv_display_t *disp, const lv_area_t *area, uin
 }
 
 // Backlight control methods
-void DisplayDriver::setBacklight(uint8_t brightness) {
+void DisplayDriver::setBacklight(uint8_t brightness_percent) {
+    // Clamp to valid percentage range
+    if (brightness_percent > 100) brightness_percent = 100;
+    
+    // Convert percentage (0-100) to hardware value (0-255)
+    uint8_t hw_value = (brightness_percent * 255) / 100;
+    
 #ifdef BACKLIGHT_PWM
     // Basic: PWM backlight on GPIO2
-    ledcWrite(1, brightness);
+    ledcWrite(1, hw_value);
 #elif defined(BACKLIGHT_I2C)
     // Advance: I2C backlight controller (STC8H1K28 at address 0x30)
     // Brightness: 0 = brightest, 245 = off
-    uint8_t i2c_value = 245 - ((brightness * 245) / 255);
+    uint8_t i2c_value = 245 - ((hw_value * 245) / 255);
     Wire.beginTransmission(0x30);
     Wire.write(i2c_value);
     Wire.endTransmission();
 #endif
-    Serial.printf("Backlight set to: %d\n", brightness);
+    Serial.printf("Backlight set to: %d%% (hw=%d)\n", brightness_percent, hw_value);
 }
 
 void DisplayDriver::setBacklightOn() {
@@ -328,7 +340,7 @@ void DisplayDriver::powerDown() {
     
     // Power down GT911 touch controller to prevent touch-induced current draw
     Serial.println("  Powering down GT911 touch controller...");
-    Wire.begin(TOUCH_SDA, TOUCH_SCL);  // Ensure I2C is initialized
+    // I2C already initialized, just set appropriate clock speed
     Wire.setClock(400000);
     
     // GT911 sleep command: write 0x05 to register 0x8040
