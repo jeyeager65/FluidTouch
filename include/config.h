@@ -52,4 +52,22 @@
 // Screenshot server configuration
 #define ENABLE_SCREENSHOT_SERVER true
 
+// SD Card Configuration
+#ifdef HARDWARE_ADVANCE
+// Advance: SPI mode SD card
+#define SD_MOSI  6
+#define SD_MISO  4
+#define SD_CLK   5
+#define SD_CS    0  // Not actually connected - CS tied to GND in hardware (per Elecrow example)
+#else
+// Basic: SPI mode SD card
+#define SD_MOSI  11
+#define SD_MISO  13
+#define SD_CLK   12
+#define SD_CS    10
+#endif
+
+// Upload Configuration
+#define FLUIDNC_UPLOAD_PATH "/fluidtouch/uploads/"
+
 #endif // CONFIG_H

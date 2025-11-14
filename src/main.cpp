@@ -13,6 +13,7 @@
 #include "ui/ui_common.h"       // UI common components (status bar)
 #include "ui/ui_tabs.h"         // UI tabs module
 #include "ui/tabs/ui_tab_status.h" // Status tab for updates
+#include "ui/tabs/ui_tab_files.h" // Files tab for refresh check
 #include "ui/tabs/ui_tab_macros.h" // Macros tab for progress updates
 #include "ui/tabs/ui_tab_terminal.h" // Terminal tab for updates
 #include "ui/tabs/settings/ui_tab_settings_about.h" // About tab for screenshot URL updates
@@ -118,6 +119,9 @@ void loop()
     
     // Check for connection timeout (non-blocking)
     UICommon::checkConnectionTimeout();
+    
+    // Check for pending file list refresh (from Files tab delete callback)
+    UITabFiles::checkPendingRefresh();
     
     // Update UI from FluidNC status (every 250ms)
     static uint32_t lastUIUpdate = 0;

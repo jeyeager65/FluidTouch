@@ -132,6 +132,34 @@ void FluidNCClient::requestStatusReport() {
     webSocket.sendTXT("?");
 }
 
+String FluidNCClient::getMachineIP() {
+    if (!currentStatus.is_connected) return "";
+    
+    // Get URL from config
+    String url = String(currentConfig.fluidnc_url);
+    
+    // Extract IP from URL (may already be just an IP address)
+    // If it starts with a protocol, remove it
+    int protocolEnd = url.indexOf("://");
+    if (protocolEnd >= 0) {
+        url = url.substring(protocolEnd + 3);
+    }
+    
+    // Remove port if present
+    int portStart = url.indexOf(":");
+    if (portStart > 0) {
+        url = url.substring(0, portStart);
+    }
+    
+    // Remove path if present
+    int pathStart = url.indexOf("/");
+    if (pathStart > 0) {
+        url = url.substring(0, pathStart);
+    }
+    
+    return url;
+}
+
 void FluidNCClient::setMessageCallback(MessageCallback callback) {
     messageCallback = callback;
     Serial.println("[FluidNC] Message callback registered");
