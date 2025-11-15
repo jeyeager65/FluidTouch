@@ -24,7 +24,9 @@
 - USB-C cable with data support
 
 **Optional:**
-- [Elecrow CrowPanel 7" ESP32-S3 HMI Display](https://www.elecrow.com/esp32-display-7-inch-hmi-display-rgb-tft-lcd-touch-screen-support-lvgl.html)
+- Elecrow CrowPanel 7" ESP32-S3 HMI Display:
+  - [Basic version](https://www.elecrow.com/esp32-display-7-inch-hmi-display-rgb-tft-lcd-touch-screen-support-lvgl.html) (4MB flash)
+  - [Advance version](https://www.elecrow.com/crowpanel-advance-7-0-hmi-esp32-ai-display-800x480-artificial-intelligent-ips-touch-screen-support-meshtastic-and-arduino-lvgl-micropython.html) (16MB flash)
 - Serial terminal (PlatformIO includes one)
 - Chrome/Edge browser (for ESP Web Tools testing)
 
@@ -48,13 +50,23 @@ code .
 
 ### PlatformIO Commands
 
+**Build Environments:**
+- `elecrow-crowpanel-7-basic` - Basic hardware (4MB flash, PWM backlight)
+- `elecrow-crowpanel-7-advance` - Advance hardware (16MB flash, I2C backlight)
+
 **Windows PowerShell:**
 ```powershell
-# Build only
-& "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run
+# Build only (Basic)
+& "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run -e elecrow-crowpanel-7-basic
 
-# Build and upload
-& "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run --target upload
+# Build only (Advance)
+& "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run -e elecrow-crowpanel-7-advance
+
+# Build and upload (Basic)
+& "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run --target upload -e elecrow-crowpanel-7-basic
+
+# Build and upload (Advance)
+& "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run --target upload -e elecrow-crowpanel-7-advance
 
 # Clean build
 & "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run -t clean
@@ -65,11 +77,17 @@ code .
 
 **Linux/macOS:**
 ```bash
-# Build only
-platformio run
+# Build only (Basic)
+platformio run -e elecrow-crowpanel-7-basic
 
-# Build and upload
-platformio run --target upload
+# Build only (Advance)
+platformio run -e elecrow-crowpanel-7-advance
+
+# Build and upload (Basic)
+platformio run --target upload -e elecrow-crowpanel-7-basic
+
+# Build and upload (Advance)
+platformio run --target upload -e elecrow-crowpanel-7-advance
 
 # Clean build
 platformio run -t clean
@@ -80,13 +98,15 @@ platformio device monitor -b 115200
 
 ### Build Output
 
-**Flash Usage:** Currently ~57.3% (1.76MB of 3.08MB)
-**RAM Usage:** ~0.9% (80KB of 8.5MB)
+**Flash Usage:** 
+- Basic: ~57% (1.86MB of 3.25MB)
+- Advance: ~28% (1.86MB of 6.5MB)
+
+**RAM Usage:** ~1.0% (82KB of 8.5MB)
 
 **Binary Locations:**
-- Firmware: `.pio/build/elecrow-crowpanel-7-basic/firmware.bin`
-- Bootloader: `.pio/build/elecrow-crowpanel-7-basic/bootloader.bin`
-- Partitions: `.pio/build/elecrow-crowpanel-7-basic/partitions.bin`
+- Basic Firmware: `.pio/build/elecrow-crowpanel-7-basic/firmware.bin`
+- Advance Firmware: `.pio/build/elecrow-crowpanel-7-advance/firmware.bin`
 
 ---
 

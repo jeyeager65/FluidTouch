@@ -48,6 +48,9 @@ __pycache__/
 *.so
 .Python
 env/
+
+# Documentation images
+/docs/images/bmp/
 venv/
 .venv
 

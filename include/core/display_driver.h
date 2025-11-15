@@ -29,8 +29,8 @@ public:
     // Direct screen buffer access for screenshots
     LGFX* getLCD() { return &lcd; }
     
-    // Backlight control (brightness 0-255, or use setBacklightOn/Off for simple on/off)
-    void setBacklight(uint8_t brightness);
+    // Backlight control (brightness 0-100 percentage, or use setBacklightOn/Off for simple on/off)
+    void setBacklight(uint8_t brightness_percent);
     void setBacklightOn();
     void setBacklightOff();
     

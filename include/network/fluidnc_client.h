@@ -120,6 +120,9 @@ public:
     // Request status report (sends "?")
     static void requestStatusReport();
     
+    // Get machine IP address (extracted from WebSocket URL)
+    static String getMachineIP();
+    
     // Set callback for receiving raw messages (for file list, etc.)
     static void setMessageCallback(MessageCallback callback);
     

@@ -68,11 +68,13 @@ The codebase follows a **strict modular pattern** with clear separation:
    - `TouchDriver` - LVGL input device that delegates touch reading to LovyanGFX (`core/touch_driver.h/cpp`)
    - `PowerManager` - Power management for battery-powered operation with three power states (`core/power_manager.h/cpp`)
      - **States**: FULL_BRIGHTNESS → DIMMED → SCREEN_OFF → DEEP_SLEEP (optional)
-     - **Settings stored in NVS**: `pm_enabled`, `pm_dim_timeout`, `pm_sleep_timeout`, `pm_deep_sleep_timeout`, `pm_normal_brightness`, `pm_dim_brightness`
+     - **Brightness Storage**: NVS stores percentages (0-100), DisplayDriver converts to hardware values (0-255)
+     - **NVS Keys** (shortened to fit 15-char limit): `pm_enabled`, `pm_dim_to`, `pm_sleep_to`, `pm_deepsleep`, `pm_norm_bri`, `pm_dim_bri`
      - **State-aware**: Only applies power saving in IDLE and DISCONNECTED states - all other states (RUN, ALARM, HOLD, JOG) stay at full brightness
      - **User activity**: Touch events call `onUserActivity()` to reset timer and restore full brightness
      - **Deep sleep**: Enters ESP32 deep sleep after timeout (0 = disabled), only reset button wakes
-     - **Display control**: Uses `DisplayDriver::setBrightness()` for dimming, `DisplayDriver::powerDown()` for sleep
+     - **Display control**: Uses `DisplayDriver::setBacklight(percentage)` for dimming, `DisplayDriver::powerDown()` for sleep
+     - **Brightness initialization**: Applied immediately on init after loading settings from NVS
 
 2. **Network Modules** (`network/` subdirectory):
    - `ScreenshotServer` - WiFi web server for remote screenshots via LovyanGFX `readRect()` (`network/screenshot_server.h/cpp`)
@@ -97,8 +99,25 @@ The codebase follows a **strict modular pattern** with clear separation:
        - Probe: Touch probe operations with axis-colored buttons, parameter inputs (feed rate, max distance, retract, thickness), and 2-line result display (16pt font)
        - Overrides: Feed/Rapid/Spindle override controls
      - **Terminal tab**: `UITabTerminal` - Raw WebSocket message display (currently disabled via commented callback)
+     - **Files tab**: `UITabFiles` - File browser with three storage sources (FluidNC SD, FluidNC Flash, Display SD)
+       - Three-source architecture with independent caching per source
+       - Display SD reads from ESP32's local SD card slot via SPI
+       - Upload functionality: Transfer files from Display SD to FluidNC via HTTP POST
+       - Storage switching via dropdown, each source maintains its own navigation state
+       - File operations: Play (run G-code), Delete, Upload (Display SD only)
+       - Folder navigation with parent/child directory support
 
-4. **Module Naming Convention**:
+4. **Storage Modules** (`ui/` subdirectory):
+   - `UploadManager` - Manages file uploads from Display SD card to FluidNC (`ui/upload_manager.h/cpp`)
+     - SD card initialization with SPI configuration (hardware-specific pins)
+     - File reading from Display SD with chunked transfer (8KB chunks)
+     - HTTP POST to FluidNC `/upload` endpoint with multipart/form-data
+     - Progress callback system for UI updates
+     - 10MB file size limit for uploads
+     - **SD Card Detection**: Uses `SD.cardType()` to check if card is present before operations
+     - **Error Handling**: Shows appropriate error messages when card is not available
+
+5. **Module Naming Convention**:
    - Class files: `ui_tab_control.h/cpp` → class `UITabControl`
    - All UI classes use static `create(lv_obj_t *parent)` factory methods
    - Headers in `include/`, implementations in `src/` (matching structure)
@@ -193,7 +212,34 @@ The codebase follows a **strict modular pattern** with clear separation:
      - Implementation: Conditional `std::sort()` in `ui_tab_files.cpp` parseFileList()
      - Switch UI: Label + switch + description text, follows standard settings layout pattern
 
-6. **Status Bar Layout** (60px height, 18pt font, split into clickable areas):
+6. **Files Tab Architecture** (`ui_tab_files.h/cpp`):
+   - **Three Storage Sources**:
+     - `StorageSource::FLUIDNC_SD` - FluidNC SD card (default: `/sd/`)
+     - `StorageSource::FLUIDNC_FLASH` - FluidNC flash filesystem (default: `/localfs/`)
+     - `StorageSource::DISPLAY_SD` - ESP32 local SD card (default: `/`)
+   - **Per-Source Caching**:
+     - Each source maintains independent cache (`fluidnc_sd_cache`, `fluidnc_flash_cache`, `display_sd_cache`)
+     - Cache includes: path, file list (name/size/is_directory), validity flag
+     - Cache invalidated on navigation, refresh, or storage switch
+   - **Display SD Card Handling**:
+     - Initialized via `UploadManager::init()` on first access
+     - Uses `isDisplaySDAvailable()` to check `SD.cardType() != CARD_NONE` before operations
+     - If card not available: Shows "SD card not available" warning, clears file list, does NOT auto-switch storage
+     - Card check performed on: storage switch (cached or new), navigation, refresh, upload operations
+     - Hardware-specific SPI pins via `#ifdef HARDWARE_ADVANCE`
+   - **File Operations**:
+     - Play button: Sends `$SD/Run=` or `$LocalFS/Run=` command to FluidNC
+     - Delete button: Shows confirmation dialog, sends `$SD/Delete=` or `$LocalFS/Delete=` command
+     - Upload button (Display SD only): Opens upload dialog, initiates `UploadManager::uploadFile()`
+   - **Upload Flow**:
+     1. User clicks upload button → shows dialog with filename and size
+     2. Confirm → creates progress dialog with progress bar and percentage label
+     3. `UploadManager::uploadFile()` reads file in 8KB chunks, POST to FluidNC `/upload`
+     4. Progress callback updates UI bar and label via `UITabFiles::updateUploadProgress()`
+     5. Completion callback shows success/error, refreshes FluidNC file list
+   - **UI Layout**: Storage dropdown + path label + refresh/up buttons + file list container (270px height, vertical scroll)
+
+7. **Status Bar Layout** (60px height, 18pt font, split into clickable areas):
    - **Left area** (550px): Machine state (IDLE/RUN/ALARM) - 32pt uppercase, vertically centered, color-coded
      - Clicking navigates to Status tab (LV_EVENT_CLICKED)
    - **Center**: Work Position (top line, orange label) and Machine Position (bottom line, cyan label)
@@ -332,6 +378,8 @@ All other hardcoded values live in `include/config.h`:
 - **`src/ui/ui_machine_select.cpp`**: Machine selection screen with reordering, edit, delete, and add functionality (up to 5 machines stored in Preferences)
 - **`src/ui/tabs/ui_tab_status.cpp`**: Status tab with delta-checked position displays, feed/spindle rates with overrides, 8 modal state fields, message display, and SD card file progress (filename, progress bar, elapsed/estimated time)
 - **`src/ui/tabs/ui_tab_terminal.cpp`**: Terminal tab with WebSocket message display, auto-scroll toggle, 8KB buffer with batched UI updates (currently disabled via commented callback in FluidNCClient)
+- **`src/ui/tabs/ui_tab_files.cpp`**: File browser with three storage sources (FluidNC SD/Flash, Display SD), per-source caching, SD card detection, and upload functionality
+- **`src/ui/upload_manager.cpp`**: SD card file upload manager with chunked HTTP POST to FluidNC, progress tracking, and 10MB file size limit
 
 ### Control Sub-Tabs Layout
 
@@ -424,6 +472,7 @@ All other hardcoded values live in `include/config.h`:
 21. **Touch panel configuration**: GT911 touch panel MUST be configured in LGFX class (display_driver.cpp) - add `lgfx::Touch_GT911 _touch_instance`, configure with I2C pins, and call `_panel_instance.setTouch(&_touch_instance)`. Touch driver only delegates to LovyanGFX via `lcd->getTouch()` - it doesn't initialize GT911 itself
 22. **Preferences usage**: Always read preferences at point of use rather than caching globally - prevents stale data when settings change. Examples: Files tab reads `folders_on_top` preference in parseFileList(), ensuring fresh value on every directory refresh
 23. **Power management state awareness**: PowerManager only applies power saving (dim/sleep) when machine is in IDLE or DISCONNECTED states - all other states (RUN, ALARM, HOLD, JOG) keep full brightness for operator safety and visibility
+24. **Display SD card handling**: Always check `isDisplaySDAvailable()` before Display SD operations - shows "SD card not available" without auto-switching storage. User can manually switch storage sources via dropdown. SD card state checked on: storage switch, navigation, refresh, and upload operations
 
 ## External Dependencies
 

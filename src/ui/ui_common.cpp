@@ -949,49 +949,50 @@ void UICommon::showConnectionErrorDialog(const char *title, const char *message)
     lv_obj_set_style_border_width(connection_error_dialog, 0, 0);
     lv_obj_clear_flag(connection_error_dialog, LV_OBJ_FLAG_SCROLLABLE);
     
-    // Dialog content box
+    // Dialog content box (consistent with System Options)
     lv_obj_t *content = lv_obj_create(connection_error_dialog);
-    lv_obj_set_size(content, 600, 280);
+    lv_obj_set_size(content, 600, 300);
     lv_obj_center(content);
     lv_obj_set_style_bg_color(content, UITheme::BG_MEDIUM, 0);
     lv_obj_set_style_border_color(content, UITheme::STATE_ALARM, 0);
     lv_obj_set_style_border_width(content, 3, 0);
-    lv_obj_set_flex_flow(content, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_flex_align(content, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_all(content, 20, 0);
-    lv_obj_set_style_pad_gap(content, 15, 0);
     lv_obj_clear_flag(content, LV_OBJ_FLAG_SCROLLABLE);
     
-    // Error icon and title
+    // Title (positioned near top, consistent with System Options)
     lv_obj_t *title_label = lv_label_create(content);
     char title_text[128];
     snprintf(title_text, sizeof(title_text), LV_SYMBOL_WARNING " %s", title);
     lv_label_set_text(title_label, title_text);
     lv_obj_set_style_text_font(title_label, &lv_font_montserrat_22, 0);
     lv_obj_set_style_text_color(title_label, UITheme::STATE_ALARM, 0);
+    lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, 0);
     
-    // Error message
+    // Error message (centered vertically in available space)
     lv_obj_t *msg_label = lv_label_create(content);
     lv_label_set_text(msg_label, message);
     lv_obj_set_style_text_font(msg_label, &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_color(msg_label, UITheme::TEXT_LIGHT, 0);
     lv_label_set_long_mode(msg_label, LV_LABEL_LONG_WRAP);
-    lv_obj_set_width(msg_label, 550);
+    lv_obj_set_width(msg_label, 560);
     lv_obj_set_style_text_align(msg_label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_align(msg_label, LV_ALIGN_TOP_MID, 0, 50);
     
-    // Button container
+    // Button container (positioned at bottom, consistent with System Options)
     lv_obj_t *btn_container = lv_obj_create(content);
-    lv_obj_set_size(btn_container, LV_PCT(100), LV_SIZE_CONTENT);
-    lv_obj_set_flex_flow(btn_container, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(btn_container, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_size(btn_container, 560, 60);
     lv_obj_set_style_bg_opa(btn_container, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(btn_container, 0, 0);
     lv_obj_set_style_pad_all(btn_container, 0, 0);
+    lv_obj_set_style_pad_gap(btn_container, 10, 0);
+    lv_obj_set_flex_flow(btn_container, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(btn_container, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_align(btn_container, LV_ALIGN_BOTTOM_MID, 0, 0);
     lv_obj_clear_flag(btn_container, LV_OBJ_FLAG_SCROLLABLE);
     
     // Connect button (left)
     lv_obj_t *connect_btn = lv_btn_create(btn_container);
-    lv_obj_set_size(connect_btn, 150, 50);
+    lv_obj_set_size(connect_btn, 165, 50);
     lv_obj_set_style_bg_color(connect_btn, UITheme::BTN_CONNECT, 0);
     lv_obj_add_event_cb(connect_btn, on_connection_error_connect, LV_EVENT_CLICKED, nullptr);
     
@@ -1002,7 +1003,7 @@ void UICommon::showConnectionErrorDialog(const char *title, const char *message)
     
     // Restart button (center)
     lv_obj_t *restart_btn = lv_btn_create(btn_container);
-    lv_obj_set_size(restart_btn, 150, 50);
+    lv_obj_set_size(restart_btn, 165, 50);
     lv_obj_set_style_bg_color(restart_btn, UITheme::ACCENT_PRIMARY, 0);
     lv_obj_add_event_cb(restart_btn, on_connection_error_restart, LV_EVENT_CLICKED, nullptr);
     
@@ -1013,7 +1014,7 @@ void UICommon::showConnectionErrorDialog(const char *title, const char *message)
     
     // Close button (right)
     lv_obj_t *close_btn = lv_btn_create(btn_container);
-    lv_obj_set_size(close_btn, 150, 50);
+    lv_obj_set_size(close_btn, 165, 50);
     lv_obj_set_style_bg_color(close_btn, UITheme::BG_BUTTON, 0);
     lv_obj_add_event_cb(close_btn, on_connection_error_close, LV_EVENT_CLICKED, nullptr);
     

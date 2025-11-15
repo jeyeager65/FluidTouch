@@ -134,6 +134,32 @@ Default values for touch probe operations:
 
 ---
 
+## Power Settings
+
+**Settings → Power**
+
+Configure power management and display brightness:
+
+### Power Management
+
+- **Enable/Disable:** Toggle power saving features
+- **Dim Timeout:** Time until screen dims (Disabled, 15s, 30s, 45s, 60s, 90s, 120s, 300s)
+- **Sleep Timeout:** Time until screen turns off (Disabled, 60s, 120s, 300s, 600s, 900s, 1800s, 3600s)
+- **Deep Sleep:** Time until deep sleep mode (Disabled, 5min, 10min, 15min, 30min, 60min, 90min)
+
+### Brightness Control
+
+- **Normal Brightness:** Active display brightness (25%, 50%, 75%, 100%)
+- **Dim Brightness:** Dimmed display brightness (5%, 10%, 25%, 50%)
+
+**Notes:**
+- Power saving only applies in IDLE and DISCONNECTED states
+- During RUN, ALARM, HOLD, or JOG states, display stays at full brightness
+- Touch activity resets timers and restores full brightness
+- Deep sleep mode requires reset button to wake
+
+---
+
 ## Preferences Storage
 
 FluidTouch uses ESP32 NVS (Non-Volatile Storage) for persistent data:
@@ -142,7 +168,7 @@ FluidTouch uses ESP32 NVS (Non-Volatile Storage) for persistent data:
 
 **Machine Configurations:**
 - Up to 4 machine profiles
-- Name, hostname/IP, port
+- Name, hostname/IP, port, WiFi SSID/password
 - Selected machine index
 
 **Jog Settings:**
@@ -154,6 +180,15 @@ FluidTouch uses ESP32 NVS (Non-Volatile Storage) for persistent data:
 - Max distance
 - Retract distance
 - Probe thickness
+
+**Power Settings:**
+- Power management enabled/disabled
+- Dim timeout, sleep timeout, deep sleep timeout
+- Normal brightness (0-100%)
+- Dim brightness (0-100%)
+
+**File Browser:**
+- Folders on top setting
 
 ### Clearing Preferences
 

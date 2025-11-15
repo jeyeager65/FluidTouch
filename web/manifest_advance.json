@@ -1,6 +1,6 @@
 {
   "name": "FluidTouch (Advance)",
-  "version": "0.9.4",
+  "version": "0.9.5",
   "new_install_prompt_erase": true,
   "funding_url": "https://github.com/jeyeager65/FluidTouch",
   "builds": [
