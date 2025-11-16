@@ -12,6 +12,7 @@
 #include "ui/ui_machine_select.h" // Machine selection screen
 #include "ui/ui_common.h"       // UI common components (status bar)
 #include "ui/ui_tabs.h"         // UI tabs module
+#include "ui/settings_manager.h" // Settings import/export/clear
 #include "ui/tabs/ui_tab_status.h" // Status tab for updates
 #include "ui/tabs/ui_tab_files.h" // Files tab for refresh check
 #include "ui/tabs/ui_tab_macros.h" // Macros tab for progress updates
@@ -62,6 +63,14 @@ void setup()
     // Initialize FluidNC Client
     Serial.println("Initializing FluidNC client...");
     FluidNCClient::init();
+
+    // Check for auto-import (only if no machines configured)
+    Serial.println("Checking for settings auto-import...");
+    if (SettingsManager::autoImportOnBoot()) {
+        Serial.println("Settings imported successfully! Restarting...");
+        delay(2000);  // Give user time to see serial message
+        ESP.restart();
+    }
 
     // Show splash screen
     Serial.println("Showing splash screen...");

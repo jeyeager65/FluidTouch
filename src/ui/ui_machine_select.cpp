@@ -183,7 +183,7 @@ void UIMachineSelect::refreshMachineList() {
                 lv_obj_set_pos(machine_buttons[i], 0, y_pos);
                 lv_obj_set_style_bg_color(machine_buttons[i], UITheme::ACCENT_PRIMARY, 0);
                 lv_obj_set_style_bg_color(machine_buttons[i], UITheme::ACCENT_SECONDARY, LV_STATE_PRESSED);
-                lv_obj_add_event_cb(machine_buttons[i], onMachineSelected, LV_EVENT_CLICKED, (void*)(intptr_t)i);
+                // Don't add click event in edit mode - user should use Edit button instead
                 
                 // Machine label with symbol
                 lv_obj_t *label = lv_label_create(machine_buttons[i]);
@@ -416,6 +416,81 @@ void UIMachineSelect::onMachineSelected(lv_event_t *e) {
     int index = (int)(intptr_t)lv_event_get_user_data(e);
     
     Serial.printf("UIMachineSelect: Machine selected: %s (index %d)\n", machines[index].name, index);
+    
+    // Check if WiFi password is set for wireless machines
+    if (machines[index].connection_type == CONN_WIRELESS && strlen(machines[index].password) == 0) {
+        Serial.println("UIMachineSelect: WiFi password not set!");
+        
+        // Create modal backdrop
+        lv_obj_t *backdrop = lv_obj_create(lv_layer_top());
+        lv_obj_set_size(backdrop, SCREEN_WIDTH, SCREEN_HEIGHT);
+        lv_obj_set_style_bg_color(backdrop, lv_color_hex(0x000000), 0);
+        lv_obj_set_style_bg_opa(backdrop, LV_OPA_50, 0);
+        lv_obj_set_style_border_width(backdrop, 0, 0);
+        lv_obj_clear_flag(backdrop, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_center(backdrop);
+        
+        // Show warning dialog (consistent with System Options popup style)
+        lv_obj_t *dialog = lv_obj_create(backdrop);
+        lv_obj_set_size(dialog, 600, 300);
+        lv_obj_center(dialog);
+        lv_obj_set_style_bg_color(dialog, UITheme::BG_MEDIUM, 0);
+        lv_obj_set_style_border_width(dialog, 3, 0);
+        lv_obj_set_style_border_color(dialog, UITheme::STATE_ALARM, 0);
+        lv_obj_set_style_pad_all(dialog, 20, 0);
+        lv_obj_clear_flag(dialog, LV_OBJ_FLAG_SCROLLABLE);
+        
+        // Title (positioned near top)
+        lv_obj_t *title = lv_label_create(dialog);
+        lv_label_set_text(title, LV_SYMBOL_WARNING " WiFi Password Required");
+        lv_obj_set_style_text_font(title, &lv_font_montserrat_22, 0);
+        lv_obj_set_style_text_color(title, UITheme::STATE_ALARM, 0);
+        lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 0);
+        
+        // Message (centered in available space)
+        lv_obj_t *message = lv_label_create(dialog);
+        char msg[256];
+        snprintf(msg, sizeof(msg), 
+            "Machine: %s\n\n"
+            "This machine requires a WiFi password\n"
+            "but none is configured.\n\n"
+            "Please edit the machine configuration and set the\n"
+            "WiFi password before attempting to connect.",
+            machines[index].name);
+        lv_label_set_text(message, msg);
+        lv_obj_set_style_text_font(message, &lv_font_montserrat_16, 0);
+        lv_obj_set_style_text_color(message, UITheme::TEXT_LIGHT, 0);
+        lv_obj_set_style_text_align(message, LV_TEXT_ALIGN_CENTER, 0);
+        lv_label_set_long_mode(message, LV_LABEL_LONG_WRAP);
+        lv_obj_set_width(message, 560);
+        lv_obj_align(message, LV_ALIGN_TOP_MID, 0, 50);
+        
+        // Button container (positioned at bottom)
+        lv_obj_t *btn_container = lv_obj_create(dialog);
+        lv_obj_set_size(btn_container, 560, 60);
+        lv_obj_set_style_bg_opa(btn_container, LV_OPA_TRANSP, 0);
+        lv_obj_set_style_border_width(btn_container, 0, 0);
+        lv_obj_set_style_pad_all(btn_container, 0, 0);
+        lv_obj_align(btn_container, LV_ALIGN_BOTTOM_MID, 0, 0);
+        lv_obj_clear_flag(btn_container, LV_OBJ_FLAG_SCROLLABLE);
+        
+        // OK button (centered in button container)
+        lv_obj_t *btn_ok = lv_button_create(btn_container);
+        lv_obj_set_size(btn_ok, 160, 50);
+        lv_obj_center(btn_ok);
+        lv_obj_set_style_bg_color(btn_ok, UITheme::BTN_PLAY, 0);
+        lv_obj_t *lbl_ok = lv_label_create(btn_ok);
+        lv_label_set_text(lbl_ok, "OK");
+        lv_obj_set_style_text_font(lbl_ok, &lv_font_montserrat_18, 0);
+        lv_obj_center(lbl_ok);
+        lv_obj_add_event_cb(btn_ok, [](lv_event_t *e) {
+            if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
+                lv_obj_del((lv_obj_t*)lv_event_get_user_data(e));
+            }
+        }, LV_EVENT_CLICKED, backdrop);
+        
+        return;  // Don't proceed with machine selection
+    }
     
     // Save selection index to preferences
     MachineConfigManager::setSelectedMachineIndex(index);
