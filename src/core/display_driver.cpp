@@ -161,12 +161,12 @@ bool DisplayDriver::init() {
     
     // Initialize backlight based on hardware variant
 #ifdef BACKLIGHT_PWM
-    // Basic: PWM backlight on GPIO2
+    // Basic: PWM backlight - configure but keep OFF until screen is cleared
     pinMode(2, OUTPUT);
     ledcSetup(1, 300, 8);
     ledcAttachPin(2, 1);
-    ledcWrite(1, 255);
-    Serial.println("Backlight ON (PWM)");
+    ledcWrite(1, 0);  // Start with backlight OFF
+    Serial.println("Backlight configured (OFF)");
     
 #elif defined(BACKLIGHT_I2C)
     // Advance: I2C backlight controller (STC8H1K28 at address 0x30)
@@ -186,6 +186,16 @@ bool DisplayDriver::init() {
     lcd.setColorDepth(16);
     lcd.setBrightness(255);
     lcd.fillScreen(0x0000);  // Clear screen to black
+    
+#ifdef BACKLIGHT_PWM
+    // Wait for fillScreen to complete before turning on backlight
+    // This prevents the garbled flash of old frame buffer contents
+    delay(50);
+    
+    // Now turn on backlight after screen is cleared
+    ledcWrite(1, 255);
+    Serial.println("Backlight ON (PWM)");
+#endif
     
 #ifdef BACKLIGHT_I2C
     // Now initialize STC8H1K28 backlight (I2C already initialized by LovyanGFX)
