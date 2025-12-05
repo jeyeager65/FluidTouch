@@ -401,6 +401,37 @@
             color: #00bcd4;
         }
 
+        .changelog-collapsed {
+            opacity: 0.7;
+        }
+
+        .changelog-collapsed .changelog-content {
+            display: none;
+        }
+
+        .changelog h3 {
+            cursor: pointer;
+            user-select: none;
+            transition: color 0.3s ease;
+        }
+
+        .changelog h3:hover {
+            color: #26c6da;
+        }
+
+        .changelog h3::after {
+            content: " ▼";
+            font-size: 0.7em;
+            margin-left: 8px;
+            display: inline-block;
+            transition: transform 0.3s ease;
+            transform-origin: center;
+        }
+
+        .changelog-collapsed h3::after {
+            transform: rotate(-90deg);
+        }
+
         /* Mobile Responsive */
         @media (max-width: 768px) {
             h1 {
@@ -500,7 +531,7 @@
             Web Installer
         </p>
         <div class="version-badge">
-            <span>Version 1.0.0</span>
+            <span>Version 1.0.1</span>
         </div>
         <p style="text-align: center; font-size: 1.2em; color: #c9d1d9; margin-bottom: 30px;">
             ESP32 Touchscreen CNC Controller for FluidNC
@@ -508,9 +539,26 @@
 
         <!-- Changelog -->
         <div class="changelog">
-            <h3>🎉 Version 1.0.0 - Initial Release</h3>
+            <h3>🔄 Version 1.0.1 - Bugfixes & Documentation</h3>
             <div class="changelog-content">
                 <div class="changelog-version">
+                    <div class="changelog-date">December 4, 2025</div>
+                    <ul class="changelog-items">
+                        <li><strong>Bugfix:</strong> Touch screen not working after deep sleep wake on Basic hardware (removed GT911 sleep command)</li>
+                        <li><strong>Bugfix:</strong> Fixed garbled screen flash on startup by delaying backlight activation</li>
+                        <li><strong>Documentation Updates:</strong> Product links now use affiliate codes to help support development costs</li>
+                        <li><strong>Hardware Recommendation:</strong> Advance display model now marked as recommended (superior IPS display, optional battery case)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Prior Releases -->
+        <div class="changelog changelog-collapsed" id="changelog-prior">
+            <h3 onclick="toggleChangelog('changelog-prior')">📜 Prior Releases</h3>
+            <div class="changelog-content">
+                <div class="changelog-version">
+                    <h4>Version 1.0.0 - Initial Release</h4>
                     <div class="changelog-date">November 17, 2025</div>
                     <ul class="changelog-items">
                         <li><strong>Real-time Machine Control:</strong> Monitor position, state, feed/spindle rates with live updates from FluidNC</li>
@@ -621,6 +669,12 @@
     </div>
 
     <script>
+        // Toggle changelog visibility
+        function toggleChangelog(id) {
+            const changelog = document.getElementById(id);
+            changelog.classList.toggle('changelog-collapsed');
+        }
+
         // Hardware selection
         let selectedHardware = 'basic';
         const hardwareNames = {
