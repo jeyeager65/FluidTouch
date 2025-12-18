@@ -90,36 +90,36 @@ jobs:
         VERSION_ID="${{ steps.branch.outputs.VERSION_ID }}"
         BRANCH_SUFFIX="${{ steps.branch.outputs.BRANCH_SUFFIX }}"
         
-        # Create preview directories
-        mkdir -p firmware/preview/${BRANCH_SUFFIX}/basic
-        mkdir -p firmware/preview/${BRANCH_SUFFIX}/advance-v1.3
+        # Create preview directories (use VERSION_ID for full version path)
+        mkdir -p firmware/preview/${VERSION_ID}/basic
+        mkdir -p firmware/preview/${VERSION_ID}/advance-v1.3
         
         # Copy firmware files from temp location
-        cp /tmp/firmware-artifacts/basic/firmware.bin firmware/preview/${BRANCH_SUFFIX}/basic/
-        cp /tmp/firmware-artifacts/basic/bootloader.bin firmware/preview/${BRANCH_SUFFIX}/basic/
-        cp /tmp/firmware-artifacts/basic/partitions.bin firmware/preview/${BRANCH_SUFFIX}/basic/
+        cp /tmp/firmware-artifacts/basic/firmware.bin firmware/preview/${VERSION_ID}/basic/
+        cp /tmp/firmware-artifacts/basic/bootloader.bin firmware/preview/${VERSION_ID}/basic/
+        cp /tmp/firmware-artifacts/basic/partitions.bin firmware/preview/${VERSION_ID}/basic/
         
-        cp /tmp/firmware-artifacts/advance/firmware.bin firmware/preview/${BRANCH_SUFFIX}/advance-v1.3/
-        cp /tmp/firmware-artifacts/advance/bootloader.bin firmware/preview/${BRANCH_SUFFIX}/advance-v1.3/
-        cp /tmp/firmware-artifacts/advance/partitions.bin firmware/preview/${BRANCH_SUFFIX}/advance-v1.3/
+        cp /tmp/firmware-artifacts/advance/firmware.bin firmware/preview/${VERSION_ID}/advance-v1.3/
+        cp /tmp/firmware-artifacts/advance/bootloader.bin firmware/preview/${VERSION_ID}/advance-v1.3/
+        cp /tmp/firmware-artifacts/advance/partitions.bin firmware/preview/${VERSION_ID}/advance-v1.3/
         
         # Copy boot_app0.bin if available
         if [ -f ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin ]; then
-          cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin firmware/preview/${BRANCH_SUFFIX}/basic/
-          cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin firmware/preview/${BRANCH_SUFFIX}/advance-v1.3/
+          cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin firmware/preview/${VERSION_ID}/basic/
+          cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin firmware/preview/${VERSION_ID}/advance-v1.3/
         fi
         
         # Copy and update manifests
-        cp /tmp/firmware-artifacts/web/manifest_basic.json firmware/preview/${BRANCH_SUFFIX}/manifest_basic.json
-        cp /tmp/firmware-artifacts/web/manifest_advance.json firmware/preview/${BRANCH_SUFFIX}/manifest_advance-v1.3.json
+        cp /tmp/firmware-artifacts/web/manifest_basic.json firmware/preview/${VERSION_ID}/manifest_basic.json
+        cp /tmp/firmware-artifacts/web/manifest_advance.json firmware/preview/${VERSION_ID}/manifest_advance-v1.3.json
         
         # Update manifest paths
-        sed -i "s|./firmware/basic/|./firmware/preview/${BRANCH_SUFFIX}/basic/|g" firmware/preview/${BRANCH_SUFFIX}/manifest_basic.json
-        sed -i "s|./firmware/advance/|./firmware/preview/${BRANCH_SUFFIX}/advance-v1.3/|g" firmware/preview/${BRANCH_SUFFIX}/manifest_advance-v1.3.json
+        sed -i "s|./firmware/basic/|./firmware/preview/${VERSION_ID}/basic/|g" firmware/preview/${VERSION_ID}/manifest_basic.json
+        sed -i "s|./firmware/advance/|./firmware/preview/${VERSION_ID}/advance-v1.3/|g" firmware/preview/${VERSION_ID}/manifest_advance-v1.3.json
         
         # Update version in manifests to include preview tag
-        sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION_ID\"/" firmware/preview/${BRANCH_SUFFIX}/manifest_basic.json
-        sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION_ID\"/" firmware/preview/${BRANCH_SUFFIX}/manifest_advance-v1.3.json
+        sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION_ID\"/" firmware/preview/${VERSION_ID}/manifest_basic.json
+        sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION_ID\"/" firmware/preview/${VERSION_ID}/manifest_advance-v1.3.json
         
     - name: Update versions.json with preview
       run: |
