@@ -1,0 +1,27 @@
+.pio/build/elecrow-crowpanel-7-basic/lib272/lvgl/draw/convert/lv_draw_buf_convert.c.o: \
+ .pio/libdeps/elecrow-crowpanel-7-basic/lvgl/src/draw/convert/lv_draw_buf_convert.c \
+ .pio/libdeps/elecrow-crowpanel-7-basic/lvgl/src/draw/convert/lv_draw_buf_convert.h \
+ .pio/libdeps/elecrow-crowpanel-7-basic/lvgl/src/draw/convert/../../misc/lv_color.h \
+ .pio/libdeps/elecrow-crowpanel-7-basic/lvgl/src/draw/convert/../../misc/../lv_conf_internal.h \
+ .pio/libdeps/elecrow-crowpanel-7-basic/lvgl/src/draw/convert/../../misc/../lv_conf_kconfig.h \
+ /home/runner/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/dio_opi/include/sdkconfig.h \
+ /home/runner/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/esp_common/include/esp_attr.h \
+ include/lv_conf.h \
+ .pio/libdeps/elecrow-crowpanel-7-basic/lvgl/src/draw/convert/../../misc/lv_assert.h \
+ .pio/libdeps/elecrow-crowpanel-7-basic/lvgl/src/draw/convert/../../misc/lv_log.h \
+ .pio/libdeps/elecrow-crowpanel-7-basic/lvgl/src/draw/convert/../../misc/lv_types.h \
+ .pio/libdeps/elecrow-crowpanel-7-basic/lvgl/src/draw/convert/../../misc/../stdlib/lv_mem.h \
+ .pio/libdeps/elecrow-crowpanel-7-basic/lvgl/src/draw/convert/../../misc/../stdlib/../lv_conf_internal.h \
+ .pio/libdeps/elecrow-crowpanel-7-basic/lvgl/src/draw/convert/../../misc/../stdlib/lv_string.h \
+ .pio/libdeps/elecrow-crowpanel-7-basic/lvgl/src/draw/convert/../../misc/../stdlib/../misc/lv_types.h \
+ .pio/libdeps/elecrow-crowpanel-7-basic/lvgl/src/draw/convert/../../misc/lv_math.h \
+ .pio/libdeps/elecrow-crowpanel-7-basic/lvgl/src/draw/convert/../../misc/lv_palette.h \
+ .pio/libdeps/elecrow-crowpanel-7-basic/lvgl/src/draw/convert/../../misc/lv_color.h \
+ .pio/libdeps/elecrow-crowpanel-7-basic/lvgl/src/draw/convert/../../misc/lv_color_op.h \
+ .pio/libdeps/elecrow-crowpanel-7-basic/lvgl/src/draw/convert/../lv_draw_buf.h \
+ .pio/libdeps/elecrow-crowpanel-7-basic/lvgl/src/draw/convert/../../misc/lv_types.h \
+ .pio/libdeps/elecrow-crowpanel-7-basic/lvgl/src/draw/convert/../../misc/lv_area.h \
+ .pio/libdeps/elecrow-crowpanel-7-basic/lvgl/src/draw/convert/../../misc/lv_color.h \
+ .pio/libdeps/elecrow-crowpanel-7-basic/lvgl/src/draw/convert/../../stdlib/lv_string.h \
+ .pio/libdeps/elecrow-crowpanel-7-basic/lvgl/src/draw/convert/../lv_image_dsc.h \
+ .pio/libdeps/elecrow-crowpanel-7-basic/lvgl/src/draw/convert/../../lv_conf_internal.h

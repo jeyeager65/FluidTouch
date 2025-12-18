@@ -1,0 +1,26 @@
+{
+  "default_version": null,
+  "default_hardware": "advance-v1.3",
+  "versions": [
+    {
+      "id": "1.0.1_dev",
+      "display": "1.0.1_dev (Preview)",
+      "type": "preview",
+      "branch": "dev",
+      "date": "2025-12-18T23:35:49Z",
+      "hardware_variants": {
+        "basic": {
+          "manifest": "./firmware/preview/dev/manifest_basic.json"
+        },
+        "advance-v1.3": {
+          "manifest": "./firmware/preview/dev/manifest_advance.json"
+        }
+      }
+    }
+  ],
+  "hardware_info": {
+    "basic": "Basic (4MB flash, PWM backlight)",
+    "advance-v1.3": "Advance v1.3 (16MB flash, IPS display)",
+    "advance-v1.2": "Advance v1.2 (older revision)"
+  }
+}
