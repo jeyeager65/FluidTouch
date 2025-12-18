@@ -1,0 +1,160 @@
+name: Build Branch Preview
+
+on:
+  push:
+    branches:
+      - 'feat/**'
+      - 'fix/**'
+      - 'dev'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build-preview:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Cache PlatformIO
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.platformio
+          .pio
+        key: ${{ runner.os }}-pio-${{ hashFiles('**/platformio.ini') }}
+        restore-keys: |
+          ${{ runner.os }}-pio-
+          
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        
+    - name: Install PlatformIO
+      run: |
+        python -m pip install --upgrade pip
+        pip install platformio
+        
+    - name: Build firmware (Basic)
+      run: platformio run --environment elecrow-crowpanel-7-basic
+      
+    - name: Build firmware (Advance)
+      run: platformio run --environment elecrow-crowpanel-7-advance
+      
+    - name: Get branch info
+      id: branch
+      run: |
+        # Extract branch name without refs/heads/
+        BRANCH_NAME="${{ github.ref_name }}"
+        # Get just the last part after final /
+        BRANCH_SUFFIX=$(echo "$BRANCH_NAME" | rev | cut -d'/' -f1 | rev | sed 's/[^a-zA-Z0-9-]/-/g')
+        # Get base version from manifest
+        BASE_VERSION=$(grep -o '"version": *"[^"]*"' web/manifest_basic.json | head -1 | sed 's/"version": *"\(.*\)"/\1/')
+        
+        echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_OUTPUT
+        echo "BRANCH_SUFFIX=$BRANCH_SUFFIX" >> $GITHUB_OUTPUT
+        echo "BASE_VERSION=$BASE_VERSION" >> $GITHUB_OUTPUT
+        echo "VERSION_ID=${BASE_VERSION}_${BRANCH_SUFFIX}" >> $GITHUB_OUTPUT
+        
+    - name: Checkout gh-pages branch
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git fetch origin gh-pages:gh-pages 2>/dev/null || git checkout --orphan gh-pages
+        git checkout gh-pages
+        
+    - name: Copy firmware to preview folder
+      run: |
+        VERSION_ID="${{ steps.branch.outputs.VERSION_ID }}"
+        BRANCH_SUFFIX="${{ steps.branch.outputs.BRANCH_SUFFIX }}"
+        
+        # Create preview directories
+        mkdir -p firmware/preview/${BRANCH_SUFFIX}/basic
+        mkdir -p firmware/preview/${BRANCH_SUFFIX}/advance-v1.3
+        
+        # Copy firmware files from build
+        cp ../work/FluidTouch/FluidTouch/.pio/build/elecrow-crowpanel-7-basic/firmware.bin firmware/preview/${BRANCH_SUFFIX}/basic/
+        cp ../work/FluidTouch/FluidTouch/.pio/build/elecrow-crowpanel-7-basic/bootloader.bin firmware/preview/${BRANCH_SUFFIX}/basic/
+        cp ../work/FluidTouch/FluidTouch/.pio/build/elecrow-crowpanel-7-basic/partitions.bin firmware/preview/${BRANCH_SUFFIX}/basic/
+        
+        cp ../work/FluidTouch/FluidTouch/.pio/build/elecrow-crowpanel-7-advance/firmware.bin firmware/preview/${BRANCH_SUFFIX}/advance-v1.3/
+        cp ../work/FluidTouch/FluidTouch/.pio/build/elecrow-crowpanel-7-advance/bootloader.bin firmware/preview/${BRANCH_SUFFIX}/advance-v1.3/
+        cp ../work/FluidTouch/FluidTouch/.pio/build/elecrow-crowpanel-7-advance/partitions.bin firmware/preview/${BRANCH_SUFFIX}/advance-v1.3/
+        
+        # Copy boot_app0.bin if available
+        if [ -f ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin ]; then
+          cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin firmware/preview/${BRANCH_SUFFIX}/basic/
+          cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin firmware/preview/${BRANCH_SUFFIX}/advance-v1.3/
+        fi
+        
+        # Copy and update manifests
+        cp ../work/FluidTouch/FluidTouch/web/manifest_basic.json firmware/preview/${BRANCH_SUFFIX}/manifest_basic.json
+        cp ../work/FluidTouch/FluidTouch/web/manifest_advance.json firmware/preview/${BRANCH_SUFFIX}/manifest_advance-v1.3.json
+        
+        # Update manifest paths
+        sed -i "s|./firmware/basic/|./firmware/preview/${BRANCH_SUFFIX}/basic/|g" firmware/preview/${BRANCH_SUFFIX}/manifest_basic.json
+        sed -i "s|./firmware/advance/|./firmware/preview/${BRANCH_SUFFIX}/advance-v1.3/|g" firmware/preview/${BRANCH_SUFFIX}/manifest_advance-v1.3.json
+        
+        # Update version in manifests to include preview tag
+        sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION_ID\"/" firmware/preview/${BRANCH_SUFFIX}/manifest_basic.json
+        sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION_ID\"/" firmware/preview/${BRANCH_SUFFIX}/manifest_advance-v1.3.json
+        
+    - name: Update versions.json with preview
+      run: |
+        VERSION_ID="${{ steps.branch.outputs.VERSION_ID }}"
+        BRANCH_NAME="${{ steps.branch.outputs.BRANCH_NAME }}"
+        BRANCH_SUFFIX="${{ steps.branch.outputs.BRANCH_SUFFIX }}"
+        TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        
+        sudo apt-get update && sudo apt-get install -y jq
+        
+        # Ensure versions.json exists
+        if [ ! -f versions.json ]; then
+          echo '{"default_version":null,"default_hardware":"advance-v1.3","versions":[],"hardware_info":{"basic":"Basic (4MB flash, PWM backlight)","advance-v1.3":"Advance v1.3 (16MB flash, IPS display)","advance-v1.2":"Advance v1.2 (older revision)"}}' > versions.json
+        fi
+        
+        # Remove existing preview entry with same ID if it exists, then add new one
+        jq --arg ver "$VERSION_ID" --arg branch "$BRANCH_NAME" --arg ts "$TIMESTAMP" --arg suffix "$BRANCH_SUFFIX" '
+          .versions = (.versions | map(select(.id != $ver))) |
+          .versions = ([{
+            "id": $ver,
+            "display": ($ver + " (Preview)"),
+            "type": "preview",
+            "branch": $branch,
+            "date": $ts,
+            "hardware_variants": {
+              "basic": {
+                "manifest": ("./firmware/preview/" + $suffix + "/manifest_basic.json")
+              },
+              "advance-v1.3": {
+                "manifest": ("./firmware/preview/" + $suffix + "/manifest_advance.json")
+              }
+            }
+          }] + .versions)
+        ' versions.json > versions.json.tmp && mv versions.json.tmp versions.json
+        
+        echo "Updated versions.json:"
+        cat versions.json
+        
+    - name: Copy web files from source
+      run: |
+        cp ../work/FluidTouch/FluidTouch/web/index.html index.html
+        
+    - name: Commit and push to gh-pages
+      run: |
+        git add -A
+        git commit -m "Deploy preview: ${{ steps.branch.outputs.VERSION_ID }}" || echo "No changes to commit"
+        git push origin gh-pages
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Deploy to GitHub Pages
+      uses: actions/deploy-pages@v4
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}

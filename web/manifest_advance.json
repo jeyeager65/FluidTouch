@@ -8,19 +8,19 @@
       "chipFamily": "ESP32-S3",
       "parts": [
         {
-          "path": "firmware/advance/bootloader.bin",
+          "path": "./firmware/advance/bootloader.bin",
           "offset": 0
         },
         {
-          "path": "firmware/advance/partitions.bin",
+          "path": "./firmware/advance/partitions.bin",
           "offset": 32768
         },
         {
-          "path": "firmware/advance/boot_app0.bin",
+          "path": "./firmware/advance/boot_app0.bin",
           "offset": 57344
         },
         {
-          "path": "firmware/advance/firmware.bin",
+          "path": "./firmware/advance/firmware.bin",
           "offset": 65536
         }
       ]
