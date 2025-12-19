@@ -148,7 +148,7 @@ jobs:
         fi
         
         # Remove existing preview entry with same ID if it exists, then add new one
-        BUILD_DATE=$(date +"%Y-%m-%d")
+        BUILD_DATE=$(TZ=America/New_York date +"%Y-%m-%d")
         jq --arg ver "$VERSION_ID" --arg branch "$BRANCH_NAME" --arg ts "$TIMESTAMP" --arg suffix "$BRANCH_SUFFIX" --arg date "$BUILD_DATE" '
           .versions = (.versions | map(select(.id != $ver))) |
           .versions = ([{
