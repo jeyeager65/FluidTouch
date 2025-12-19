@@ -55,14 +55,14 @@ jobs:
         echo "VERSION_ID=${BASE_VERSION}_${BRANCH_SUFFIX}" >> $GITHUB_OUTPUT
     
     - name: Build firmware (Basic)
-      run: |
-        VERSION_ID="${{ steps.branch.outputs.VERSION_ID }}"
-        platformio run --environment elecrow-crowpanel-7-basic --build-flag='-D FLUIDTOUCH_VERSION=\"'$VERSION_ID'\"'
+      run: platformio run --environment elecrow-crowpanel-7-basic
+      env:
+        PLATFORMIO_BUILD_FLAGS: -D FLUIDTOUCH_VERSION=\"${{ steps.branch.outputs.VERSION_ID }}\"
       
     - name: Build firmware (Advance)
-      run: |
-        VERSION_ID="${{ steps.branch.outputs.VERSION_ID }}"
-        platformio run --environment elecrow-crowpanel-7-advance --build-flag='-D FLUIDTOUCH_VERSION=\"'$VERSION_ID'\"'
+      run: platformio run --environment elecrow-crowpanel-7-advance
+      env:
+        PLATFORMIO_BUILD_FLAGS: -D FLUIDTOUCH_VERSION=\"${{ steps.branch.outputs.VERSION_ID }}\"
         
     - name: Prepare firmware artifacts
       run: |
