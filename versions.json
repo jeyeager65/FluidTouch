@@ -3,6 +3,15 @@
   "default_hardware": "advance-v1.3",
   "versions": [
     {
+      "id": "1.0.2_advance-1-2-support",
+      "display_name": "1.0.2_advance-1-2-support (Preview 2025-12-18)",
+      "hardware": [
+        "basic",
+        "advance-v1.3"
+      ],
+      "is_preview": true
+    },
+    {
       "id": "1.0.2_status-tab-updates",
       "display_name": "1.0.2_status-tab-updates (Preview 2025-12-18)",
       "hardware": [
