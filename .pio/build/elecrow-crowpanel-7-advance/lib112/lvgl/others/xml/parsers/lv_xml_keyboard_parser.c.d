@@ -1,0 +1,10 @@
+.pio/build/elecrow-crowpanel-7-advance/lib112/lvgl/others/xml/parsers/lv_xml_keyboard_parser.c.o: \
+ .pio/libdeps/elecrow-crowpanel-7-advance/lvgl/src/others/xml/parsers/lv_xml_keyboard_parser.c \
+ .pio/libdeps/elecrow-crowpanel-7-advance/lvgl/src/others/xml/parsers/lv_xml_keyboard_parser.h \
+ .pio/libdeps/elecrow-crowpanel-7-advance/lvgl/src/others/xml/parsers/../lv_xml.h \
+ .pio/libdeps/elecrow-crowpanel-7-advance/lvgl/src/others/xml/parsers/../../../misc/lv_types.h \
+ .pio/libdeps/elecrow-crowpanel-7-advance/lvgl/src/others/xml/parsers/../../../misc/../lv_conf_internal.h \
+ .pio/libdeps/elecrow-crowpanel-7-advance/lvgl/src/others/xml/parsers/../../../misc/../lv_conf_kconfig.h \
+ /home/runner/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/qio_opi/include/sdkconfig.h \
+ /home/runner/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/esp_common/include/esp_attr.h \
+ include/lv_conf.h

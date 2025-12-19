@@ -1,0 +1,19 @@
+{
+  "default_version": null,
+  "default_hardware": "advance-v1.3",
+  "versions": [
+    {
+      "id": "1.0.1_dev",
+      "hardware": [
+        "basic",
+        "advance-v1.3"
+      ],
+      "is_preview": true
+    }
+  ],
+  "hardware_info": {
+    "basic": "Basic (4MB flash, PWM backlight)",
+    "advance-v1.3": "Advance v1.3 (16MB flash, IPS display)",
+    "advance-v1.2": "Advance v1.2 (older revision)"
+  }
+}
