@@ -12,8 +12,8 @@
     }
   ],
   "hardware_info": {
-    "basic": "Basic (4MB flash, PWM backlight)",
-    "advance-v1.3": "Advance v1.3 (16MB flash, IPS display)",
-    "advance-v1.2": "Advance v1.2 (older revision)"
+    "basic": "Basic",
+    "advance-v1.3": "Advance v1.3",
+    "advance-v1.2": "Advance v1.2"
   }
 }
