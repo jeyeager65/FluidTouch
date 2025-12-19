@@ -1023,7 +1023,7 @@
             versionsData.versions.forEach(version => {
                 const option = document.createElement('option');
                 option.value = version.id;
-                option.textContent = version.id + (version.is_preview ? ' (Preview)' : '');
+                option.textContent = version.display_name || version.id;
                 if (version.is_preview) {
                     option.style.color = '#ffa726';
                 }
