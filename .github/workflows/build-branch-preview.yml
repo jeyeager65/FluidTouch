@@ -39,12 +39,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install platformio
         
-    - name: Build firmware (Basic)
-      run: platformio run --environment elecrow-crowpanel-7-basic
-      
-    - name: Build firmware (Advance)
-      run: platformio run --environment elecrow-crowpanel-7-advance
-      
     - name: Get branch info
       id: branch
       run: |
@@ -59,6 +53,16 @@ jobs:
         echo "BRANCH_SUFFIX=$BRANCH_SUFFIX" >> $GITHUB_OUTPUT
         echo "BASE_VERSION=$BASE_VERSION" >> $GITHUB_OUTPUT
         echo "VERSION_ID=${BASE_VERSION}_${BRANCH_SUFFIX}" >> $GITHUB_OUTPUT
+    
+    - name: Build firmware (Basic)
+      run: |
+        VERSION_ID="${{ steps.branch.outputs.VERSION_ID }}"
+        platformio run --environment elecrow-crowpanel-7-basic --build-flag='-D FLUIDTOUCH_VERSION=\"'$VERSION_ID'\"'
+      
+    - name: Build firmware (Advance)
+      run: |
+        VERSION_ID="${{ steps.branch.outputs.VERSION_ID }}"
+        platformio run --environment elecrow-crowpanel-7-advance --build-flag='-D FLUIDTOUCH_VERSION=\"'$VERSION_ID'\"'
         
     - name: Prepare firmware artifacts
       run: |
