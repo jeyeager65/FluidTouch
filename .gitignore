@@ -1,3 +1,6 @@
 .pio/
 build/
 .vscode/
+.vs/
+docs/
+web/
