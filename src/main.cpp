@@ -39,6 +39,17 @@ void setup()
         while (1) delay(1000);
     }
     Serial.println("Display driver initialized successfully");
+    
+    // Load and apply display rotation preference
+    {
+        Preferences prefs;
+        prefs.begin(PREFS_SYSTEM_NAMESPACE, true);  // Read-only
+        uint8_t display_rotation = prefs.getUChar("display_rot", 0);  // Default to 0 (normal)
+        prefs.end();
+        
+        Serial.printf("Main: Loading display rotation: %d degrees\n", display_rotation * 90);
+        displayDriver.setRotation(display_rotation);
+    }
 
     // Initialize Touch Driver
     Serial.println("Initializing touch driver...");

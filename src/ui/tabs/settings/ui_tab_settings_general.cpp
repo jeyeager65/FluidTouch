@@ -1,6 +1,8 @@
 #include "ui/tabs/settings/ui_tab_settings_general.h"
 #include "ui/ui_theme.h"
+#include "ui/ui_common.h"
 #include "ui/settings_manager.h"
+#include "core/display_driver.h"
 #include "config.h"
 #include <Preferences.h>
 
@@ -8,12 +10,12 @@
 static lv_obj_t *status_label = NULL;
 static lv_obj_t *show_machine_select_switch = NULL;
 static lv_obj_t *folders_on_top_switch = NULL;
+static lv_obj_t *rotate_display_switch = NULL;
 
 // Forward declarations for event handlers
 static void btn_save_general_event_handler(lv_event_t *e);
 static void btn_reset_event_handler(lv_event_t *e);
-static void btn_export_event_handler(lv_event_t *e);
-static void btn_clear_event_handler(lv_event_t *e);
+static void showRotationRestartDialog();
 
 void UITabSettingsGeneral::create(lv_obj_t *tab) {
     // Set dark background
@@ -27,9 +29,10 @@ void UITabSettingsGeneral::create(lv_obj_t *tab) {
     prefs.begin(PREFS_SYSTEM_NAMESPACE, true);  // Read-only
     bool show_machine_select = prefs.getBool("show_mach_sel", true);  // Default to true
     bool folders_on_top = prefs.getBool("folders_on_top", false);  // Default to false (folders at bottom)
+    uint8_t display_rotation = prefs.getUChar("display_rot", 0);  // Default to 0 (normal)
     prefs.end();
     
-    Serial.printf("UITabSettingsGeneral: Loaded show_mach_sel=%d, folders_on_top=%d\n", show_machine_select, folders_on_top);
+    Serial.printf("UITabSettingsGeneral: Loaded show_mach_sel=%d, folders_on_top=%d, display_rot=%d\n", show_machine_select, folders_on_top, display_rotation);
     
     // === Machine Selection Section ===
     lv_obj_t *section_title = lv_label_create(tab);
@@ -58,6 +61,33 @@ void UITabSettingsGeneral::create(lv_obj_t *tab) {
     lv_obj_set_style_text_color(desc_label, UITheme::TEXT_DISABLED, 0);
     lv_obj_set_pos(desc_label, 20, 107);  // 20 + 40 (title) + 40 (switch row) + 7 (spacing)
     
+    // === Display Section (Top right) ===
+    lv_obj_t *display_section_title = lv_label_create(tab);
+    lv_label_set_text(display_section_title, "DISPLAY");
+    lv_obj_set_style_text_font(display_section_title, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(display_section_title, UITheme::TEXT_DISABLED, 0);
+    lv_obj_set_pos(display_section_title, 400, 20);  // Top right column
+    
+    // Rotate display label and switch
+    lv_obj_t *rotate_label = lv_label_create(tab);
+    lv_label_set_text(rotate_label, "Rotate 180°:");
+    lv_obj_set_style_text_font(rotate_label, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(rotate_label, UITheme::TEXT_LIGHT, 0);
+    lv_obj_set_pos(rotate_label, 400, 70);  // Top right, aligned with Machine Selection Show label
+    
+    rotate_display_switch = lv_switch_create(tab);
+    lv_obj_set_pos(rotate_display_switch, 560, 65);  // Aligned with label
+    if (display_rotation == 2) {  // Rotation 2 = 180 degrees
+        lv_obj_add_state(rotate_display_switch, LV_STATE_CHECKED);
+    }
+    
+    // Description text for rotation setting
+    lv_obj_t *rotate_desc_label = lv_label_create(tab);
+    lv_label_set_text(rotate_desc_label, "Rotate display 180° for\nupside-down mounting.\nRequires restart.");
+    lv_obj_set_style_text_font(rotate_desc_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(rotate_desc_label, UITheme::TEXT_DISABLED, 0);
+    lv_obj_set_pos(rotate_desc_label, 400, 107);  // Top right, aligned with Machine Selection description
+    
     // === Files Section (First column, below Machine Selection) ===
     lv_obj_t *files_section_title = lv_label_create(tab);
     lv_label_set_text(files_section_title, "FILES");
@@ -84,42 +114,6 @@ void UITabSettingsGeneral::create(lv_obj_t *tab) {
     lv_obj_set_style_text_font(folders_desc_label, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(folders_desc_label, UITheme::TEXT_DISABLED, 0);
     lv_obj_set_pos(folders_desc_label, 20, 242);  // First column
-    
-    // === Backup & Restore Section (Second column) ===
-    lv_obj_t *backup_section_title = lv_label_create(tab);
-    lv_label_set_text(backup_section_title, "BACKUP & RESTORE");
-    lv_obj_set_style_text_font(backup_section_title, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_text_color(backup_section_title, UITheme::TEXT_DISABLED, 0);
-    lv_obj_set_pos(backup_section_title, 400, 20);  // Second column
-    
-    // Export settings button
-    lv_obj_t *btn_export = lv_button_create(tab);
-    lv_obj_set_size(btn_export, 180, 50);
-    lv_obj_set_pos(btn_export, 400, 60);  // Second column
-    lv_obj_set_style_bg_color(btn_export, UITheme::ACCENT_SECONDARY, LV_PART_MAIN);
-    lv_obj_t *lbl_export = lv_label_create(btn_export);
-    lv_label_set_text(lbl_export, LV_SYMBOL_DOWNLOAD " Export");
-    lv_obj_set_style_text_font(lbl_export, &lv_font_montserrat_16, 0);
-    lv_obj_center(lbl_export);
-    lv_obj_add_event_cb(btn_export, btn_export_event_handler, LV_EVENT_CLICKED, NULL);
-    
-    // Clear settings button
-    lv_obj_t *btn_clear = lv_button_create(tab);
-    lv_obj_set_size(btn_clear, 180, 50);
-    lv_obj_set_pos(btn_clear, 400, 120);  // Second column, below Export
-    lv_obj_set_style_bg_color(btn_clear, UITheme::STATE_ALARM, LV_PART_MAIN);
-    lv_obj_t *lbl_clear = lv_label_create(btn_clear);
-    lv_label_set_text(lbl_clear, LV_SYMBOL_TRASH " Clear All");
-    lv_obj_set_style_text_font(lbl_clear, &lv_font_montserrat_16, 0);
-    lv_obj_center(lbl_clear);
-    lv_obj_add_event_cb(btn_clear, btn_clear_event_handler, LV_EVENT_CLICKED, NULL);
-    
-    // Description for backup section
-    lv_obj_t *backup_desc_label = lv_label_create(tab);
-    lv_label_set_text(backup_desc_label, "Export saves backup to Display SD.\nClear erases all settings and restarts.");
-    lv_obj_set_style_text_font(backup_desc_label, &lv_font_montserrat_14, 0);
-    lv_obj_set_style_text_color(backup_desc_label, UITheme::TEXT_DISABLED, 0);
-    lv_obj_set_pos(backup_desc_label, 400, 180);  // Second column, below buttons
     
     // === Action Buttons (positioned at bottom with 20px margins) ===
     // Save button
@@ -159,8 +153,10 @@ static void btn_save_general_event_handler(lv_event_t *e) {
         // Save preferences
         bool show_machine_select = lv_obj_has_state(show_machine_select_switch, LV_STATE_CHECKED);
         bool folders_on_top = lv_obj_has_state(folders_on_top_switch, LV_STATE_CHECKED);
+        bool rotate_display = lv_obj_has_state(rotate_display_switch, LV_STATE_CHECKED);
+        uint8_t rotation = rotate_display ? 2 : 0;  // 2 = 180 degrees, 0 = normal
         
-        Serial.printf("UITabSettingsGeneral: Saving show_mach_sel=%d, folders_on_top=%d\n", show_machine_select, folders_on_top);
+        Serial.printf("UITabSettingsGeneral: Saving show_mach_sel=%d, folders_on_top=%d, display_rot=%d\n", show_machine_select, folders_on_top, rotation);
         
         Preferences prefs;
         if (!prefs.begin(PREFS_SYSTEM_NAMESPACE, false)) {  // Read-write
@@ -174,19 +170,31 @@ static void btn_save_general_event_handler(lv_event_t *e) {
         
         prefs.putBool("show_mach_sel", show_machine_select);
         prefs.putBool("folders_on_top", folders_on_top);
+        
+        // Check if rotation changed - requires restart
+        uint8_t old_rotation = prefs.getUChar("display_rot", 0);
+        bool rotation_changed = (rotation != old_rotation);
+        
+        prefs.putUChar("display_rot", rotation);
         prefs.end();
         
         // Verify it was saved
         prefs.begin(PREFS_SYSTEM_NAMESPACE, true);
         bool verified_machine = prefs.getBool("show_mach_sel", true);
         bool verified_folders = prefs.getBool("folders_on_top", false);
+        uint8_t verified_rotation = prefs.getUChar("display_rot", 0);
         prefs.end();
         
-        Serial.printf("UITabSettingsGeneral: Verified show_mach_sel=%d, folders_on_top=%d\n", verified_machine, verified_folders);
+        Serial.printf("UITabSettingsGeneral: Verified show_mach_sel=%d, folders_on_top=%d, display_rot=%d\n", verified_machine, verified_folders, verified_rotation);
         
         if (status_label != NULL) {
             lv_label_set_text(status_label, "Settings saved!");
             lv_obj_set_style_text_color(status_label, UITheme::UI_SUCCESS, 0);
+        }
+        
+        // If rotation changed, show restart confirmation dialog
+        if (rotation_changed) {
+            showRotationRestartDialog();
         }
     }
 }
@@ -195,9 +203,10 @@ static void btn_save_general_event_handler(lv_event_t *e) {
 static void btn_reset_event_handler(lv_event_t *e) {
     lv_event_code_t code = lv_event_get_code(e);
     if (code == LV_EVENT_CLICKED) {
-        // Reset to defaults (show machine selection enabled, folders at bottom)
+        // Reset to defaults (show machine selection enabled, folders at bottom, rotation 0)
         lv_obj_add_state(show_machine_select_switch, LV_STATE_CHECKED);
         lv_obj_clear_state(folders_on_top_switch, LV_STATE_CHECKED);  // Default: folders at bottom
+        lv_obj_clear_state(rotate_display_switch, LV_STATE_CHECKED);  // Default: rotation 0 (normal)
         
         if (status_label != NULL) {
             lv_label_set_text(status_label, "Reset to defaults");
@@ -207,231 +216,100 @@ static void btn_reset_event_handler(lv_event_t *e) {
     }
 }
 
-// Export settings button event handler
-static void btn_export_event_handler(lv_event_t *e) {
-    lv_event_code_t code = lv_event_get_code(e);
-    if (code == LV_EVENT_CLICKED) {
-        Serial.println("[SettingsGeneral] Export button clicked");
-        
-        if (status_label != NULL) {
-            lv_label_set_text(status_label, "Exporting...");
-            lv_obj_set_style_text_color(status_label, UITheme::UI_INFO, 0);
+// Show rotation restart confirmation dialog
+static void showRotationRestartDialog() {
+    Serial.println("[SettingsGeneral] Showing rotation restart dialog");
+    
+    // Create modal backdrop
+    lv_obj_t *backdrop = lv_obj_create(lv_layer_top());
+    lv_obj_set_size(backdrop, SCREEN_WIDTH, SCREEN_HEIGHT);
+    lv_obj_set_style_bg_color(backdrop, lv_color_hex(0x000000), 0);
+    lv_obj_set_style_bg_opa(backdrop, LV_OPA_50, 0);
+    lv_obj_set_style_border_width(backdrop, 0, 0);
+    lv_obj_clear_flag(backdrop, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_center(backdrop);
+    
+    // Create dialog
+    lv_obj_t *dialog = lv_obj_create(backdrop);
+    lv_obj_set_size(dialog, 600, 250);
+    lv_obj_center(dialog);
+    lv_obj_set_style_bg_color(dialog, UITheme::BG_MEDIUM, 0);
+    lv_obj_set_style_border_width(dialog, 3, 0);
+    lv_obj_set_style_border_color(dialog, UITheme::UI_WARNING, 0);
+    lv_obj_set_style_pad_all(dialog, 20, 0);
+    lv_obj_clear_flag(dialog, LV_OBJ_FLAG_SCROLLABLE);
+    
+    // Title
+    lv_obj_t *title = lv_label_create(dialog);
+    lv_label_set_text(title, LV_SYMBOL_WARNING " Restart Required");
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_22, 0);
+    lv_obj_set_style_text_color(title, UITheme::UI_WARNING, 0);
+    lv_obj_set_pos(title, 0, 0);
+    
+    // Message
+    lv_obj_t *message = lv_label_create(dialog);
+    lv_label_set_text(message, "Display rotation requires a restart\nto take effect.\n\nRestart now?");
+    lv_obj_set_style_text_font(message, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(message, UITheme::TEXT_LIGHT, 0);
+    lv_obj_set_style_text_align(message, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_pos(message, 0, 45);
+    lv_obj_set_width(message, 560);
+    
+    // Button container for horizontal layout
+    lv_obj_t *btn_container = lv_obj_create(dialog);
+    lv_obj_set_size(btn_container, 560, 60);
+    lv_obj_set_pos(btn_container, 0, 150);
+    lv_obj_set_style_bg_opa(btn_container, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(btn_container, 0, 0);
+    lv_obj_set_style_pad_all(btn_container, 0, 0);
+    lv_obj_set_flex_flow(btn_container, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(btn_container, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_clear_flag(btn_container, LV_OBJ_FLAG_SCROLLABLE);
+    
+    // Restart button (left)
+    lv_obj_t *btn_restart = lv_button_create(btn_container);
+    lv_obj_set_size(btn_restart, 240, 50);
+    lv_obj_set_style_bg_color(btn_restart, UITheme::UI_WARNING, 0);
+    lv_obj_t *lbl_restart = lv_label_create(btn_restart);
+    lv_label_set_text(lbl_restart, LV_SYMBOL_REFRESH " Restart");
+    lv_obj_set_style_text_font(lbl_restart, &lv_font_montserrat_18, 0);
+    lv_obj_center(lbl_restart);
+    lv_obj_add_event_cb(btn_restart, [](lv_event_t *e) {
+        if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
+            Serial.println("[SettingsGeneral] Restart button clicked - restarting ESP32");
+            
+            // Show restart message
+            lv_obj_t *backdrop = (lv_obj_t*)lv_event_get_user_data(e);
+            lv_obj_clean(backdrop);
+            
+            lv_obj_t *restart_label = lv_label_create(backdrop);
+            lv_label_set_text(restart_label, "Restarting...");
+            lv_obj_set_style_text_font(restart_label, &lv_font_montserrat_32, 0);
+            lv_obj_set_style_text_color(restart_label, UITheme::UI_INFO, 0);
+            lv_obj_set_style_text_align(restart_label, LV_TEXT_ALIGN_CENTER, 0);
+            lv_obj_center(restart_label);
+            
+            // Force UI update
+            lv_task_handler();
+            delay(2000);
+            
+            // Restart ESP32
+            ESP.restart();
         }
-        
-        // Force LVGL update to show status
-        lv_task_handler();
-        
-        // Attempt export
-        if (SettingsManager::exportSettings()) {
-            Serial.println("[SettingsGeneral] Export successful");
-            
-            // Create modal backdrop
-            lv_obj_t *backdrop = lv_obj_create(lv_layer_top());
-            lv_obj_set_size(backdrop, SCREEN_WIDTH, SCREEN_HEIGHT);
-            lv_obj_set_style_bg_color(backdrop, lv_color_hex(0x000000), 0);
-            lv_obj_set_style_bg_opa(backdrop, LV_OPA_50, 0);
-            lv_obj_set_style_border_width(backdrop, 0, 0);
-            lv_obj_clear_flag(backdrop, LV_OBJ_FLAG_SCROLLABLE);
-            lv_obj_center(backdrop);
-            
-            // Show success dialog with important information
-            lv_obj_t *dialog = lv_obj_create(backdrop);
-            lv_obj_set_size(dialog, 650, 300);
-            lv_obj_center(dialog);
-            lv_obj_set_style_bg_color(dialog, UITheme::BG_MEDIUM, 0);
-            lv_obj_set_style_border_width(dialog, 3, 0);
-            lv_obj_set_style_border_color(dialog, UITheme::UI_SUCCESS, 0);
-            lv_obj_set_style_pad_all(dialog, 20, 0);
-            lv_obj_clear_flag(dialog, LV_OBJ_FLAG_SCROLLABLE);
-            
-            // Title
-            lv_obj_t *title = lv_label_create(dialog);
-            lv_label_set_text(title, LV_SYMBOL_OK " Export Successful");
-            lv_obj_set_style_text_font(title, &lv_font_montserrat_22, 0);
-            lv_obj_set_style_text_color(title, UITheme::UI_SUCCESS, 0);
-            lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 0);
-            
-            // Message
-            lv_obj_t *message = lv_label_create(dialog);
-            lv_label_set_text(message, 
-                "Settings exported to fluidtouch_settings.json on Display SD.\n\n"
-                "IMPORTANT: WiFi passwords are NOT included\n"
-                "for security reasons.\n\n"
-                "When importing this file, you will need to\n"
-                "manually set WiFi passwords for each machine.");
-            lv_obj_set_style_text_font(message, &lv_font_montserrat_16, 0);
-            lv_obj_set_style_text_color(message, UITheme::TEXT_LIGHT, 0);
-            lv_obj_set_style_text_align(message, LV_TEXT_ALIGN_CENTER, 0);
-            lv_label_set_long_mode(message, LV_LABEL_LONG_WRAP);
-            lv_obj_set_width(message, 610);
-            lv_obj_align(message, LV_ALIGN_TOP_MID, 0, 50);
-            
-            // Button container
-            lv_obj_t *btn_container = lv_obj_create(dialog);
-            lv_obj_set_size(btn_container, 610, 60);
-            lv_obj_set_style_bg_opa(btn_container, LV_OPA_TRANSP, 0);
-            lv_obj_set_style_border_width(btn_container, 0, 0);
-            lv_obj_set_style_pad_all(btn_container, 0, 0);
-            lv_obj_align(btn_container, LV_ALIGN_BOTTOM_MID, 0, 0);
-            lv_obj_clear_flag(btn_container, LV_OBJ_FLAG_SCROLLABLE);
-            
-            // OK button
-            lv_obj_t *btn_ok = lv_button_create(btn_container);
-            lv_obj_set_size(btn_ok, 160, 50);
-            lv_obj_center(btn_ok);
-            lv_obj_set_style_bg_color(btn_ok, UITheme::BTN_PLAY, 0);
-            lv_obj_t *lbl_ok = lv_label_create(btn_ok);
-            lv_label_set_text(lbl_ok, "OK");
-            lv_obj_set_style_text_font(lbl_ok, &lv_font_montserrat_18, 0);
-            lv_obj_center(lbl_ok);
-            lv_obj_add_event_cb(btn_ok, [](lv_event_t *e) {
-                if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-                    lv_obj_del((lv_obj_t*)lv_event_get_user_data(e));
-                }
-            }, LV_EVENT_CLICKED, backdrop);
-            
-            if (status_label != NULL) {
-                lv_label_set_text(status_label, "");
-            }
-        } else {
-            Serial.println("[SettingsGeneral] Export failed");
-            if (status_label != NULL) {
-                lv_label_set_text(status_label, "Export failed! Check SD card.");
-                lv_obj_set_style_text_color(status_label, UITheme::STATE_ALARM, 0);
-            }
+    }, LV_EVENT_CLICKED, backdrop);
+    
+    // Later button (right)
+    lv_obj_t *btn_later = lv_button_create(btn_container);
+    lv_obj_set_size(btn_later, 240, 50);
+    lv_obj_set_style_bg_color(btn_later, UITheme::BG_BUTTON, 0);
+    lv_obj_t *lbl_later = lv_label_create(btn_later);
+    lv_label_set_text(lbl_later, "Later");
+    lv_obj_set_style_text_font(lbl_later, &lv_font_montserrat_18, 0);
+    lv_obj_center(lbl_later);
+    lv_obj_add_event_cb(btn_later, [](lv_event_t *e) {
+        if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
+            Serial.println("[SettingsGeneral] Later button clicked - rotation will apply on next restart");
+            lv_obj_del((lv_obj_t*)lv_event_get_user_data(e));
         }
-    }
-}
-
-// Clear all settings button event handler
-static void btn_clear_event_handler(lv_event_t *e) {
-    lv_event_code_t code = lv_event_get_code(e);
-    if (code == LV_EVENT_CLICKED) {
-        Serial.println("[SettingsGeneral] Clear All button clicked");
-        
-        // Create modal backdrop
-        lv_obj_t *backdrop = lv_obj_create(lv_layer_top());
-        lv_obj_set_size(backdrop, SCREEN_WIDTH, SCREEN_HEIGHT);
-        lv_obj_set_style_bg_color(backdrop, lv_color_hex(0x000000), 0);
-        lv_obj_set_style_bg_opa(backdrop, LV_OPA_50, 0);
-        lv_obj_set_style_border_width(backdrop, 0, 0);
-        lv_obj_clear_flag(backdrop, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_center(backdrop);
-        
-        // Show confirmation dialog
-        lv_obj_t *dialog = lv_obj_create(backdrop);
-        lv_obj_set_size(dialog, 600, 350);
-        lv_obj_center(dialog);
-        lv_obj_set_style_bg_color(dialog, UITheme::BG_MEDIUM, 0);
-        lv_obj_set_style_border_width(dialog, 3, 0);
-        lv_obj_set_style_border_color(dialog, UITheme::STATE_ALARM, 0);
-        lv_obj_set_style_pad_all(dialog, 20, 0);
-        lv_obj_clear_flag(dialog, LV_OBJ_FLAG_SCROLLABLE);
-        
-        // Warning title
-        lv_obj_t *title = lv_label_create(dialog);
-        lv_label_set_text(title, LV_SYMBOL_WARNING " WARNING");
-        lv_obj_set_style_text_font(title, &lv_font_montserrat_22, 0);
-        lv_obj_set_style_text_color(title, UITheme::STATE_ALARM, 0);
-        lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 0);
-        
-        // Warning intro text (centered)
-        lv_obj_t *intro = lv_label_create(dialog);
-        lv_label_set_text(intro, "This will PERMANENTLY DELETE all settings:");
-        lv_obj_set_style_text_font(intro, &lv_font_montserrat_16, 0);
-        lv_obj_set_style_text_color(intro, UITheme::TEXT_LIGHT, 0);
-        lv_obj_set_style_text_align(intro, LV_TEXT_ALIGN_CENTER, 0);
-        lv_obj_set_width(intro, 560);
-        lv_obj_align(intro, LV_ALIGN_TOP_MID, 0, 40);
-        
-        // Bullet list container (centered, with left-aligned content)
-        lv_obj_t *list_container = lv_obj_create(dialog);
-        lv_obj_set_size(list_container, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-        lv_obj_set_style_bg_opa(list_container, LV_OPA_TRANSP, 0);
-        lv_obj_set_style_border_width(list_container, 0, 0);
-        lv_obj_set_style_pad_all(list_container, 5, 0);
-        lv_obj_align(list_container, LV_ALIGN_TOP_MID, 0, 60);
-        lv_obj_clear_flag(list_container, LV_OBJ_FLAG_SCROLLABLE);
-        
-        lv_obj_t *bullets = lv_label_create(list_container);
-        lv_label_set_text(bullets, 
-            "• All machine configurations\n"
-            "• All macros\n"
-            "• Power management settings\n"
-            "• UI preferences");
-        lv_obj_set_style_text_font(bullets, &lv_font_montserrat_16, 0);
-        lv_obj_set_style_text_color(bullets, UITheme::TEXT_LIGHT, 0);
-        lv_obj_set_style_text_align(bullets, LV_TEXT_ALIGN_LEFT, 0);
-        
-        // Warning footer text (centered)
-        lv_obj_t *footer = lv_label_create(dialog);
-        lv_label_set_text(footer, 
-            "Controller will restart immediately. If exported\nsettings are on Display SD, they will be automatically imported.\n\n"
-            "Consider exporting settings first!");
-        lv_obj_set_style_text_font(footer, &lv_font_montserrat_16, 0);
-        lv_obj_set_style_text_color(footer, UITheme::TEXT_LIGHT, 0);
-        lv_obj_set_style_text_align(footer, LV_TEXT_ALIGN_CENTER, 0);
-        lv_obj_set_width(footer, 560);
-        lv_obj_align(footer, LV_ALIGN_TOP_MID, 0, 155);
-        
-        // Button container
-        lv_obj_t *btn_container = lv_obj_create(dialog);
-        lv_obj_set_size(btn_container, 560, 60);
-        lv_obj_set_style_bg_opa(btn_container, LV_OPA_TRANSP, 0);
-        lv_obj_set_style_border_width(btn_container, 0, 0);
-        lv_obj_set_style_pad_all(btn_container, 0, 0);
-        lv_obj_align(btn_container, LV_ALIGN_BOTTOM_MID, 0, 0);
-        lv_obj_set_flex_flow(btn_container, LV_FLEX_FLOW_ROW);
-        lv_obj_set_flex_align(btn_container, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-        lv_obj_clear_flag(btn_container, LV_OBJ_FLAG_SCROLLABLE);
-        
-        // Confirm button (left)
-        lv_obj_t *btn_confirm = lv_button_create(btn_container);
-        lv_obj_set_size(btn_confirm, 200, 50);
-        lv_obj_set_style_bg_color(btn_confirm, UITheme::STATE_ALARM, 0);
-        lv_obj_t *lbl_confirm = lv_label_create(btn_confirm);
-        lv_label_set_text(lbl_confirm, LV_SYMBOL_TRASH " Clear & Restart");
-        lv_obj_set_style_text_font(lbl_confirm, &lv_font_montserrat_16, 0);
-        lv_obj_center(lbl_confirm);
-        lv_obj_add_event_cb(btn_confirm, [](lv_event_t *e) {
-            if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-                Serial.println("[SettingsGeneral] User confirmed clear all settings");
-                
-                // Clear all settings
-                SettingsManager::clearAllSettings();
-                
-                // Show restart message
-                lv_obj_t *backdrop = (lv_obj_t*)lv_event_get_user_data(e);
-                lv_obj_clean(backdrop);
-                
-                lv_obj_t *restart_label = lv_label_create(backdrop);
-                lv_label_set_text(restart_label, "Settings cleared!\n\nRestarting...");
-                lv_obj_set_style_text_font(restart_label, &lv_font_montserrat_24, 0);
-                lv_obj_set_style_text_color(restart_label, UITheme::UI_INFO, 0);
-                lv_obj_set_style_text_align(restart_label, LV_TEXT_ALIGN_CENTER, 0);
-                lv_obj_center(restart_label);
-                
-                // Force UI update
-                lv_task_handler();
-                delay(2000);
-                
-                // Restart ESP32
-                ESP.restart();
-            }
-        }, LV_EVENT_CLICKED, backdrop);
-        
-        // Cancel button (right)
-        lv_obj_t *btn_cancel = lv_button_create(btn_container);
-        lv_obj_set_size(btn_cancel, 180, 50);
-        lv_obj_set_style_bg_color(btn_cancel, UITheme::BG_BUTTON, 0);
-        lv_obj_t *lbl_cancel = lv_label_create(btn_cancel);
-        lv_label_set_text(lbl_cancel, "Cancel");
-        lv_obj_set_style_text_font(lbl_cancel, &lv_font_montserrat_18, 0);
-        lv_obj_center(lbl_cancel);
-        lv_obj_add_event_cb(btn_cancel, [](lv_event_t *e) {
-            if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-                lv_obj_del((lv_obj_t*)lv_event_get_user_data(e));
-            }
-        }, LV_EVENT_CLICKED, backdrop);
-    }
+    }, LV_EVENT_CLICKED, backdrop);
 }
