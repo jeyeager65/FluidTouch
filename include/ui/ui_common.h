@@ -21,6 +21,7 @@ public:
     static void updateWorkPosition(float x, float y, float z);
     static void updateMachineState(const char *state);
     static void updateConnectionStatus(bool machine_connected, bool wifi_connected);
+    static void updateFileProgress(bool is_printing, float percent, const char *filename, uint32_t elapsed_ms);
     
     // Dialog functions
     static void showMachineSelectConfirmDialog();
@@ -78,6 +79,16 @@ private:
     static lv_obj_t *lbl_mpos_x;
     static lv_obj_t *lbl_mpos_y;
     static lv_obj_t *lbl_mpos_z;
+    
+    // Job progress display (in status bar left area)
+    static lv_obj_t *lbl_file_progress_container;
+    static lv_obj_t *lbl_filename;
+    static lv_obj_t *bar_progress;
+    static lv_obj_t *lbl_percent;
+    static lv_obj_t *lbl_elapsed_time;
+    static lv_obj_t *lbl_elapsed_unit;
+    static lv_obj_t *lbl_estimated_time;
+    static lv_obj_t *lbl_estimated_unit;
     
     // Cached values for delta checking (prevent unnecessary redraws)
     static float last_wpos_x, last_wpos_y, last_wpos_z;

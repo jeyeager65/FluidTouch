@@ -196,8 +196,8 @@ void UITabControlActions::updatePauseButton(int machine_state) {
     if (!btn_pause || !lbl_pause) return;
     
     // Button shows what action it will perform NEXT
-    if (machine_state == STATE_HOLD) {
-        // Machine is paused - show Resume (green with play symbol)
+    if (machine_state == STATE_HOLD || machine_state == STATE_DOOR) {
+        // Machine is paused or door hold - show Resume (green with play symbol)
         lv_obj_set_style_bg_color(btn_pause, UITheme::BTN_PLAY, LV_PART_MAIN);
         lv_label_set_text(lbl_pause, LV_SYMBOL_PLAY " Resume");
     } else {
@@ -216,8 +216,8 @@ void UITabControlActions::onPauseResumeClicked(lv_event_t *e) {
     // Check actual machine state
     FluidNCStatus status = FluidNCClient::getStatus();
     
-    if (status.state == STATE_HOLD) {
-        // Machine is paused - send Resume command
+    if (status.state == STATE_HOLD || status.state == STATE_DOOR) {
+        // Machine is paused or door hold - send Resume command
         Serial.println("[Actions] Sending Resume command (~)");
         FluidNCClient::sendCommand("~");
     } else {
@@ -342,15 +342,7 @@ void UITabControlActions::onQuickStopClicked(lv_event_t *e) {
         return;
     }
     
-    Serial.println("[Actions] QUICK STOP - Sending Feed Hold + Soft Reset");
-    // First send feed hold
-    FluidNCClient::sendCommand("!");
-    // Small delay then soft reset
-    delay(100);
-    char reset_cmd[2] = {0x18, 0x00};
-    FluidNCClient::sendCommand(reset_cmd);
-    // Button will sync with actual state from FluidNC status
-    if (lbl_pause) {
-        lv_label_set_text(lbl_pause, "Pause");
-    }
+    Serial.println("[Actions] QUICK STOP - Sending Door Hold (0x84)");
+    char door_hold_cmd[2] = {0x84, 0x00};
+    FluidNCClient::sendCommand(door_hold_cmd);
 }

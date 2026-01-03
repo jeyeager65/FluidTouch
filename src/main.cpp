@@ -186,9 +186,14 @@ void loop()
             UITabStatus::updateModalStates(status.modal_wcs, status.modal_plane, status.modal_distance,
                                         status.modal_units, status.modal_motion, status.modal_feedrate,
                                         status.modal_spindle, status.modal_coolant, status.modal_tool);
-            UITabStatus::updateFileProgress(status.is_sd_printing, status.sd_percent, 
-                                        status.sd_filename, status.sd_elapsed_ms);
             UITabStatus::updateMessage(status.last_message);
+            
+            // Update file progress in status bar (UICommon) instead of status tab
+            UICommon::updateFileProgress(status.is_sd_printing, status.sd_percent,
+                                        status.sd_filename, status.sd_elapsed_ms);
+            
+            // Update control buttons visibility based on machine state
+            UITabStatus::updateControlButtons(status.state);
             
             // Update Macros tab progress (only when a macro from that tab is running)
             static bool macro_print_started = false;  // Track if SD print actually started

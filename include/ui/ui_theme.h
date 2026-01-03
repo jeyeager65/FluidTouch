@@ -12,6 +12,7 @@ namespace UITheme {
     static constexpr lv_color_t BG_MEDIUM = LV_COLOR_MAKE(0x2a, 0x2a, 0x2a);    // Content areas, tab backgrounds
     static constexpr lv_color_t BG_BUTTON = LV_COLOR_MAKE(0x33, 0x33, 0x33);    // Input fields, unselected buttons
     static constexpr lv_color_t BG_BLACK = LV_COLOR_MAKE(0x00, 0x00, 0x00);     // Terminal background
+    static constexpr lv_color_t BG_PROGRESS = LV_COLOR_MAKE(0x88, 0x88, 0x8);   // Progress Bar background
     
     // Primary Accent Colors
     static constexpr lv_color_t ACCENT_PRIMARY = LV_COLOR_MAKE(0x00, 0x78, 0xD7);      // Main tab selected (blue)
