@@ -3,6 +3,15 @@
   "default_hardware": "advance-v1.3",
   "versions": [
     {
+      "id": "1.0.2_touch-non-responsive",
+      "display_name": "1.0.2_touch-non-responsive (Preview 2026-01-06)",
+      "hardware": [
+        "basic",
+        "advance-v1.3"
+      ],
+      "is_preview": true
+    },
+    {
       "id": "1.0.2_dev",
       "display_name": "1.0.2_dev (Preview 2026-01-03)",
       "hardware": [
