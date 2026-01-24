@@ -39,6 +39,17 @@ void setup()
         while (1) delay(1000);
     }
     Serial.println("Display driver initialized successfully");
+    
+    // Load and apply display rotation preference
+    {
+        Preferences prefs;
+        prefs.begin(PREFS_SYSTEM_NAMESPACE, true);  // Read-only
+        uint8_t display_rotation = prefs.getUChar("display_rot", 0);  // Default to 0 (normal)
+        prefs.end();
+        
+        Serial.printf("Main: Loading display rotation: %d degrees\n", display_rotation * 90);
+        displayDriver.setRotation(display_rotation);
+    }
 
     // Initialize Touch Driver
     Serial.println("Initializing touch driver...");
@@ -186,9 +197,14 @@ void loop()
             UITabStatus::updateModalStates(status.modal_wcs, status.modal_plane, status.modal_distance,
                                         status.modal_units, status.modal_motion, status.modal_feedrate,
                                         status.modal_spindle, status.modal_coolant, status.modal_tool);
-            UITabStatus::updateFileProgress(status.is_sd_printing, status.sd_percent, 
-                                        status.sd_filename, status.sd_elapsed_ms);
             UITabStatus::updateMessage(status.last_message);
+            
+            // Update file progress in status bar (UICommon) instead of status tab
+            UICommon::updateFileProgress(status.is_sd_printing, status.sd_percent,
+                                        status.sd_filename, status.sd_elapsed_ms);
+            
+            // Update control buttons visibility based on machine state
+            UITabStatus::updateControlButtons(status.state);
             
             // Update Macros tab progress (only when a macro from that tab is running)
             static bool macro_print_started = false;  // Track if SD print actually started

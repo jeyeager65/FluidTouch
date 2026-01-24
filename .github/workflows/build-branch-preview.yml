@@ -1,0 +1,177 @@
+name: Build Branch Preview
+
+on:
+  push:
+    branches:
+      - 'feature/**'
+      - 'feat/**'
+      - 'fix/**'
+      - 'bugfix/**'
+      - 'dev'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-preview:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Cache PlatformIO
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.platformio
+          .pio
+        key: ${{ runner.os }}-pio-${{ hashFiles('**/platformio.ini') }}
+        restore-keys: |
+          ${{ runner.os }}-pio-
+          
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        
+    - name: Install PlatformIO
+      run: |
+        python -m pip install --upgrade pip
+        pip install platformio
+        
+    - name: Get branch info
+      id: branch
+      run: |
+        # Extract branch name without refs/heads/
+        BRANCH_NAME="${{ github.ref_name }}"
+        # Get just the last part after final /
+        BRANCH_SUFFIX=$(echo "$BRANCH_NAME" | rev | cut -d'/' -f1 | rev | sed 's/[^a-zA-Z0-9-]/-/g')
+        # Get base version from manifest
+        BASE_VERSION=$(grep -o '"version": *"[^"]*"' web/manifest_basic.json | head -1 | sed 's/"version": *"\(.*\)"/\1/')
+        
+        echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_OUTPUT
+        echo "BRANCH_SUFFIX=$BRANCH_SUFFIX" >> $GITHUB_OUTPUT
+        echo "BASE_VERSION=$BASE_VERSION" >> $GITHUB_OUTPUT
+        echo "VERSION_ID=${BASE_VERSION}_${BRANCH_SUFFIX}" >> $GITHUB_OUTPUT
+    
+    - name: Update version in config.h
+      run: |
+        VERSION_ID="${{ steps.branch.outputs.VERSION_ID }}"
+        sed -i "s/#define FLUIDTOUCH_VERSION \".*\"/#define FLUIDTOUCH_VERSION \"${VERSION_ID}\"/" include/config.h
+        echo "Updated config.h with version: ${VERSION_ID}"
+        grep FLUIDTOUCH_VERSION include/config.h
+    
+    - name: Build firmware (Basic)
+      run: platformio run --environment elecrow-crowpanel-7-basic
+      
+    - name: Build firmware (Advance)
+      run: platformio run --environment elecrow-crowpanel-7-advance
+        
+    - name: Prepare firmware artifacts
+      run: |
+        # Create temp directory and copy build artifacts before switching branches
+        mkdir -p /tmp/firmware-artifacts/basic
+        mkdir -p /tmp/firmware-artifacts/advance
+        mkdir -p /tmp/firmware-artifacts/web
+        
+        cp .pio/build/elecrow-crowpanel-7-basic/*.bin /tmp/firmware-artifacts/basic/
+        cp .pio/build/elecrow-crowpanel-7-advance/*.bin /tmp/firmware-artifacts/advance/
+        cp web/manifest_basic.json /tmp/firmware-artifacts/web/
+        cp web/manifest_advance.json /tmp/firmware-artifacts/web/
+        cp web/index.html /tmp/firmware-artifacts/web/
+        
+    - name: Checkout gh-pages branch
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        
+        # Clean up build artifacts before switching branches
+        rm -rf .pio build .vscode .git/index
+        git reset --hard
+        
+        git fetch origin gh-pages 2>/dev/null || true
+        if git rev-parse --verify origin/gh-pages >/dev/null 2>&1; then
+          git checkout gh-pages
+        else
+          git checkout --orphan gh-pages
+          git rm -rf . || true
+        fi
+        
+    - name: Copy firmware to preview folder
+      run: |
+        VERSION_ID="${{ steps.branch.outputs.VERSION_ID }}"
+        BRANCH_SUFFIX="${{ steps.branch.outputs.BRANCH_SUFFIX }}"
+        
+        # Create preview directories (use VERSION_ID for full version path)
+        mkdir -p firmware/preview/${VERSION_ID}/basic
+        mkdir -p firmware/preview/${VERSION_ID}/advance-v1.3
+        
+        # Copy firmware files from temp location
+        cp /tmp/firmware-artifacts/basic/firmware.bin firmware/preview/${VERSION_ID}/basic/
+        cp /tmp/firmware-artifacts/basic/bootloader.bin firmware/preview/${VERSION_ID}/basic/
+        cp /tmp/firmware-artifacts/basic/partitions.bin firmware/preview/${VERSION_ID}/basic/
+        
+        cp /tmp/firmware-artifacts/advance/firmware.bin firmware/preview/${VERSION_ID}/advance-v1.3/
+        cp /tmp/firmware-artifacts/advance/bootloader.bin firmware/preview/${VERSION_ID}/advance-v1.3/
+        cp /tmp/firmware-artifacts/advance/partitions.bin firmware/preview/${VERSION_ID}/advance-v1.3/
+        
+        # Copy boot_app0.bin if available
+        if [ -f ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin ]; then
+          cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin firmware/preview/${VERSION_ID}/basic/
+          cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin firmware/preview/${VERSION_ID}/advance-v1.3/
+        fi
+        
+        # Copy and update manifests
+        cp /tmp/firmware-artifacts/web/manifest_basic.json firmware/preview/${VERSION_ID}/manifest_basic.json
+        cp /tmp/firmware-artifacts/web/manifest_advance.json firmware/preview/${VERSION_ID}/manifest_advance-v1.3.json
+        
+        # Update manifest paths (relative to manifest file location)
+        sed -i "s|firmware/basic/|basic/|g" firmware/preview/${VERSION_ID}/manifest_basic.json
+        sed -i "s|firmware/advance/|advance-v1.3/|g" firmware/preview/${VERSION_ID}/manifest_advance-v1.3.json
+        
+        # Update version in manifests to include preview tag
+        sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION_ID\"/" firmware/preview/${VERSION_ID}/manifest_basic.json
+        sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION_ID\"/" firmware/preview/${VERSION_ID}/manifest_advance-v1.3.json
+        
+    - name: Update versions.json with preview
+      run: |
+        VERSION_ID="${{ steps.branch.outputs.VERSION_ID }}"
+        BRANCH_NAME="${{ steps.branch.outputs.BRANCH_NAME }}"
+        BRANCH_SUFFIX="${{ steps.branch.outputs.BRANCH_SUFFIX }}"
+        TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        
+        sudo apt-get update && sudo apt-get install -y jq
+        
+        # Ensure versions.json exists
+        if [ ! -f versions.json ]; then
+          echo '{"default_version":null,"default_hardware":"advance-v1.3","versions":[],"hardware_info":{"basic":"Basic (4MB flash, PWM backlight)","advance-v1.3":"Advance v1.3 (16MB flash, IPS display)","advance-v1.2":"Advance v1.2 (older revision)"}}' > versions.json
+        fi
+        
+        # Remove existing preview entry with same ID if it exists, then add new one
+        BUILD_DATE=$(TZ=America/New_York date +"%Y-%m-%d")
+        jq --arg ver "$VERSION_ID" --arg branch "$BRANCH_NAME" --arg ts "$TIMESTAMP" --arg suffix "$BRANCH_SUFFIX" --arg date "$BUILD_DATE" '
+          .versions = (.versions | map(select(.id != $ver))) |
+          .versions = ([{
+            "id": $ver,
+            "display_name": ($ver + " (Preview " + $date + ")"),
+            "hardware": ["basic", "advance-v1.3"],
+            "is_preview": true
+          }] + .versions)
+        ' versions.json > versions.json.tmp && mv versions.json.tmp versions.json
+        
+        echo "Updated versions.json:"
+        cat versions.json
+        
+    - name: Copy web files from source
+      run: |
+        cp /tmp/firmware-artifacts/web/index.html index.html
+        
+    - name: Commit and push to gh-pages
+      run: |
+        git add -A
+        git commit -m "Deploy preview: ${{ steps.branch.outputs.VERSION_ID }}" || echo "No changes to commit"
+        git push origin gh-pages
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

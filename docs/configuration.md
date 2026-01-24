@@ -164,7 +164,7 @@ Configure power management and display brightness:
 
 ### Exporting Settings
 
-**Settings → General → Export Settings**
+**Settings → Backup → Export Settings**
 
 Creates a backup file on the Display SD card:
 
@@ -177,7 +177,7 @@ Creates a backup file on the Display SD card:
 - Machine configurations (name, connection type, hostname/IP, port, SSID)
 - Jog settings (XY feed rate, Z feed rate)
 - Probe settings (feed rate, max distance, retract distance, thickness)
-- Macros (up to 8 per machine)
+- Macros (up to 9 per machine)
 - Power management settings (enabled, timeouts, brightness levels, deep sleep)
 - UI preferences (folders on top)
 

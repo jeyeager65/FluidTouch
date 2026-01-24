@@ -47,6 +47,16 @@ lv_obj_t *UICommon::lbl_mpos_x = nullptr;
 lv_obj_t *UICommon::lbl_mpos_y = nullptr;
 lv_obj_t *UICommon::lbl_mpos_z = nullptr;
 
+// Job progress display
+lv_obj_t *UICommon::lbl_file_progress_container = nullptr;
+lv_obj_t *UICommon::lbl_filename = nullptr;
+lv_obj_t *UICommon::bar_progress = nullptr;
+lv_obj_t *UICommon::lbl_percent = nullptr;
+lv_obj_t *UICommon::lbl_elapsed_time = nullptr;
+lv_obj_t *UICommon::lbl_elapsed_unit = nullptr;
+lv_obj_t *UICommon::lbl_estimated_time = nullptr;
+lv_obj_t *UICommon::lbl_estimated_unit = nullptr;
+
 // Cached values for delta checking
 float UICommon::last_wpos_x = -9999.0f;
 float UICommon::last_wpos_y = -9999.0f;
@@ -58,6 +68,12 @@ static char last_machine_state[16] = "";  // Cached state to avoid unnecessary u
 static bool last_machine_connected = false;  // Cached connection status
 static bool last_wifi_connected = false;     // Cached WiFi status
 static bool last_auto_reporting = false;     // Cached auto-reporting status
+
+// File progress cached values for delta checking
+static char last_filename[128] = "";
+static float last_percent = -1.0f;
+static uint32_t last_elapsed_sec = 0xFFFFFFFF;  // Use seconds for comparison
+static uint32_t last_estimated_sec = 0xFFFFFFFF;
 
 // Connection timeout tracking
 static uint32_t connection_timeout_start = 0;
@@ -423,6 +439,82 @@ void UICommon::createStatusBar() {
     lv_obj_set_style_text_font(lbl_mpos_z, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_mpos_z, UITheme::AXIS_Z, 0);
     lv_obj_set_pos(lbl_mpos_z, 490, 27);
+
+    // Job Progress Container (hidden by default, shown when printing)
+    lbl_file_progress_container = lv_obj_create(status_bar);
+    lv_obj_set_size(lbl_file_progress_container, 550, 50);  // Span from col 2 to col 4
+    lv_obj_set_pos(lbl_file_progress_container, 5, 0);
+    lv_obj_set_style_bg_color(lbl_file_progress_container, UITheme::BG_DARK, 0);  // Match status bar background
+    lv_obj_set_style_border_width(lbl_file_progress_container, 0, 0);  // No border
+    lv_obj_set_style_pad_all(lbl_file_progress_container, 5, 0);
+    lv_obj_clear_flag(lbl_file_progress_container, LV_OBJ_FLAG_SCROLLABLE);  // Disable scrolling
+    lv_obj_add_flag(lbl_file_progress_container, LV_OBJ_FLAG_HIDDEN);  // Hidden by default
+    
+    // Filename label
+    lbl_filename = lv_label_create(lbl_file_progress_container);
+    lv_label_set_text(lbl_filename, "filename.gcode");
+    lv_obj_set_style_text_font(lbl_filename, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(lbl_filename, UITheme::TEXT_LIGHT, 0);
+    lv_obj_set_pos(lbl_filename, 0, 0);
+    lv_label_set_long_mode(lbl_filename, LV_LABEL_LONG_DOT);
+    lv_obj_set_width(lbl_filename, 350);  // Truncate long filenames
+    
+    // Progress bar (expanded 80px wider: 250→330, 2px taller: 13→15, black background)
+    bar_progress = lv_bar_create(lbl_file_progress_container);
+    lv_obj_set_size(bar_progress, 300, 15);  // 2px taller: 13→15
+    lv_obj_set_pos(bar_progress, 0, 20);
+    lv_obj_set_style_bg_color(bar_progress, UITheme::BG_PROGRESS, LV_PART_MAIN);  // Black for incomplete
+    lv_obj_set_style_bg_color(bar_progress, UITheme::UI_SUCCESS, LV_PART_INDICATOR);
+    lv_bar_set_value(bar_progress, 0, LV_ANIM_OFF);
+    
+    // Percentage label (next to progress bar)
+    lbl_percent = lv_label_create(lbl_file_progress_container);
+    lv_label_set_text(lbl_percent, "0.0%");
+    lv_obj_set_style_text_font(lbl_percent, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(lbl_percent, UITheme::UI_SUCCESS, 0);
+    lv_obj_set_pos(lbl_percent, 305, 20);
+    
+    // Elapsed time - split into label, value, unit (moved 85px right for 5px more space)
+    lv_obj_t *elapsed_label = lv_label_create(lbl_file_progress_container);
+    lv_label_set_text(elapsed_label, "Elapsed");
+    lv_obj_set_style_text_font(elapsed_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(elapsed_label, UITheme::UI_INFO, 0);  // Colored label
+    lv_obj_set_style_text_align(elapsed_label, LV_TEXT_ALIGN_RIGHT, 0);
+    lv_obj_set_pos(elapsed_label, 355, 2);  // 5px more space (390→385)
+    lv_obj_set_width(elapsed_label, 75);  // 5px wider (60→65)
+    
+    lbl_elapsed_time = lv_label_create(lbl_file_progress_container);
+    lv_label_set_text(lbl_elapsed_time, "00:00");
+    lv_obj_set_style_text_font(lbl_elapsed_time, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(lbl_elapsed_time, UITheme::TEXT_LIGHT, 0);  // White value
+    lv_obj_set_pos(lbl_elapsed_time, 435, 2);
+    
+    lbl_elapsed_unit = lv_label_create(lbl_file_progress_container);
+    lv_label_set_text(lbl_elapsed_unit, "min:sec");  // Changed from mm:ss
+    lv_obj_set_style_text_font(lbl_elapsed_unit, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(lbl_elapsed_unit, UITheme::TEXT_DISABLED, 0);
+    lv_obj_set_pos(lbl_elapsed_unit, 480, 2);
+    
+    // Estimated time - split into label, value, unit
+    lv_obj_t *estimated_label = lv_label_create(lbl_file_progress_container);
+    lv_label_set_text(estimated_label, "Estimated");
+    lv_obj_set_style_text_font(estimated_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(estimated_label, UITheme::UI_WARNING, 0);  // Colored label
+    lv_obj_set_style_text_align(estimated_label, LV_TEXT_ALIGN_RIGHT, 0);
+    lv_obj_set_pos(estimated_label, 355, 21);  // 5px more space (390→385)
+    lv_obj_set_width(estimated_label, 75);  // 5px wider (60→65)
+    
+    lbl_estimated_time = lv_label_create(lbl_file_progress_container);
+    lv_label_set_text(lbl_estimated_time, "00:00");
+    lv_obj_set_style_text_font(lbl_estimated_time, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(lbl_estimated_time, UITheme::TEXT_LIGHT, 0);  // White value
+    lv_obj_set_pos(lbl_estimated_time, 435, 21);
+    
+    lbl_estimated_unit = lv_label_create(lbl_file_progress_container);
+    lv_label_set_text(lbl_estimated_unit, "min:sec");  // Changed from mm:ss
+    lv_obj_set_style_text_font(lbl_estimated_unit, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(lbl_estimated_unit, UITheme::TEXT_DISABLED, 0);
+    lv_obj_set_pos(lbl_estimated_unit, 480, 22);
 
     // Right side Line 1: Machine name with symbol
     // Get selected machine from config manager
@@ -1276,4 +1368,101 @@ void UICommon::checkStatePopups(int current_state, const char *last_message) {
     
     // Update last state
     last_popup_state = current_state;
+}
+
+void UICommon::updateFileProgress(bool is_printing, float percent, const char *filename, uint32_t elapsed_ms) {
+    if (!lbl_file_progress_container) return;
+    
+    if (is_printing) {
+        // Show job progress, hide normal status/position display
+        lv_obj_clear_flag(lbl_file_progress_container, LV_OBJ_FLAG_HIDDEN);
+        if (lbl_status) lv_obj_add_flag(lbl_status, LV_OBJ_FLAG_HIDDEN);
+        if (lbl_wpos_label) lv_obj_add_flag(lbl_wpos_label, LV_OBJ_FLAG_HIDDEN);
+        if (lbl_wpos_x) lv_obj_add_flag(lbl_wpos_x, LV_OBJ_FLAG_HIDDEN);
+        if (lbl_wpos_y) lv_obj_add_flag(lbl_wpos_y, LV_OBJ_FLAG_HIDDEN);
+        if (lbl_wpos_z) lv_obj_add_flag(lbl_wpos_z, LV_OBJ_FLAG_HIDDEN);
+        if (lbl_mpos_label) lv_obj_add_flag(lbl_mpos_label, LV_OBJ_FLAG_HIDDEN);
+        if (lbl_mpos_x) lv_obj_add_flag(lbl_mpos_x, LV_OBJ_FLAG_HIDDEN);
+        if (lbl_mpos_y) lv_obj_add_flag(lbl_mpos_y, LV_OBJ_FLAG_HIDDEN);
+        if (lbl_mpos_z) lv_obj_add_flag(lbl_mpos_z, LV_OBJ_FLAG_HIDDEN);
+        
+        // Update filename (delta check)
+        if (lbl_filename && filename && strcmp(filename, last_filename) != 0) {
+            lv_label_set_text(lbl_filename, filename);
+            strncpy(last_filename, filename, sizeof(last_filename) - 1);
+            last_filename[sizeof(last_filename) - 1] = '\0';
+        }
+        
+        // Update progress bar and percentage (delta check with 0.1% tolerance)
+        if (fabsf(percent - last_percent) >= 0.1f) {
+            if (bar_progress) {
+                lv_bar_set_value(bar_progress, (int)percent, LV_ANIM_OFF);
+            }
+            if (lbl_percent) {
+                char percent_text[8];
+                snprintf(percent_text, sizeof(percent_text), "%.1f%%", percent);
+                lv_label_set_text(lbl_percent, percent_text);
+            }
+            last_percent = percent;
+        }
+        
+        // Update elapsed time (delta check - only update if changed by 1+ second)
+        uint32_t elapsed_sec = elapsed_ms / 1000;
+        if (elapsed_sec != last_elapsed_sec) {
+            if (lbl_elapsed_time) {
+                uint32_t hours = elapsed_sec / 3600;
+                uint32_t minutes = (elapsed_sec % 3600) / 60;
+                
+                char time_text[16];
+                if (hours > 0) {
+                    snprintf(time_text, sizeof(time_text), "%d:%02d", hours, minutes);
+                    if (lbl_elapsed_unit) lv_label_set_text(lbl_elapsed_unit, "hr:min");
+                } else {
+                    snprintf(time_text, sizeof(time_text), "%d:%02d", minutes, (int)(elapsed_sec % 60));
+                    if (lbl_elapsed_unit) lv_label_set_text(lbl_elapsed_unit, "min:sec");
+                }
+                lv_label_set_text(lbl_elapsed_time, time_text);
+            }
+            last_elapsed_sec = elapsed_sec;
+        }
+        
+        // Calculate and update estimated time (delta check - only update if changed by 1+ second)
+        if (lbl_estimated_time && percent > 0.1f) {
+            uint32_t estimated_total_sec = (uint32_t)((elapsed_sec / percent) * 100.0f);
+            
+            if (estimated_total_sec != last_estimated_sec) {
+                uint32_t est_hours = estimated_total_sec / 3600;
+                uint32_t est_minutes = (estimated_total_sec % 3600) / 60;
+                
+                char est_text[20];
+                if (est_hours > 0) {
+                    snprintf(est_text, sizeof(est_text), "%d:%02d", est_hours, est_minutes);
+                    if (lbl_estimated_unit) lv_label_set_text(lbl_estimated_unit, "hr:min");
+                } else {
+                    snprintf(est_text, sizeof(est_text), "%d:%02d", est_minutes, (int)(estimated_total_sec % 60));
+                    if (lbl_estimated_unit) lv_label_set_text(lbl_estimated_unit, "min:sec");
+                }
+                lv_label_set_text(lbl_estimated_time, est_text);
+                last_estimated_sec = estimated_total_sec;
+            }
+        }
+    } else {
+        // Hide job progress, show normal status/position display
+        lv_obj_add_flag(lbl_file_progress_container, LV_OBJ_FLAG_HIDDEN);
+        if (lbl_status) lv_obj_clear_flag(lbl_status, LV_OBJ_FLAG_HIDDEN);
+        if (lbl_wpos_label) lv_obj_clear_flag(lbl_wpos_label, LV_OBJ_FLAG_HIDDEN);
+        if (lbl_wpos_x) lv_obj_clear_flag(lbl_wpos_x, LV_OBJ_FLAG_HIDDEN);
+        if (lbl_wpos_y) lv_obj_clear_flag(lbl_wpos_y, LV_OBJ_FLAG_HIDDEN);
+        if (lbl_wpos_z) lv_obj_clear_flag(lbl_wpos_z, LV_OBJ_FLAG_HIDDEN);
+        if (lbl_mpos_label) lv_obj_clear_flag(lbl_mpos_label, LV_OBJ_FLAG_HIDDEN);
+        if (lbl_mpos_x) lv_obj_clear_flag(lbl_mpos_x, LV_OBJ_FLAG_HIDDEN);
+        if (lbl_mpos_y) lv_obj_clear_flag(lbl_mpos_y, LV_OBJ_FLAG_HIDDEN);
+        if (lbl_mpos_z) lv_obj_clear_flag(lbl_mpos_z, LV_OBJ_FLAG_HIDDEN);
+        
+        // Reset cached values when not printing
+        last_filename[0] = '\0';
+        last_percent = -1.0f;
+        last_elapsed_sec = 0xFFFFFFFF;
+        last_estimated_sec = 0xFFFFFFFF;
+    }
 }

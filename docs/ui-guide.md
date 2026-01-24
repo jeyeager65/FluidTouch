@@ -137,7 +137,8 @@ Real-time machine status display with four columns:
 - Coolant (M7/M8/M9)
 - Tool Number
 
-**SD Card File Progress** (when printing):
+### SD Card File Progress
+(while running a job)
 
 ![SD File Progress](./images/sd-file-progress.png)
 
@@ -150,7 +151,24 @@ Real-time machine status display with four columns:
 - Last FluidNC message
 - Spans columns 1-3 at bottom
 
+### Jog to Position
+
+![Status Position Change](./images/status-position-change.png)
+
+- Select an X/Y/Z field in work or machine position
+- Clicking OK will jog to that position
+
+### Change Work Coordinate System (WCS)
+
+Touching the WCS field in the upper right, will display this screen of the WCS coordinates.
+
+![Status WCS](./images/status-wcs.png)
+
+Selecting the WCS and touching the Set button will active that WCS.
+
 ---
+
+
 
 ## Control Tab
 
@@ -383,7 +401,7 @@ Raw WebSocket message display:
 
 ## Settings Tab
 
-The Settings tab contains five sub-tabs for configuration:
+The Settings tab contains six sub-tabs for configuration:
 
 ### General
 
@@ -395,7 +413,13 @@ The Settings tab contains five sub-tabs for configuration:
 **File Browser:**
 - **Folders on Top:** When enabled, folders appear first in the Files tab, followed by files (both sorted alphabetically)
 
-**Backup & Restore:**
+**Rotate 180 degrees**
+- Whether or not to rotate the screen 180 degrees.
+
+### Backup
+
+![Settings Backup](./images/settings-backup.png)
+
 - **Export Settings:** Creates `/fluidtouch_settings.json` on Display SD card
   - Includes all machine configurations, jog/probe settings, macros, power settings, and UI preferences
   - **Security Note:** WiFi passwords are NOT included in the export for security reasons

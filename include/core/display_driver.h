@@ -37,11 +37,16 @@ public:
     // Power management - deep sleep preparation
     void powerDown();
     
+    // Display rotation (0 = normal, 2 = 180 degrees)
+    void setRotation(uint8_t rotation);
+    uint8_t getRotation() const;
+    
 private:
     LGFX lcd;
     lv_display_t *disp;
     lv_color_t *disp_draw_buf;
     lv_color_t *disp_draw_buf2;
+    uint8_t current_rotation;
     
     static void my_disp_flush(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map);
 };

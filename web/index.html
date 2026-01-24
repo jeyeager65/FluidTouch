@@ -434,31 +434,236 @@
 
         /* Mobile Responsive */
         @media (max-width: 768px) {
+            body {
+                padding: 0;
+            }
+
+            .page-wrapper {
+                padding: 10px;
+            }
+
+            .container {
+                padding: 20px 15px;
+                margin-top: 5px;
+                border-radius: 15px;
+            }
+
             h1 {
                 font-size: 2em;
             }
 
-            .container {
-                padding: 25px;
+            .subtitle {
+                font-size: 1em;
+            }
+
+            /* Stack hardware cards vertically */
+            .hardware-cards {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            .hardware-card {
+                padding: 15px;
+            }
+
+            .hardware-card h3 {
+                font-size: 1em;
+            }
+
+            .hardware-specs {
+                font-size: 0.8em;
+            }
+
+            /* Stack features in single column */
+            .features ul {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .features {
+                padding: 20px 15px;
+            }
+
+            .features li {
+                padding: 10px;
+                padding-left: 30px;
+                font-size: 0.9em;
+            }
+
+            /* Make version dropdown full width */
+            .hardware-selection h2 {
+                font-size: 1.1em;
+            }
+
+            .hardware-selection {
+                padding: 15px;
+            }
+
+            /* Touch-friendly buttons */
+            esp-web-install-button button {
+                padding: 16px 35px;
+                font-size: 1.1em;
+                width: 100%;
+            }
+
+            .install-section {
+                padding: 20px 15px;
+            }
+
+            .hardware-confirm {
+                font-size: 0.85em;
+                padding: 10px 15px;
+            }
+
+            /* Mobile menu */
+            .menu-toggle {
+                display: block !important;
+            }
+
+            .top-nav {
+                height: auto;
+            }
+
+            .top-links {
+                position: fixed;
+                top: 0;
+                left: -100%;
+                width: 280px;
+                height: 100vh;
+                flex-direction: column;
+                justify-content: flex-start;
+                align-items: stretch;
+                padding: 70px 15px 20px 15px;
+                background: #1a1a2e;
+                border-right: 1px solid rgba(0, 188, 212, 0.3);
+                transition: left 0.3s ease;
+                overflow-y: auto;
+                gap: 10px;
+            }
+
+            .top-links.active {
+                left: 0;
+            }
+
+            .top-links a {
+                width: 100%;
+                text-align: center;
+                padding: 12px 16px;
+                font-size: 0.95em;
+                border-radius: 8px;
+            }
+
+            /* Requirements section */
+            .requirements {
+                padding: 15px;
+                font-size: 0.9em;
+            }
+
+            .requirements ul {
+                padding-left: 15px;
+            }
+
+            /* Changelog */
+            .changelog {
+                padding: 15px;
+            }
+
+            .changelog-version {
+                padding: 12px;
+            }
+
+            /* Version select styling */
+            #version-select {
+                font-size: 14px;
+                padding: 10px;
+            }
+
+            #advance-version-select {
+                font-size: 13px;
+                padding: 6px;
             }
         }
 
-        /* Top Links */
+        /* Extra small devices */
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.6em;
+            }
+
+            .subtitle {
+                font-size: 0.9em;
+            }
+
+            .container {
+                padding: 15px 10px;
+            }
+
+            .version-badge span {
+                font-size: 0.8em;
+                padding: 6px 15px;
+            }
+
+            .hardware-card h3 {
+                font-size: 0.95em;
+            }
+
+            .hardware-specs {
+                font-size: 0.75em;
+            }
+
+            .product-link {
+                font-size: 0.8em;
+            }
+
+            esp-web-install-button button {
+                padding: 14px 25px;
+                font-size: 1em;
+            }
+
+            .features h2,
+            .install-section h2,
+            .changelog h3 {
+                font-size: 1.2em;
+            }
+
+            .top-links a {
+                font-size: 0.9em;
+                padding: 12px 16px;
+            }
+
+            .menu-toggle {
+                top: 12px;
+                right: 15px;
+                padding: 8px;
+            }
+
+            .menu-toggle span {
+                width: 22px;
+                height: 2.5px;
+                margin: 4px 0;
+            }
+        }
+
+        /* Top Navigation */
+        .top-nav {
+            width: 100%;
+            background: #1a1a2e;
+            border-bottom: 1px solid rgba(0, 188, 212, 0.3);
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+        }
+
         .top-links {
             width: 100%;
             text-align: center;
             padding: 15px 20px;
-            background: #1a1a2e;
-            border-bottom: 1px solid rgba(0, 188, 212, 0.3);
             display: flex;
             justify-content: center;
             align-items: center;
             gap: 15px;
             flex-wrap: wrap;
-            position: fixed;
-            top: 0;
-            left: 0;
-            z-index: 1000;
         }
 
         .top-links a {
@@ -479,6 +684,66 @@
             background: rgba(0, 188, 212, 0.2);
             border-color: rgba(0, 188, 212, 0.5);
             transform: translateY(-2px);
+        }
+
+        /* Mobile menu toggle */
+        .menu-toggle {
+            display: none;
+            position: fixed;
+            top: 25px;
+            right: 20px;
+            z-index: 1001;
+            background: rgba(0, 188, 212, 0.1);
+            border: 2px solid rgba(0, 188, 212, 0.5);
+            border-radius: 8px;
+            padding: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .menu-toggle:hover {
+            background: rgba(0, 188, 212, 0.2);
+        }
+
+        .menu-toggle span {
+            display: block;
+            width: 25px;
+            height: 3px;
+            background: #00bcd4;
+            margin: 5px 0;
+            transition: all 0.3s ease;
+            border-radius: 2px;
+        }
+
+        .menu-toggle.active span:nth-child(1) {
+            transform: rotate(45deg) translate(7px, 7px);
+        }
+
+        .menu-toggle.active span:nth-child(2) {
+            opacity: 0;
+        }
+
+        .menu-toggle.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(7px, -7px);
+        }
+
+        /* Menu backdrop overlay */
+        .menu-backdrop {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .menu-backdrop.active {
+            display: block;
+            opacity: 1;
         }
 
         /* Links */
@@ -515,10 +780,19 @@
 </head>
 <body>
     <!-- Top Links -->
-    <div class="top-links">
-        <a href="https://github.com/jeyeager65/FluidTouch" target="_blank">📦 GitHub Repository</a>
-        <a href="https://github.com/jeyeager65/FluidTouch/issues" target="_blank">🐛 Report Issue</a>
-        <a href="https://github.com/jeyeager65/FluidTouch/blob/main/README.md" target="_blank">📖 Documentation</a>
+    <div class="menu-backdrop" id="menuBackdrop" onclick="closeMenu()"></div>
+    
+    <div class="top-nav">
+        <div class="menu-toggle" id="menuToggle" onclick="toggleMenu()">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+        <div class="top-links" id="topLinks">
+            <a href="https://github.com/jeyeager65/FluidTouch" target="_blank" onclick="closeMenu()">📦 GitHub Repository</a>
+            <a href="https://github.com/jeyeager65/FluidTouch/issues" target="_blank" onclick="closeMenu()">🐛 Report Issue</a>
+            <a href="https://github.com/jeyeager65/FluidTouch/blob/main/README.md" target="_blank" onclick="closeMenu()">📖 Documentation</a>
+        </div>
     </div>
 
     <div class="page-wrapper">
@@ -531,7 +805,7 @@
             Web Installer
         </p>
         <div class="version-badge">
-            <span>Version 1.0.1</span>
+            <span>Version 1.0.2</span>
         </div>
         <p style="text-align: center; font-size: 1.2em; color: #c9d1d9; margin-bottom: 30px;">
             ESP32 Touchscreen CNC Controller for FluidNC
@@ -539,44 +813,73 @@
 
         <!-- Changelog -->
         <div class="changelog">
-            <h3>🔄 Version 1.0.1 - Bugfixes & Documentation</h3>
+            <h3>🎉 Version 1.0.2 - Display Rotation & Status Tab Enhancements</h3>
             <div class="changelog-content">
                 <div class="changelog-version">
-                    <div class="changelog-date">December 4, 2025</div>
+                    <div class="changelog-date">January 24, 2026</div>
                     <ul class="changelog-items">
-                        <li><strong>Bugfix:</strong> Touch screen not working after deep sleep wake on Basic hardware (removed GT911 sleep command)</li>
-                        <li><strong>Bugfix:</strong> Fixed garbled screen flash on startup by delaying backlight activation</li>
-                        <li><strong>Documentation Updates:</strong> Product links now use affiliate codes to help support development costs</li>
-                        <li><strong>Hardware Recommendation:</strong> Advance display model now marked as recommended (superior IPS display, optional battery case)</li>
+                        <li><strong>Status Tab Updates:</strong>
+                            <ul>
+                                <li><strong>Pause/Resume and Stop Buttons</strong> - Pause/Resume/Stop from status tab</li>
+                                <li><strong>Position Update on Status Tab</strong> - Click positions on status tab to update</li>
+                                <li><strong>WCS Update on Status Tab</strong> - Click work position values to update Work Coordinate System</li>
+                            </ul>
+                        </li>
+                        <li><strong>Settings Updates:</strong>
+                            <ul>
+                                <li><strong>Display Rotation Support</strong> - Can now rotate display 180 degrees via Settings → General</li>
+                            </ul>
+                        </li>
+                        <li><strong>Web Installer Version Selection</strong> - Dropdown to select from multiple firmware versions including preview builds</li>
+                        <li><strong>Bugfix:</strong> Fixed handling of filenames containing spaces in upload operations</li>
                     </ul>
+                </div>
+            </div>
+
+            <!-- Prior Releases -->
+            <div class="changelog-collapsed" id="changelog-prior" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(0, 188, 212, 0.2);">
+                <h3 onclick="toggleChangelog('changelog-prior')">📜 Prior Releases</h3>
+                <div class="changelog-content">
+                    <div class="changelog-version">
+                        <h4>Version 1.0.1 - Bugfixes & Documentation</h4>
+                        <div class="changelog-date">December 4, 2025</div>
+                        <ul class="changelog-items">
+                            <li><strong>Bugfix:</strong> Touch screen not working after deep sleep wake on Basic hardware (removed GT911 sleep command)</li>
+                            <li><strong>Bugfix:</strong> Fixed garbled screen flash on startup by delaying backlight activation</li>
+                            <li><strong>Documentation Updates:</strong> Product links now use affiliate codes to help support development costs</li>
+                            <li><strong>Hardware Recommendation:</strong> Advance display model now marked as recommended (superior IPS display, optional battery case)</li>
+                        </ul>
+                    </div>
+                    <div class="changelog-version">
+                        <h4>Version 1.0.0 - Initial Release</h4>
+                        <div class="changelog-date">November 17, 2025</div>
+                        <ul class="changelog-items">
+                            <li><strong>Real-time Machine Control:</strong> Monitor position, state, feed/spindle rates with live updates from FluidNC</li>
+                            <li><strong>Multi-Machine Support:</strong> Store and switch between up to 4 different CNC configurations</li>
+                            <li><strong>Intuitive Jogging:</strong> Button-based and analog joystick interfaces with configurable step sizes</li>
+                            <li><strong>Touch Probe Operations:</strong> Automated probing with customizable parameters for precise work coordinate setup</li>
+                            <li><strong>Macro Support:</strong> Configure and store up to 9 file-based macros per machine</li>
+                            <li><strong>File Management:</strong> Browse and manage files from FluidNC SD, FluidNC Flash, and Display SD card</li>
+                            <li><strong>Settings Backup & Restore:</strong> Export settings to JSON, auto-import on fresh install, Clear All Settings option</li>
+                            <li><strong>Power Management:</strong> Configurable display dimming, sleep, and deep sleep modes for battery operation</li>
+                        </ul>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Prior Releases -->
-        <div class="changelog changelog-collapsed" id="changelog-prior">
-            <h3 onclick="toggleChangelog('changelog-prior')">📜 Prior Releases</h3>
-            <div class="changelog-content">
-                <div class="changelog-version">
-                    <h4>Version 1.0.0 - Initial Release</h4>
-                    <div class="changelog-date">November 17, 2025</div>
-                    <ul class="changelog-items">
-                        <li><strong>Real-time Machine Control:</strong> Monitor position, state, feed/spindle rates with live updates from FluidNC</li>
-                        <li><strong>Multi-Machine Support:</strong> Store and switch between up to 4 different CNC configurations</li>
-                        <li><strong>Intuitive Jogging:</strong> Button-based and analog joystick interfaces with configurable step sizes</li>
-                        <li><strong>Touch Probe Operations:</strong> Automated probing with customizable parameters for precise work coordinate setup</li>
-                        <li><strong>Macro Support:</strong> Configure and store up to 9 file-based macros per machine</li>
-                        <li><strong>File Management:</strong> Browse and manage files from FluidNC SD, FluidNC Flash, and Display SD card</li>
-                        <li><strong>Settings Backup & Restore:</strong> Export settings to JSON, auto-import on fresh install, Clear All Settings option</li>
-                        <li><strong>Power Management:</strong> Configurable display dimming, sleep, and deep sleep modes for battery operation</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <!-- Hardware Selection -->
+        <!-- Version & Hardware Selection -->
         <div class="hardware-selection">
-            <h2>🔧 Select Your Hardware</h2>
+            <h2>🔧 Select Version & Hardware</h2>
+            
+            <!-- Version Dropdown -->
+            <div style="margin-bottom: 30px;">
+                <label for="version-select" style="display: block; margin-bottom: 8px; color: #00bcd4; font-weight: 600; font-size: 1.1em;">Firmware Version</label>
+                <select id="version-select" onchange="onVersionChange()" style="width: 100%; max-width: 400px; padding: 12px; font-size: 16px; background: rgba(30, 30, 46, 0.9); color: #e8e8e8; border: 2px solid rgba(0, 188, 212, 0.5); border-radius: 8px; cursor: pointer;">
+                    <option value="">Loading versions...</option>
+                </select>
+            </div>
+            
             <div class="hardware-cards">
                 <div class="hardware-card selected" data-hardware="basic" onclick="selectHardware('basic')">
                     <h3>Elecrow CrowPanel 7" Basic</h3>
@@ -596,10 +899,12 @@
                         <div><span class="spec-highlight">8MB</span> PSRAM</div>
                         <div>ESP32-S3-WROOM-1-N16R8</div>
                         <div>Display: 800×480 <span class="spec-highlight">IPS LCD</span></div>
-                        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
-                            <div style="color: #ffa726; font-weight: 600;">⚠️ Hardware Version 1.3 Only</div>
-                            <div style="font-size: 0.8em; margin-top: 5px;">DIP switches S0 and S1 → position 1</div>
-                            <div style="font-size: 0.8em;">Earlier versions? <a href="https://github.com/jeyeager65/FluidTouch/issues" target="_blank" style="color: #00bcd4;">Create an issue</a></div>
+                        <div id="advance-version-selector" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1); display: none;">
+                            <label for="advance-version-select" style="display: block; margin-bottom: 6px; color: #00bcd4; font-weight: 600; font-size: 0.9em;">Hardware Revision</label>
+                            <select id="advance-version-select" onchange="onAdvanceVersionChange()" style="width: 100%; padding: 8px; font-size: 14px; background: rgba(30, 30, 46, 0.9); color: #e8e8e8; border: 2px solid rgba(0, 188, 212, 0.5); border-radius: 6px; cursor: pointer;">
+                                <option value="advance-v1.3">v1.3 (Current)</option>
+                                <option value="advance-v1.2">v1.2</option>
+                            </select>
                         </div>
                     </div>
                     <a href="https://www.awin1.com/cread.php?awinmid=82721&awinaffid=2663106&ued=https%3A%2F%2Fwww.elecrow.com%2Fcrowpanel-advance-7-0-hmi-esp32-ai-display-800x480-artificial-intelligent-ips-touch-screen-support-meshtastic-and-arduino-lvgl-micropython.html" 
@@ -669,37 +974,230 @@
     </div>
 
     <script>
+        // Toggle mobile menu
+        function toggleMenu() {
+            const menuToggle = document.getElementById('menuToggle');
+            const topLinks = document.getElementById('topLinks');
+            const backdrop = document.getElementById('menuBackdrop');
+            
+            menuToggle.classList.toggle('active');
+            topLinks.classList.toggle('active');
+            backdrop.classList.toggle('active');
+        }
+
+        // Close mobile menu
+        function closeMenu() {
+            const menuToggle = document.getElementById('menuToggle');
+            const topLinks = document.getElementById('topLinks');
+            const backdrop = document.getElementById('menuBackdrop');
+            
+            menuToggle.classList.remove('active');
+            topLinks.classList.remove('active');
+            backdrop.classList.remove('active');
+        }
+
         // Toggle changelog visibility
         function toggleChangelog(id) {
             const changelog = document.getElementById(id);
             changelog.classList.toggle('changelog-collapsed');
         }
 
-        // Hardware selection
+        // Hardware selection with version support
         let selectedHardware = 'basic';
+        let selectedAdvanceVersion = 'advance-v1.3';
+        let versionsData = null;
+        let selectedVersion = null;
+        
         const hardwareNames = {
             'basic': 'Elecrow CrowPanel 7" Basic',
-            'advance': 'Elecrow CrowPanel 7" Advance'
+            'advance-v1.3': 'Elecrow CrowPanel 7" Advance v1.3',
+            'advance-v1.2': 'Elecrow CrowPanel 7" Advance v1.2'
         };
 
-        function selectHardware(hardware) {
-            selectedHardware = hardware;
+        // Load versions.json on page load
+        async function loadVersions() {
+            try {
+                const response = await fetch('./versions.json');
+                versionsData = await response.json();
+                populateVersionDropdown();
+                updateAdvanceVersionDropdown();
+            } catch (error) {
+                console.error('Failed to load versions.json:', error);
+                // Fallback to old behavior
+                document.getElementById('version-select').innerHTML = '<option value="legacy">Current Version (Legacy)</option>';
+                selectedVersion = 'legacy';
+                selectHardware('basic');
+            }
+        }
+
+        function populateVersionDropdown() {
+            const versionSelect = document.getElementById('version-select');
+            versionSelect.innerHTML = '';
             
-            // Update card selection
+            if (!versionsData || !versionsData.versions || versionsData.versions.length === 0) {
+                versionSelect.innerHTML = '<option value="">No versions available</option>';
+                return;
+            }
+            
+            // Add versions (already sorted with newest first from workflow)
+            versionsData.versions.forEach(version => {
+                const option = document.createElement('option');
+                option.value = version.id;
+                option.textContent = version.display_name || version.id;
+                if (version.is_preview) {
+                    option.style.color = '#ffa726';
+                }
+                versionSelect.appendChild(option);
+            });
+            
+            // Set default version
+            const defaultVersion = versionsData.default_version || versionsData.versions[0].id;
+            versionSelect.value = defaultVersion;
+            selectedVersion = defaultVersion;
+            
+            updateAdvanceVersionDropdown();
+            updateManifest();
+        }
+
+        function updateAdvanceVersionDropdown() {
+            const advanceSelector = document.getElementById('advance-version-selector');
+            const advanceSelect = document.getElementById('advance-version-select');
+            
+            if (!selectedVersion || !versionsData) {
+                advanceSelector.style.display = 'none';
+                return;
+            }
+            
+            const version = versionsData.versions.find(v => v.id === selectedVersion);
+            if (!version || !version.hardware) {
+                advanceSelector.style.display = 'none';
+                return;
+            }
+            
+            // Check which advance variants are supported
+            const hasV13 = version.hardware.includes('advance-v1.3');
+            const hasV12 = version.hardware.includes('advance-v1.2');
+            
+            if (hasV13 || hasV12) {
+                // Show dropdown with available options
+                advanceSelect.innerHTML = '';
+                if (hasV13) {
+                    const opt = document.createElement('option');
+                    opt.value = 'advance-v1.3';
+                    opt.textContent = 'v1.3 (Current)';
+                    advanceSelect.appendChild(opt);
+                }
+                if (hasV12) {
+                    const opt = document.createElement('option');
+                    opt.value = 'advance-v1.2';
+                    opt.textContent = 'v1.2';
+                    advanceSelect.appendChild(opt);
+                }
+                
+                // Set selected value to available option
+                if (hasV13 && hasV12) {
+                    advanceSelect.value = selectedAdvanceVersion;
+                } else {
+                    selectedAdvanceVersion = hasV13 ? 'advance-v1.3' : 'advance-v1.2';
+                    advanceSelect.value = selectedAdvanceVersion;
+                }
+                
+                advanceSelector.style.display = 'block';
+            } else {
+                advanceSelector.style.display = 'none';
+            }
+        }
+
+        function onVersionChange() {
+            const versionSelect = document.getElementById('version-select');
+            selectedVersion = versionSelect.value;
+            updateAdvanceVersionDropdown();
+            updateManifest();
+        }
+
+        function onAdvanceVersionChange() {
+            const advanceSelect = document.getElementById('advance-version-select');
+            selectedAdvanceVersion = advanceSelect.value;
+            if (selectedHardware === 'advance') {
+                updateManifest();
+            }
+        }
+
+        function updateManifest() {
+            if (!selectedVersion || !versionsData) {
+                return;
+            }
+            
+            // Determine actual hardware variant ID
+            const hardwareVariantId = selectedHardware === 'advance' ? selectedAdvanceVersion : 'basic';
+            
+            const version = versionsData.versions.find(v => v.id === selectedVersion);
+            if (!version || !version.hardware || !version.hardware.includes(hardwareVariantId)) {
+                console.error('Invalid version or hardware selection:', selectedVersion, hardwareVariantId);
+                return;
+            }
+            
+            // Build manifest path based on version type and hardware
+            let manifestPath;
+            if (version.is_preview || selectedVersion.includes('_')) {
+                // Preview builds
+                manifestPath = `./firmware/preview/${selectedVersion}/manifest_${hardwareVariantId}.json`;
+            } else if (selectedVersion === 'local') {
+                // Local builds (legacy)
+                manifestPath = `./manifest_${hardwareVariantId}.json`;
+            } else {
+                // Stable releases
+                manifestPath = `./firmware/${selectedVersion}/manifest_${hardwareVariantId}.json`;
+            }
+            
+            const installButton = document.getElementById('install-button');
+            installButton.setAttribute('manifest', manifestPath);
+            
+            // Update confirmation text
+            const versionDisplay = selectedVersion + (version.is_preview ? ' (Preview)' : '');
+            const hardwareDisplay = hardwareNames[hardwareVariantId] || hardwareVariantId;
+            document.getElementById('selected-hardware').textContent = `${versionDisplay} - ${hardwareDisplay}`;
+            
+            console.log('Manifest updated:', manifestPath);
+        }
+
+        function selectHardwareCard(hardware) {
+            // Update card selection for visual feedback
             document.querySelectorAll('.hardware-card').forEach(card => {
                 card.classList.remove('selected');
             });
-            document.querySelector(`[data-hardware="${hardware}"]`).classList.add('selected');
+            const card = document.querySelector(`[data-hardware="${hardware}"]`);
+            if (card) {
+                card.classList.add('selected');
+            }
+        }
+
+        function selectHardware(hardware) {
+            selectedHardware = hardware;
+            selectHardwareCard(hardware);
+            updateManifest();
+        }
+
+        function selectHardwareCard_old(hardware) {
+            // Legacy function - kept for hardware card clicks
+            selectedHardware = hardware;
+            selectHardwareCard(hardware);
             
-            // Update confirmation text
-            document.getElementById('selected-hardware').textContent = hardwareNames[hardware];
+            // Map old hardware names to new variant IDs
+            const variantMap_unused = {
+                'basic': 'basic',
+                'advance': 'advance-v1.3'
+            };
             
-            // Update manifest path
-            const installButton = document.getElementById('install-button');
-            if (hardware === 'basic') {
-                installButton.setAttribute('manifest', './manifest_basic.json');
-            } else {
-                installButton.setAttribute('manifest', './manifest_advance.json');
+            const hardwareSelect = document.getElementById('hardware-select');
+            const mappedVariant = variantMap[hardware];
+            
+            // Update dropdown if this variant exists
+            const option = Array.from(hardwareSelect.options).find(opt => opt.value === mappedVariant);
+            if (option) {
+                hardwareSelect.value = mappedVariant;
+                selectedHardwareVariant = mappedVariant;
+                updateManifest();
             }
             
             // Save selection to localStorage
@@ -708,12 +1206,9 @@
             console.log('Selected hardware:', hardware, '- Manifest updated');
         }
 
-        // Load saved hardware selection
+        // Load versions on page load
         window.addEventListener('DOMContentLoaded', () => {
-            const saved = localStorage.getItem('fluidtouch-hardware');
-            if (saved && (saved === 'basic' || saved === 'advance')) {
-                selectHardware(saved);
-            }
+            loadVersions();
         });
 
         // ESP Web Tools event monitoring

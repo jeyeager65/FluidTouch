@@ -1,0 +1,10 @@
+{
+  "default_version": null,
+  "default_hardware": "advance-v1.3",
+  "versions": [],
+  "hardware_info": {
+    "basic": "Basic",
+    "advance-v1.3": "Advance v1.3",
+    "advance-v1.2": "Advance v1.2"
+  }
+}

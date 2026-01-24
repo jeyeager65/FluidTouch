@@ -18,26 +18,33 @@ public:
     static void updateModalStates(const char *wcs, const char *plane, const char *dist, 
                                   const char *units, const char *motion, const char *feedrate,
                                   const char *spindle, const char *coolant, const char *tool);
-    static void updateFileProgress(bool is_printing, float percent, const char *filename, 
-                                   uint32_t elapsed_ms);
+    static void updateControlButtons(int machine_state);
     
 private:
     static lv_obj_t *lbl_message;
     static lv_obj_t *lbl_state;
-    static lv_obj_t *lbl_file_progress_container;  // Container for file progress section
-    static lv_obj_t *lbl_filename;
-    static lv_obj_t *bar_progress;
-    static lv_obj_t *lbl_percent;
-    static lv_obj_t *lbl_elapsed_time;
-    static lv_obj_t *lbl_elapsed_unit;
-    static lv_obj_t *lbl_estimated_time;
-    static lv_obj_t *lbl_estimated_unit;
+    
+    // Control buttons (in place of job progress)
+    static lv_obj_t *btn_pause;
+    static lv_obj_t *lbl_pause;
+    static lv_obj_t *btn_stop;
+    static lv_obj_t *btn_cancel_jog;
     static lv_obj_t *lbl_wpos_x;
     static lv_obj_t *lbl_wpos_y;
     static lv_obj_t *lbl_wpos_z;
     static lv_obj_t *lbl_mpos_x;
     static lv_obj_t *lbl_mpos_y;
     static lv_obj_t *lbl_mpos_z;
+    
+    // Keyboards for position editing
+    static lv_obj_t *keyboard;
+    static lv_obj_t *active_textarea;  // Which position field is being edited
+    static char original_value[32];    // Store original value for cancel restoration
+    
+    // Event handlers for position editing
+    static void position_field_event_handler(lv_event_t *e);
+    static void keyboard_event_handler(lv_event_t *e);
+    static void showValidationError(const char* message);
     static lv_obj_t *lbl_feed_value;
     static lv_obj_t *lbl_feed_override;
     static lv_obj_t *lbl_feed_units;
@@ -47,7 +54,8 @@ private:
     static lv_obj_t *lbl_spindle_units;
     
     // Modal state labels
-    static lv_obj_t *lbl_modal_wcs;
+    static lv_obj_t *btn_modal_wcs;  // Changed from lbl_modal_wcs to button
+    static lv_obj_t *lbl_modal_wcs_value;  // Label inside the button
     static lv_obj_t *lbl_modal_plane;
     static lv_obj_t *lbl_modal_dist;
     static lv_obj_t *lbl_modal_units;
@@ -73,10 +81,30 @@ private:
     static char last_modal_spindle[8];
     static char last_modal_coolant[8];
     static char last_modal_tool[8];
-    static bool last_is_printing;
-    static float last_file_percent;
-    static char last_filename[64];
-    static uint32_t last_elapsed_seconds;
+    
+    // WCS selection popup
+    static lv_obj_t *wcs_popup;
+    static lv_obj_t *wcs_popup_content;
+    static lv_obj_t *wcs_btn_set;
+    static lv_obj_t *wcs_btn_cancel;
+    static lv_obj_t *wcs_buttons[6];  // Store WCS button references for highlighting
+    static int selected_wcs_index;  // Track which WCS is selected (-1 = none)
+    static int current_wcs_index;  // Track which WCS is currently active (-1 = none)
+    static char wcs_offsets[10][64];  // Store parsed WCS offsets (G54-G59, G28, G30, G92, TLO)
+    
+    // Event handlers for control buttons
+    static void onPauseResumeClicked(lv_event_t *e);
+    static void onStopClicked(lv_event_t *e);
+    static void onCancelJogClicked(lv_event_t *e);
+    
+    // WCS selection event handlers
+    static void onWCSButtonClicked(lv_event_t *e);
+    static void onWCSSelected(lv_event_t *e);
+    static void onWCSSetClicked(lv_event_t *e);
+    static void onWCSCancelClicked(lv_event_t *e);
+    static void showWCSPopup();
+    static void hideWCSPopup();
+    static void parseWCSOffsetsResponse(const char* response);
 };
 
 #endif // UI_TAB_STATUS_H

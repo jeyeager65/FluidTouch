@@ -8,8 +8,6 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 jobs:
   build:
@@ -38,6 +36,17 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install platformio
+    
+    - name: Extract version from tag
+      id: version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        
+    - name: Update version in config.h
+      run: |
+        VERSION="${{ steps.version.outputs.VERSION }}"
+        sed -i "s/#define FLUIDTOUCH_VERSION \".*\"/#define FLUIDTOUCH_VERSION \"${VERSION}\"/" include/config.h
+        echo "Updated config.h with version: ${VERSION}"
+        grep FLUIDTOUCH_VERSION include/config.h
         
     - name: Build firmware (Basic)
       run: platformio run --environment elecrow-crowpanel-7-basic
@@ -66,10 +75,6 @@ jobs:
           cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin web/firmware/basic/
           cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin web/firmware/advance/
         fi
-        
-    - name: Extract version from tag
-      id: version
-      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
       
     - name: Update manifest files with version
       run: |
@@ -141,36 +146,81 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
+    - name: Extract version from tag
+      id: version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+      
     - name: Download firmware artifacts
       uses: actions/download-artifact@v4
       with:
         pattern: firmware-*
         path: artifacts
         
-    - name: Copy firmware files to web directory
+    - name: Checkout gh-pages branch
       run: |
-        echo "=== Artifact structure ==="
-        find artifacts -type f
-        echo "=== Copying firmware files ==="
-        mkdir -p web/firmware/basic
-        mkdir -p web/firmware/advance
-        find artifacts -path "*/basic/*.bin" -exec cp {} web/firmware/basic/ \;
-        find artifacts -path "*/advance/*.bin" -exec cp {} web/firmware/advance/ \;
-        cp artifacts/firmware-*/web/manifest_basic.json web/ 2>/dev/null || true
-        cp artifacts/firmware-*/web/manifest_advance.json web/ 2>/dev/null || true
-        cp artifacts/firmware-*/web/index.html web/ 2>/dev/null || true
-        echo "=== Final web/firmware contents ==="
-        ls -la web/firmware/basic/
-        ls -la web/firmware/advance/
+        git fetch origin gh-pages:gh-pages 2>/dev/null || echo "gh-pages doesn't exist yet"
+        if git rev-parse --verify gh-pages >/dev/null 2>&1; then
+          git checkout gh-pages
+        else
+          git checkout --orphan gh-pages
+          git rm -rf . || true
+        fi
         
-    - name: Setup Pages
-      uses: actions/configure-pages@v4
-      
-    - name: Upload Pages artifact
-      uses: actions/upload-pages-artifact@v3
-      with:
-        path: 'web'
+    - name: Copy firmware to versioned folder
+      run: |
+        VERSION="${{ steps.version.outputs.VERSION }}"
         
-    - name: Deploy to GitHub Pages
-      id: deployment
-      uses: actions/deploy-pages@v4
+        # Create version-specific directories
+        mkdir -p firmware/${VERSION}/basic
+        mkdir -p firmware/${VERSION}/advance-v1.3
+        
+        # Copy firmware files
+        find ../artifacts -path "*/basic/*.bin" -exec cp {} firmware/${VERSION}/basic/ \;
+        find ../artifacts -path "*/advance/*.bin" -exec cp {} firmware/${VERSION}/advance-v1.3/ \;
+        
+        # Copy and update manifests
+        cp ../artifacts/firmware-*/web/manifest_basic.json firmware/${VERSION}/manifest_basic.json
+        cp ../artifacts/firmware-*/web/manifest_advance.json firmware/${VERSION}/manifest_advance-v1.3.json
+        
+        # Update manifest paths to point to version-specific firmware
+        sed -i "s|./firmware/basic/|./firmware/${VERSION}/basic/|g" firmware/${VERSION}/manifest_basic.json
+        sed -i "s|./firmware/advance/|./firmware/${VERSION}/advance-v1.3/|g" firmware/${VERSION}/manifest_advance-v1.3.json
+        
+    - name: Update versions.json
+      run: |
+        VERSION="${{ steps.version.outputs.VERSION }}"
+        TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        
+        # Install jq for JSON manipulation
+        sudo apt-get update && sudo apt-get install -y jq
+        
+        # Load or create versions.json
+        if [ ! -f versions.json ]; then
+          echo '{"default_version":null,"default_hardware":"advance-v1.3","versions":[],"hardware_info":{"basic":"Basic (4MB flash, PWM backlight)","advance-v1.3":"Advance v1.3 (16MB flash, IPS display)","advance-v1.2":"Advance v1.2 (older revision)"}}' > versions.json
+        fi
+        
+        # Add new version entry
+        jq --arg ver "$VERSION" --arg ts "$TIMESTAMP" '
+          .versions = ([{
+            "id": $ver,
+            "hardware": ["basic", "advance-v1.3"],
+            "is_preview": false
+          }] + .versions) |
+          .default_version = $ver
+        ' versions.json > versions.json.tmp && mv versions.json.tmp versions.json
+        
+        echo "Updated versions.json:"
+        cat versions.json
+        
+    - name: Copy web files from source
+      run: |
+        cp ../web/index.html index.html
+        
+    - name: Commit and push to gh-pages
+      run: |
+        VERSION="${{ steps.version.outputs.VERSION }}"
+        git add -A
+        git commit -m "Deploy stable release: ${VERSION}" || echo "No changes to commit"
+        git push origin gh-pages
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

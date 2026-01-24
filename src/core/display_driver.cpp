@@ -151,7 +151,7 @@ LGFX::LGFX(void) {
 }
 
 // DisplayDriver constructor
-DisplayDriver::DisplayDriver() : disp(nullptr), disp_draw_buf(nullptr), disp_draw_buf2(nullptr) {
+DisplayDriver::DisplayDriver() : disp(nullptr), disp_draw_buf(nullptr), disp_draw_buf2(nullptr), current_rotation(0) {
 }
 
 // Initialize display
@@ -353,5 +353,23 @@ void DisplayDriver::powerDown() {
     setBacklightOff();
     
     Serial.println("  Display powered down (backlight off only)");
+}
+
+// Set display rotation (0 = normal, 2 = 180 degrees)
+void DisplayDriver::setRotation(uint8_t rotation) {
+    // Only support 0 (normal) and 2 (180 degrees)
+    if (rotation != 0 && rotation != 2) {
+        Serial.printf("Invalid rotation %d, must be 0 or 2\n", rotation);
+        return;
+    }
+    
+    current_rotation = rotation;
+    lcd.setRotation(rotation);
+    Serial.printf("Display rotation set to %d degrees\n", rotation * 90);
+}
+
+// Get current display rotation
+uint8_t DisplayDriver::getRotation() const {
+    return current_rotation;
 }
 

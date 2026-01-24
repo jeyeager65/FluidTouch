@@ -220,7 +220,10 @@ void UITabFiles::refreshFileList(const std::string &path) {
         static uint32_t lastMessageTime = 0;
         
         String msg(message);
-        msg.trim();  // Remove any leading/trailing whitespace
+        // Remove only line endings (\r\n), not spaces - preserves trailing spaces in filenames
+        while (msg.endsWith("\r") || msg.endsWith("\n")) {
+            msg.remove(msg.length() - 1);
+        }
         uint32_t now = millis();
         
         // Reset buffer if it's been more than 3000ms since last message
