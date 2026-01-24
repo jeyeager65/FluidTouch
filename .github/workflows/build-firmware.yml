@@ -138,7 +138,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     
     permissions:
-      contents: read
+      contents: write
       pages: write
       id-token: write
       
