@@ -170,17 +170,21 @@ jobs:
       run: |
         VERSION="${{ steps.version.outputs.VERSION }}"
         
+        # List what we have
+        echo "Contents of artifacts directory:"
+        ls -la artifacts/
+        
         # Create version-specific directories
         mkdir -p firmware/${VERSION}/basic
         mkdir -p firmware/${VERSION}/advance-v1.3
         
-        # Copy firmware files
-        find ../artifacts -path "*/basic/*.bin" -exec cp {} firmware/${VERSION}/basic/ \;
-        find ../artifacts -path "*/advance/*.bin" -exec cp {} firmware/${VERSION}/advance-v1.3/ \;
+        # Copy firmware files (artifacts are in artifacts/firmware-VERSION/)
+        find artifacts -path "*/basic/*.bin" -exec cp {} firmware/${VERSION}/basic/ \;
+        find artifacts -path "*/advance/*.bin" -exec cp {} firmware/${VERSION}/advance-v1.3/ \;
         
         # Copy and update manifests
-        cp ../artifacts/firmware-*/web/manifest_basic.json firmware/${VERSION}/manifest_basic.json
-        cp ../artifacts/firmware-*/web/manifest_advance.json firmware/${VERSION}/manifest_advance-v1.3.json
+        cp artifacts/firmware-*/manifest_basic.json firmware/${VERSION}/manifest_basic.json
+        cp artifacts/firmware-*/manifest_advance.json firmware/${VERSION}/manifest_advance-v1.3.json
         
         # Update manifest paths to point to version-specific firmware
         sed -i "s|./firmware/basic/|./firmware/${VERSION}/basic/|g" firmware/${VERSION}/manifest_basic.json
@@ -214,7 +218,7 @@ jobs:
         
     - name: Copy web files from source
       run: |
-        cp ../web/index.html index.html
+        cp artifacts/firmware-*/index.html index.html
         
     - name: Commit and push to gh-pages
       run: |
