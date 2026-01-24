@@ -5,6 +5,22 @@ All notable changes to FluidTouch will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2026-01-24
+
+### Changed
+
+- **Status Tab Updates**
+  - **Pause/Resume and Stop Buttons** - Pause/Resume/Stop from status tab (#13)
+  - **Position Update on Status Tab** - Click positions on status tab to update (#14)
+  - **WCS Update on Status Tab** - Click work position values to update Work Coordinate System (#15)
+- **Settings Updates**
+  - **Display Rotation Support** - Can now rotate display 180 degrees via Settings → General (#12)
+- **Web Installer Version Selection** - Dropdown to select from multiple firmware versions including preview builds
+
+### Fixed
+
+- **File Upload with Spaces** - Fixed handling of filenames containing spaces in upload operations
+
 ## [1.0.1] - 2025-12-04
 
 ### Fixed
@@ -49,5 +65,6 @@ FluidTouch 1.0.0 is the first stable release of the ESP32-S3 touchscreen CNC con
 - Configuration guide for WiFi, machines, and settings
 - Development guide for building from source
 
+[1.0.2]: https://github.com/jeyeager65/FluidTouch/releases/tag/v1.0.2
 [1.0.1]: https://github.com/jeyeager65/FluidTouch/releases/tag/v1.0.1
 [1.0.0]: https://github.com/jeyeager65/FluidTouch/releases/tag/v1.0.0

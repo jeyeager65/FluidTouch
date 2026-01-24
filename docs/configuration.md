@@ -164,7 +164,7 @@ Configure power management and display brightness:
 
 ### Exporting Settings
 
-**Settings → General → Export Settings**
+**Settings → Backup → Export Settings**
 
 Creates a backup file on the Display SD card:
 

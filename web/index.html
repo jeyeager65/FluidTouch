@@ -805,7 +805,7 @@
             Web Installer
         </p>
         <div class="version-badge">
-            <span>Version 1.0.1</span>
+            <span>Version 1.0.2</span>
         </div>
         <p style="text-align: center; font-size: 1.2em; color: #c9d1d9; margin-bottom: 30px;">
             ESP32 Touchscreen CNC Controller for FluidNC
@@ -813,15 +813,25 @@
 
         <!-- Changelog -->
         <div class="changelog">
-            <h3>🔄 Version 1.0.1 - Bugfixes & Documentation</h3>
+            <h3>🎉 Version 1.0.2 - Display Rotation & Status Tab Enhancements</h3>
             <div class="changelog-content">
                 <div class="changelog-version">
-                    <div class="changelog-date">December 4, 2025</div>
+                    <div class="changelog-date">January 24, 2026</div>
                     <ul class="changelog-items">
-                        <li><strong>Bugfix:</strong> Touch screen not working after deep sleep wake on Basic hardware (removed GT911 sleep command)</li>
-                        <li><strong>Bugfix:</strong> Fixed garbled screen flash on startup by delaying backlight activation</li>
-                        <li><strong>Documentation Updates:</strong> Product links now use affiliate codes to help support development costs</li>
-                        <li><strong>Hardware Recommendation:</strong> Advance display model now marked as recommended (superior IPS display, optional battery case)</li>
+                        <li><strong>Status Tab Updates:</strong>
+                            <ul>
+                                <li><strong>Pause/Resume and Stop Buttons</strong> - Pause/Resume/Stop from status tab</li>
+                                <li><strong>Position Update on Status Tab</strong> - Click positions on status tab to update</li>
+                                <li><strong>WCS Update on Status Tab</strong> - Click work position values to update Work Coordinate System</li>
+                            </ul>
+                        </li>
+                        <li><strong>Settings Updates:</strong>
+                            <ul>
+                                <li><strong>Display Rotation Support</strong> - Can now rotate display 180 degrees via Settings → General</li>
+                            </ul>
+                        </li>
+                        <li><strong>Web Installer Version Selection</strong> - Dropdown to select from multiple firmware versions including preview builds</li>
+                        <li><strong>Bugfix:</strong> Fixed handling of filenames containing spaces in upload operations</li>
                     </ul>
                 </div>
             </div>
@@ -830,6 +840,16 @@
             <div class="changelog-collapsed" id="changelog-prior" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(0, 188, 212, 0.2);">
                 <h3 onclick="toggleChangelog('changelog-prior')">📜 Prior Releases</h3>
                 <div class="changelog-content">
+                    <div class="changelog-version">
+                        <h4>Version 1.0.1 - Bugfixes & Documentation</h4>
+                        <div class="changelog-date">December 4, 2025</div>
+                        <ul class="changelog-items">
+                            <li><strong>Bugfix:</strong> Touch screen not working after deep sleep wake on Basic hardware (removed GT911 sleep command)</li>
+                            <li><strong>Bugfix:</strong> Fixed garbled screen flash on startup by delaying backlight activation</li>
+                            <li><strong>Documentation Updates:</strong> Product links now use affiliate codes to help support development costs</li>
+                            <li><strong>Hardware Recommendation:</strong> Advance display model now marked as recommended (superior IPS display, optional battery case)</li>
+                        </ul>
+                    </div>
                     <div class="changelog-version">
                         <h4>Version 1.0.0 - Initial Release</h4>
                         <div class="changelog-date">November 17, 2025</div>
