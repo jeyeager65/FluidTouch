@@ -3,6 +3,15 @@
   "default_hardware": "advance-v1.3",
   "versions": [
     {
+      "id": "1.0.2_flicker103",
+      "display_name": "1.0.2_flicker103 (Preview 2026-01-25)",
+      "hardware": [
+        "basic",
+        "advance-v1.3"
+      ],
+      "is_preview": true
+    },
+    {
       "id": "1.0.2",
       "hardware": [
         "basic",
