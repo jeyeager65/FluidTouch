@@ -1,0 +1,29 @@
+{
+  "name": "FluidTouch (Basic)",
+  "version": "1.0.2_basic-touch-103",
+  "new_install_prompt_erase": true,
+  "funding_url": "https://github.com/jeyeager65/FluidTouch",
+  "builds": [
+    {
+      "chipFamily": "ESP32-S3",
+      "parts": [
+        {
+          "path": "basic/bootloader.bin",
+          "offset": 0
+        },
+        {
+          "path": "basic/partitions.bin",
+          "offset": 32768
+        },
+        {
+          "path": "basic/boot_app0.bin",
+          "offset": 57344
+        },
+        {
+          "path": "basic/firmware.bin",
+          "offset": 65536
+        }
+      ]
+    }
+  ]
+}
