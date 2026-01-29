@@ -51,35 +51,46 @@ jobs:
     - name: Build firmware (Basic)
       run: platformio run --environment elecrow-crowpanel-7-basic
       
-    - name: Build firmware (Advance)
-      run: platformio run --environment elecrow-crowpanel-7-advance
+    - name: Build firmware (Advance v1.3)
+      run: platformio run --environment elecrow-crowpanel-7-advance-v13
+      
+    - name: Build firmware (Advance v1.2)
+      run: platformio run --environment elecrow-crowpanel-7-advance-v12
       
     - name: Prepare firmware files
       run: |
-        # Create directories for both hardware variants
+        # Create directories for all hardware variants
         mkdir -p web/firmware/basic
-        mkdir -p web/firmware/advance
+        mkdir -p web/firmware/advance-v1.3
+        mkdir -p web/firmware/advance-v1.2
         
         # Copy Basic variant firmware
         cp .pio/build/elecrow-crowpanel-7-basic/firmware.bin web/firmware/basic/
         cp .pio/build/elecrow-crowpanel-7-basic/bootloader.bin web/firmware/basic/
         cp .pio/build/elecrow-crowpanel-7-basic/partitions.bin web/firmware/basic/
         
-        # Copy Advance variant firmware
-        cp .pio/build/elecrow-crowpanel-7-advance/firmware.bin web/firmware/advance/
-        cp .pio/build/elecrow-crowpanel-7-advance/bootloader.bin web/firmware/advance/
-        cp .pio/build/elecrow-crowpanel-7-advance/partitions.bin web/firmware/advance/
+        # Copy Advance v1.3 variant firmware
+        cp .pio/build/elecrow-crowpanel-7-advance-v13/firmware.bin web/firmware/advance-v1.3/
+        cp .pio/build/elecrow-crowpanel-7-advance-v13/bootloader.bin web/firmware/advance-v1.3/
+        cp .pio/build/elecrow-crowpanel-7-advance-v13/partitions.bin web/firmware/advance-v1.3/
         
-        # boot_app0.bin location varies, try common paths (same for both)
+        # Copy Advance v1.2 variant firmware
+        cp .pio/build/elecrow-crowpanel-7-advance-v12/firmware.bin web/firmware/advance-v1.2/
+        cp .pio/build/elecrow-crowpanel-7-advance-v12/bootloader.bin web/firmware/advance-v1.2/
+        cp .pio/build/elecrow-crowpanel-7-advance-v12/partitions.bin web/firmware/advance-v1.2/
+        
+        # boot_app0.bin location varies, try common paths (same for all)
         if [ -f ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin ]; then
           cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin web/firmware/basic/
-          cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin web/firmware/advance/
+          cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin web/firmware/advance-v1.3/
+          cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin web/firmware/advance-v1.2/
         fi
       
     - name: Update manifest files with version
       run: |
         sed -i 's/"version": ".*"/"version": "${{ steps.version.outputs.VERSION }}"/' web/manifest_basic.json
-        sed -i 's/"version": ".*"/"version": "${{ steps.version.outputs.VERSION }}"/' web/manifest_advance.json
+        sed -i 's/"version": ".*"/"version": "${{ steps.version.outputs.VERSION }}"/' web/manifest_advance-v1.3.json
+        sed -i 's/"version": ".*"/"version": "${{ steps.version.outputs.VERSION }}"/' web/manifest_advance-v1.2.json
         
     - name: Upload firmware artifacts
       uses: actions/upload-artifact@v4
@@ -88,14 +99,16 @@ jobs:
         path: |
           web/firmware/**/*.bin
           web/manifest_basic.json
-          web/manifest_advance.json
+          web/manifest_advance-v1.3.json
+          web/manifest_advance-v1.2.json
           web/index.html
           
     - name: Rename firmware files for release
       run: |
         mkdir -p release
         cp .pio/build/elecrow-crowpanel-7-basic/firmware.bin release/fluidtouch-basic-${{ steps.version.outputs.VERSION }}.bin
-        cp .pio/build/elecrow-crowpanel-7-advance/firmware.bin release/fluidtouch-advance-${{ steps.version.outputs.VERSION }}.bin
+        cp .pio/build/elecrow-crowpanel-7-advance-v13/firmware.bin release/fluidtouch-advance-v1.3-${{ steps.version.outputs.VERSION }}.bin
+        cp .pio/build/elecrow-crowpanel-7-advance-v12/firmware.bin release/fluidtouch-advance-v1.2-${{ steps.version.outputs.VERSION }}.bin
         
     - name: Create Release
       uses: softprops/action-gh-release@v1
@@ -103,7 +116,8 @@ jobs:
       with:
         files: |
           release/fluidtouch-basic-${{ steps.version.outputs.VERSION }}.bin
-          release/fluidtouch-advance-${{ steps.version.outputs.VERSION }}.bin
+          release/fluidtouch-advance-v1.3-${{ steps.version.outputs.VERSION }}.bin
+          release/fluidtouch-advance-v1.2-${{ steps.version.outputs.VERSION }}.bin
         body: |
           ## FluidTouch ${{ steps.version.outputs.VERSION }}
           
@@ -111,8 +125,9 @@ jobs:
           Install directly from your browser: [FluidTouch Web Installer](https://jeyeager65.github.io/FluidTouch/)
           
           Select your hardware variant during installation:
-          - **Basic**: Elecrow CrowPanel 7" Basic (4MB flash, PWM backlight)
-          - **Advance**: Elecrow CrowPanel 7" Advance (16MB flash, IPS display, I2C backlight)
+          - **Basic**: Elecrow CrowPanel 7" Basic (4MB flash, TN LCD, PWM backlight)
+          - **Advance v1.3**: Elecrow CrowPanel 7" Advance v1.3 (16MB flash, IPS LCD, continuous brightness 0-245)
+          - **Advance v1.2**: Elecrow CrowPanel 7" Advance v1.2 (16MB flash, IPS LCD, discrete brightness 0x05-0x10)
           
           ### Manual Installation
           Download the appropriate firmware file for your hardware variant and flash using:
@@ -177,18 +192,22 @@ jobs:
         # Create version-specific directories
         mkdir -p firmware/${VERSION}/basic
         mkdir -p firmware/${VERSION}/advance-v1.3
+        mkdir -p firmware/${VERSION}/advance-v1.2
         
         # Copy firmware files (artifacts are in artifacts/firmware-VERSION/)
         find artifacts -path "*/basic/*.bin" -exec cp {} firmware/${VERSION}/basic/ \;
-        find artifacts -path "*/advance/*.bin" -exec cp {} firmware/${VERSION}/advance-v1.3/ \;
+        find artifacts -path "*/advance-v1.3/*.bin" -exec cp {} firmware/${VERSION}/advance-v1.3/ \;
+        find artifacts -path "*/advance-v1.2/*.bin" -exec cp {} firmware/${VERSION}/advance-v1.2/ \;
         
         # Copy and update manifests
         cp artifacts/firmware-*/manifest_basic.json firmware/${VERSION}/manifest_basic.json
-        cp artifacts/firmware-*/manifest_advance.json firmware/${VERSION}/manifest_advance-v1.3.json
+        cp artifacts/firmware-*/manifest_advance-v1.3.json firmware/${VERSION}/manifest_advance-v1.3.json
+        cp artifacts/firmware-*/manifest_advance-v1.2.json firmware/${VERSION}/manifest_advance-v1.2.json
         
         # Update manifest paths to point to version-specific firmware
         sed -i "s|./firmware/basic/|./firmware/${VERSION}/basic/|g" firmware/${VERSION}/manifest_basic.json
-        sed -i "s|./firmware/advance/|./firmware/${VERSION}/advance-v1.3/|g" firmware/${VERSION}/manifest_advance-v1.3.json
+        sed -i "s|./firmware/advance-v1.3/|./firmware/${VERSION}/advance-v1.3/|g" firmware/${VERSION}/manifest_advance-v1.3.json
+        sed -i "s|./firmware/advance-v1.2/|./firmware/${VERSION}/advance-v1.2/|g" firmware/${VERSION}/manifest_advance-v1.2.json
         
     - name: Update versions.json
       run: |
@@ -200,14 +219,14 @@ jobs:
         
         # Load or create versions.json
         if [ ! -f versions.json ]; then
-          echo '{"default_version":null,"default_hardware":"advance-v1.3","versions":[],"hardware_info":{"basic":"Basic (4MB flash, PWM backlight)","advance-v1.3":"Advance v1.3 (16MB flash, IPS display)","advance-v1.2":"Advance v1.2 (older revision)"}}' > versions.json
+          echo '{"default_version":null,"default_hardware":"advance-v1.3","versions":[],"hardware_info":{"basic":"Basic","advance-v1.3":"Advance v1.3","advance-v1.2":"Advance v1.2"}}' > versions.json
         fi
         
         # Add new version entry
         jq --arg ver "$VERSION" --arg ts "$TIMESTAMP" '
           .versions = ([{
             "id": $ver,
-            "hardware": ["basic", "advance-v1.3"],
+            "hardware": ["basic", "advance-v1.3", "advance-v1.2"],
             "is_preview": false
           }] + .versions) |
           .default_version = $ver
