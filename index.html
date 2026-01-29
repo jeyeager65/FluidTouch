@@ -1017,7 +1017,8 @@
         // Load versions.json on page load
         async function loadVersions() {
             try {
-                const response = await fetch('./versions.json');
+                // Add timestamp to prevent caching
+                const response = await fetch(`./versions.json?t=${Date.now()}`);
                 versionsData = await response.json();
                 populateVersionDropdown();
                 updateAdvanceVersionDropdown();
