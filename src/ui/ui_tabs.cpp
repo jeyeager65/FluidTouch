@@ -40,8 +40,8 @@ void UITabs::createTabs() {
     lv_obj_set_style_text_font(tabview, &lv_font_montserrat_20, LV_PART_ITEMS);
     lv_obj_set_style_bg_color(tabview, UITheme::BG_BUTTON, LV_PART_ITEMS);
     lv_obj_set_style_text_color(tabview, UITheme::TEXT_LIGHT, LV_PART_ITEMS);
-    lv_obj_set_style_bg_color(tabview, UITheme::ACCENT_PRIMARY, LV_PART_ITEMS | LV_STATE_CHECKED);
-    lv_obj_set_style_text_color(tabview, lv_color_white(), LV_PART_ITEMS | LV_STATE_CHECKED);
+    lv_obj_set_style_bg_color(tabview, UITheme::ACCENT_PRIMARY, (lv_state_t)(LV_PART_ITEMS | LV_STATE_CHECKED));
+    lv_obj_set_style_text_color(tabview, lv_color_white(), (lv_state_t)(LV_PART_ITEMS | LV_STATE_CHECKED));
     
     // Add tabs
     tab_status = lv_tabview_add_tab(tabview, "Status");

@@ -55,8 +55,8 @@ void UITabSettings::create(lv_obj_t *tab) {
     lv_obj_set_style_text_font(sub_tabview, &lv_font_montserrat_18, LV_PART_ITEMS);
     
     // Style tab buttons (active/checked) - use a different accent color
-    lv_obj_set_style_bg_color(sub_tabview, UITheme::ACCENT_SECONDARY, LV_PART_ITEMS | LV_STATE_CHECKED);
-    lv_obj_set_style_text_color(sub_tabview, lv_color_white(), LV_PART_ITEMS | LV_STATE_CHECKED);
+    lv_obj_set_style_bg_color(sub_tabview, UITheme::ACCENT_SECONDARY, (lv_state_t)(LV_PART_ITEMS | LV_STATE_CHECKED));
+    lv_obj_set_style_text_color(sub_tabview, lv_color_white(), (lv_state_t)(LV_PART_ITEMS | LV_STATE_CHECKED));
 
     // Add sub-tabs
     lv_obj_t *general_tab = lv_tabview_add_tab(sub_tabview, "General");

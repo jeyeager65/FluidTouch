@@ -194,8 +194,8 @@ static void on_power_off_confirm(lv_event_t *e) {
     
     // Disable RTC peripherals to save power
     esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_OFF);
-    esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_SLOW_MEM, ESP_PD_OPTION_OFF);
-    esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_FAST_MEM, ESP_PD_OPTION_OFF);
+    // Note: ESP_PD_DOMAIN_RTC_SLOW_MEM and RTC_FAST_MEM removed in IDF 5.3+
+    // RTC memory domains are now controlled automatically
     
     // Disable unused GPIO power domains
     esp_sleep_pd_config(ESP_PD_DOMAIN_XTAL, ESP_PD_OPTION_OFF);

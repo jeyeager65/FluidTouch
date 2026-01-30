@@ -410,11 +410,11 @@ void UITabControlJog::update_xy_step_button_styles() {
     for (int i = 0; i < UITheme::XY_STEP_COUNT; i++) {
         if (xy_step_buttons[i] != nullptr) {
             if (i == xy_current_step_index) {
-                lv_obj_set_style_bg_color(xy_step_buttons[i], UITheme::ACCENT_PRIMARY, LV_PART_MAIN | LV_STATE_DEFAULT);
-                lv_obj_set_style_bg_color(xy_step_buttons[i], UITheme::ACCENT_PRIMARY_PRESSED, LV_PART_MAIN | LV_STATE_PRESSED);
-            } else {
-                lv_obj_set_style_bg_color(xy_step_buttons[i], UITheme::BG_BUTTON, LV_PART_MAIN | LV_STATE_DEFAULT);
-                lv_obj_set_style_bg_color(xy_step_buttons[i], UITheme::BORDER_LIGHT, LV_PART_MAIN | LV_STATE_PRESSED);
+                lv_obj_set_style_bg_color(xy_step_buttons[i], UITheme::ACCENT_PRIMARY, (lv_state_t)(LV_PART_MAIN | LV_STATE_DEFAULT));
+                lv_obj_set_style_bg_color(xy_step_buttons[i], UITheme::ACCENT_PRIMARY_PRESSED, (lv_state_t)(LV_PART_MAIN | LV_STATE_PRESSED));
+        } else {
+                lv_obj_set_style_bg_color(xy_step_buttons[i], UITheme::BG_BUTTON, (lv_state_t)(LV_PART_MAIN | LV_STATE_DEFAULT));
+                lv_obj_set_style_bg_color(xy_step_buttons[i], UITheme::BORDER_LIGHT, (lv_state_t)(LV_PART_MAIN | LV_STATE_PRESSED));
             }
         }
     }
@@ -425,11 +425,11 @@ void UITabControlJog::update_z_step_button_styles() {
     for (int i = 0; i < UITheme::Z_STEP_COUNT; i++) {
         if (z_step_buttons[i] != nullptr) {
             if (i == z_current_step_index) {
-                lv_obj_set_style_bg_color(z_step_buttons[i], UITheme::ACCENT_PRIMARY, LV_PART_MAIN | LV_STATE_DEFAULT);
-                lv_obj_set_style_bg_color(z_step_buttons[i], UITheme::ACCENT_PRIMARY_PRESSED, LV_PART_MAIN | LV_STATE_PRESSED);
-            } else {
-                lv_obj_set_style_bg_color(z_step_buttons[i], UITheme::BG_BUTTON, LV_PART_MAIN | LV_STATE_DEFAULT);
-                lv_obj_set_style_bg_color(z_step_buttons[i], UITheme::BORDER_LIGHT, LV_PART_MAIN | LV_STATE_PRESSED);
+                lv_obj_set_style_bg_color(z_step_buttons[i], UITheme::ACCENT_PRIMARY, (lv_state_t)(LV_PART_MAIN | LV_STATE_DEFAULT));
+                lv_obj_set_style_bg_color(z_step_buttons[i], UITheme::ACCENT_PRIMARY_PRESSED, (lv_state_t)(LV_PART_MAIN | LV_STATE_PRESSED));
+        } else {
+                lv_obj_set_style_bg_color(z_step_buttons[i], UITheme::BG_BUTTON, (lv_state_t)(LV_PART_MAIN | LV_STATE_DEFAULT));
+                lv_obj_set_style_bg_color(z_step_buttons[i], UITheme::BORDER_LIGHT, (lv_state_t)(LV_PART_MAIN | LV_STATE_PRESSED));
             }
         }
     }

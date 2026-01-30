@@ -33,7 +33,7 @@ LGFX::LGFX(void) {
         cfg.pin_vsync   = GPIO_NUM_41;
         cfg.pin_hsync   = GPIO_NUM_40;
         cfg.pin_pclk    = GPIO_NUM_39;
-        cfg.freq_write  = 14000000;  // 14MHz - best stability
+        cfg.freq_write  = 18000000;  // 18MHz - stable with IDF 5.3
 
         cfg.hsync_polarity    = 1;  // Different from Basic!
         cfg.hsync_front_porch = 8;
@@ -73,7 +73,7 @@ LGFX::LGFX(void) {
         cfg.pin_vsync   = GPIO_NUM_40;
         cfg.pin_hsync   = GPIO_NUM_39;
         cfg.pin_pclk    = GPIO_NUM_0;
-        cfg.freq_write  = 10000000;  // 10MHz
+        cfg.freq_write  = 14000000;  // 14MHz - matching Advance
 
         cfg.hsync_polarity    = 0;
         cfg.hsync_front_porch = 40;
@@ -163,9 +163,8 @@ bool DisplayDriver::init() {
 #ifdef BACKLIGHT_PWM
     // Basic: PWM backlight - configure but keep OFF until screen is cleared
     pinMode(2, OUTPUT);
-    ledcSetup(1, 300, 8);
-    ledcAttachPin(2, 1);
-    ledcWrite(1, 0);  // Start with backlight OFF
+    ledcAttach(2, 300, 8);  // IDF 5.3: attach PWM to pin 2, 300Hz, 8-bit resolution
+    ledcWrite(2, 0);  // Start with backlight OFF
     Serial.println("Backlight configured (OFF)");
     
 #elif defined(BACKLIGHT_I2C)
@@ -193,7 +192,7 @@ bool DisplayDriver::init() {
     delay(50);
     
     // Now turn on backlight after screen is cleared
-    ledcWrite(1, 255);
+    ledcWrite(2, 255);  // Pin 2, not channel
     Serial.println("Backlight ON (PWM)");
 #endif
     
@@ -311,7 +310,7 @@ void DisplayDriver::setBacklight(uint8_t brightness_percent) {
     
 #ifdef BACKLIGHT_PWM
     // Basic: PWM backlight on GPIO2
-    ledcWrite(1, hw_value);
+    ledcWrite(2, hw_value);  // Pin 2, not channel
 #elif defined(BACKLIGHT_I2C)
     // Advance: I2C backlight controller (STC8H1K28 at address 0x30)
     // Brightness: 0 = brightest, 245 = off
@@ -330,7 +329,7 @@ void DisplayDriver::setBacklightOn() {
 void DisplayDriver::setBacklightOff() {
 #ifdef BACKLIGHT_PWM
     // Basic: PWM backlight on GPIO2
-    ledcWrite(1, 0);
+    ledcWrite(2, 0);  // Pin 2, not channel
     Serial.println("Backlight OFF (PWM)");
 #elif defined(BACKLIGHT_I2C)
     // Advance: I2C backlight controller (STC8H1K28 at address 0x30)
