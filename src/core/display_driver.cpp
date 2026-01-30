@@ -134,15 +134,15 @@ LGFX::LGFX(void) {
         cfg.pin_sda    = TOUCH_SDA;  // GPIO 15
         cfg.pin_scl    = TOUCH_SCL;  // GPIO 16
         cfg.pin_rst    = -1;  // Reset handled by STC8H1K28 via I2C
-        cfg.freq       = 400000;
+        cfg.freq       = 400000;     // Keep 400kHz - works well on Advance
 #else
         // Basic: Touch I2C configuration
         cfg.i2c_port   = 0;
         cfg.i2c_addr   = 0x5D;
         cfg.pin_sda    = TOUCH_SDA;  // GPIO 19
         cfg.pin_scl    = TOUCH_SCL;  // GPIO 20
-        cfg.pin_rst    = -1;  // No reset pin defined in Elecrow schematic
-        cfg.freq       = 400000;
+        cfg.pin_rst    = TOUCH_RST;  // GPIO 38 - Required for proper GT911 reset
+        cfg.freq       = 100000;     // 100kHz for better compatibility (was 400kHz)
 #endif
 
         _touch_instance.config(cfg);
@@ -194,6 +194,35 @@ bool DisplayDriver::init() {
     // Now turn on backlight after screen is cleared
     ledcWrite(2, 255);  // Pin 2, not channel
     Serial.println("Backlight ON (PWM)");
+    
+    // Verify GT911 touch controller is present on Basic hardware
+    Serial.println("Verifying GT911 touch controller...");
+    Wire.begin(TOUCH_SDA, TOUCH_SCL);
+    Wire.setClock(100000);  // 100kHz for better compatibility
+    Wire.setTimeOut(100);   // Prevent hangs
+    delay(50);  // Allow I2C to stabilize
+    
+    // Scan I2C bus to confirm GT911 is responsive
+    bool gt911_found = false;
+    Wire.beginTransmission(GT911_ADDR);
+    if (Wire.endTransmission() == 0) {
+        gt911_found = true;
+        Serial.printf("  GT911 found at 0x%02X (Primary address)\n", GT911_ADDR);
+    } else {
+        // Try alternate address 0x14
+        Wire.beginTransmission(0x14);
+        if (Wire.endTransmission() == 0) {
+            gt911_found = true;
+            Serial.printf("  GT911 found at 0x14 (Alternate address)\n");
+        }
+    }
+    
+    if (gt911_found) {
+        Serial.println("  GT911 verification: SUCCESS");
+    } else {
+        Serial.println("  WARNING: GT911 not responding on I2C bus!");
+        Serial.println("  Touch may not work. Check connections and reset pin.");
+    }
 #endif
     
 #ifdef BACKLIGHT_I2C
