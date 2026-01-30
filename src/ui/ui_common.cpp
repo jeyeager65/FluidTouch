@@ -10,6 +10,7 @@
 #include "config.h"
 #include <Preferences.h>
 #include <WiFi.h>
+#include <ESPmDNS.h>
 #include <esp_sleep.h>
 
 // Static member initialization
@@ -280,6 +281,14 @@ void UICommon::createMainUI() {
             if (WiFi.status() == WL_CONNECTED) {
                 Serial.println("\nWiFi connected!");
                 Serial.printf("IP Address: %s\n", WiFi.localIP().toString().c_str());
+                
+                // Initialize mDNS client stack to enable resolving .local hostnames (like fluidnc.local)
+                // Note: MDNS.begin() is required on ESP32 to enable mDNS client queries, not just advertising
+                if (MDNS.begin("fluidtouch")) {
+                    Serial.println("mDNS client initialized - can now resolve .local hostnames");
+                } else {
+                    Serial.println("Warning: mDNS client failed to start (.local hostname resolution will not work)");
+                }
                 
                 // Initialize screenshot server now that WiFi is connected
                 if (display_driver) {

@@ -2,6 +2,7 @@
 #include "ui/ui_common.h"
 #include "ui/tabs/control/ui_tab_control_probe.h"
 #include <WiFi.h>
+#include <ESPmDNS.h>
 
 using namespace websockets;
 
@@ -45,13 +46,39 @@ bool FluidNCClient::connect(const MachineConfig &config) {
     Serial.printf("[FluidNC] Connecting to %s:%d via WebSocket\n", 
                   config.fluidnc_url, config.websocket_port);
     
+    // Resolve hostname if needed (mDNS support)
+    String resolvedHost = String(config.fluidnc_url);
+    IPAddress serverIP;
+    if (resolvedHost.indexOf('.') == -1 || resolvedHost.endsWith(".local")) {
+        // It's a hostname or mDNS name, try to resolve it
+        Serial.printf("[FluidNC] Resolving hostname: %s\n", resolvedHost.c_str());
+        
+        // Try resolving with retries (mDNS can be slow to respond)
+        bool resolved = false;
+        for (int attempt = 0; attempt < 3 && !resolved; attempt++) {
+            if (attempt > 0) {
+                Serial.printf("[FluidNC] Retry attempt %d/3...\n", attempt + 1);
+                delay(500);  // Brief delay between retries
+            }
+            resolved = WiFi.hostByName(resolvedHost.c_str(), serverIP);
+        }
+        
+        if (!resolved) {
+            Serial.printf("[FluidNC] Failed to resolve hostname: %s\n", resolvedHost.c_str());
+            Serial.println("[FluidNC] Tip: Try using the IP address instead, or check that mDNS is working on your network");
+            return false;
+        }
+        resolvedHost = serverIP.toString();
+        Serial.printf("[FluidNC] Resolved to IP: %s\n", resolvedHost.c_str());
+    }
+    
     // Set up event callbacks
     webSocket.onMessage(onMessageCallback);
     webSocket.onEvent(onEventsCallback);
     
     // Connect to WebSocket (ws://hostname:port/)
     char wsUrl[128];
-    snprintf(wsUrl, sizeof(wsUrl), "ws://%s:%d/", config.fluidnc_url, config.websocket_port);
+    snprintf(wsUrl, sizeof(wsUrl), "ws://%s:%d/", resolvedHost.c_str(), config.websocket_port);
     bool connected = webSocket.connect(wsUrl);
     
     if (!connected) {
