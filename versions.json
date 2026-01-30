@@ -12,15 +12,6 @@
       "is_preview": true
     },
     {
-      "id": "1.0.2_dev",
-      "display_name": "1.0.2_dev (Preview 2026-01-30)",
-      "hardware": [
-        "basic",
-        "advance-v1.3"
-      ],
-      "is_preview": true
-    },
-    {
       "id": "1.0.3_advance-1-2-support",
       "display_name": "1.0.3_advance-1-2-support (Preview 2026-01-28)",
       "hardware": [
