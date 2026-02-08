@@ -231,7 +231,19 @@ bool DisplayDriver::init() {
     Wire.setTimeOut(100);   // Prevent hangs
     delay(50);  // Give I2C time to stabilize
     
+#ifdef HARDWARE_ADVANCE_V12
+    // v1.2: Simpler backlight control via STC8H1K28
+    // v1.2 uses 0x05-0x10 range (0x05=off, 0x10=max brightness)
+    Serial.println("Initializing Advance v1.2 backlight...");
+    Wire.beginTransmission(0x30);
+    Wire.write(0x10);  // Maximum brightness
+    uint8_t initResult = Wire.endTransmission();
+    Serial.printf("  v1.2 backlight result: %d\n", initResult);
+    delay(100);  // Give GT911 time to initialize
+#else
+    // v1.3: Full STC8H1K28 initialization with GT911 reset handling
     // Wake STC8H1K28 microcontroller (per Elecrow example)
+    Serial.println("Initializing Advance v1.3 backlight...");
     Serial.println("Waking STC8H1K28 microcontroller...");
     Wire.beginTransmission(0x30);
     Wire.write(0x19);  // Wake command
@@ -253,6 +265,7 @@ bool DisplayDriver::init() {
     Wire.write(0x18);  // Config command 2  
     Wire.endTransmission();
     delay(100);  // Give GT911 time to initialize after STC8H1K28 reset
+#endif
     
     // Scan I2C to confirm GT911 is present
     Serial.println("Scanning I2C for GT911...");
@@ -270,21 +283,27 @@ bool DisplayDriver::init() {
     Serial.printf("Found %d I2C device(s), GT911: %s\n", deviceCount, gt911_found ? "YES" : "NO");
     
     // Turn on backlight via STC8H1K28
-    // The STC8H1K28 controls LCD backlight via P3.5 and brightness via P1.1
-    // All control is via I2C commands to address 0x30
     Serial.println("Enabling backlight via STC8H1K28...");
     
-    // Try sending brightness value (0 = brightest, 245 = off)
+#ifdef HARDWARE_ADVANCE_V12
+    // v1.2: 0x05-0x10 range (0x05=off, 0x10=max)
+    Wire.beginTransmission(0x30);
+    Wire.write(0x10);  // Maximum brightness
+    uint8_t blResult = Wire.endTransmission();
+    Serial.printf("  v1.2 brightness: %d\n", blResult);
+#else
+    // v1.3: 0x00-0xF5 range (0x00=max, 0xF5=off)
     Wire.beginTransmission(0x30);
     Wire.write(0x00);  // Maximum brightness
     uint8_t blResult = Wire.endTransmission();
-    Serial.printf("  Brightness command result: %d\n", blResult);
+    Serial.printf("  v1.3 brightness: %d\n", blResult);
     delay(10);
     
-    // Also try the "buzzer off" command in case backlight shares control
+    // Also try the "buzzer off" command
     Wire.beginTransmission(0x30);
     Wire.write(0xF7);  // 247 = buzzer off (per docs)
     Wire.endTransmission();
+#endif
     delay(10);
     
     Serial.println("Backlight initialization complete");
@@ -342,8 +361,15 @@ void DisplayDriver::setBacklight(uint8_t brightness_percent) {
     ledcWrite(2, hw_value);  // Pin 2, not channel
 #elif defined(BACKLIGHT_I2C)
     // Advance: I2C backlight controller (STC8H1K28 at address 0x30)
-    // Brightness: 0 = brightest, 245 = off
-    uint8_t i2c_value = 245 - ((hw_value * 245) / 255);
+    uint8_t i2c_value;
+#ifdef HARDWARE_ADVANCE_V12
+    // v1.2: 0x05-0x10 range (0x05=off, 0x10=max brightness)
+    // Map 0-255 to 0x05-0x10 (5-16 decimal)
+    i2c_value = 5 + ((hw_value * 11) / 255);
+#else
+    // v1.3: 0x00-0xF5 range (0x00=max, 0xF5=off)
+    i2c_value = 245 - ((hw_value * 245) / 255);
+#endif
     Wire.beginTransmission(0x30);
     Wire.write(i2c_value);
     Wire.endTransmission();
@@ -362,11 +388,19 @@ void DisplayDriver::setBacklightOff() {
     Serial.println("Backlight OFF (PWM)");
 #elif defined(BACKLIGHT_I2C)
     // Advance: I2C backlight controller (STC8H1K28 at address 0x30)
-    // Send 0xF5 (245) for off
+#ifdef HARDWARE_ADVANCE_V12
+    // v1.2: Send 0x05 for off
+    Wire.beginTransmission(0x30);
+    Wire.write(0x05);
+    Wire.endTransmission();
+    Serial.println("Backlight OFF (I2C v1.2)");
+#else
+    // v1.3: Send 0xF5 for off
     Wire.beginTransmission(0x30);
     Wire.write(0xF5);
     Wire.endTransmission();
-    Serial.println("Backlight OFF (I2C)");
+    Serial.println("Backlight OFF (I2C v1.3)");
+#endif
 #endif
 }
 

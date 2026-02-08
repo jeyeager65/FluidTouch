@@ -66,11 +66,13 @@
     
     Output:
     - web/firmware/basic/*.bin (4MB flash variant)
-    - web/firmware/advance/*.bin (16MB flash variant)
+    - web/firmware/advance-v1.3/*.bin (16MB flash, v1.3 backlight)
+    - web/firmware/advance-v1.2/*.bin (16MB flash, v1.2 backlight)
     
     Hardware Variants:
     - Basic: ESP32-S3-WROOM-1-N4R8, TN LCD, PWM backlight
-    - Advance: ESP32-S3-WROOM-1-N16R8, IPS LCD, I2C backlight
+    - Advance v1.3: ESP32-S3-WROOM-1-N16R8, IPS LCD, I2C backlight (continuous 0-245)
+    - Advance v1.2: ESP32-S3-WROOM-1-N16R8, IPS LCD, I2C backlight (discrete 0x05-0x10)
 #>
 
 [CmdletBinding()]
@@ -175,7 +177,7 @@ if ($Clean) {
 }
 
 # Build Basic hardware firmware
-Write-Host "[1/4] Building Basic hardware firmware..." -ForegroundColor Yellow
+Write-Host "[1/5] Building Basic hardware firmware..." -ForegroundColor Yellow
 Write-Host "  Environment: elecrow-crowpanel-7-basic" -ForegroundColor Gray
 Write-Host "  Hardware: ESP32-S3-WROOM-1-N4R8 (4MB Flash, 8MB PSRAM)" -ForegroundColor Gray
 & $platformioExe run --environment elecrow-crowpanel-7-basic
@@ -188,22 +190,36 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "✓ Basic firmware built successfully" -ForegroundColor Green
 Write-Host ""
 
-# Build Advance hardware firmware
-Write-Host "[2/4] Building Advance hardware firmware..." -ForegroundColor Yellow
-Write-Host "  Environment: elecrow-crowpanel-7-advance" -ForegroundColor Gray
-Write-Host "  Hardware: ESP32-S3-WROOM-1-N16R8 (16MB Flash, 8MB PSRAM)" -ForegroundColor Gray
-& $platformioExe run --environment elecrow-crowpanel-7-advance
+# Build Advance v1.3 hardware firmware
+Write-Host "[2/5] Building Advance v1.3 hardware firmware..." -ForegroundColor Yellow
+Write-Host "  Environment: elecrow-crowpanel-7-advance-v13" -ForegroundColor Gray
+Write-Host "  Hardware: ESP32-S3-WROOM-1-N16R8 (16MB Flash, 8MB PSRAM, v1.3 backlight)" -ForegroundColor Gray
+& $platformioExe run --environment elecrow-crowpanel-7-advance-v13
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "ERROR: Advance firmware build failed!" -ForegroundColor Red
+    Write-Host "ERROR: Advance v1.3 firmware build failed!" -ForegroundColor Red
     exit 1
 }
 
-Write-Host "✓ Advance firmware built successfully" -ForegroundColor Green
+Write-Host "✓ Advance v1.3 firmware built successfully" -ForegroundColor Green
+Write-Host ""
+
+# Build Advance v1.2 hardware firmware
+Write-Host "[3/5] Building Advance v1.2 hardware firmware..." -ForegroundColor Yellow
+Write-Host "  Environment: elecrow-crowpanel-7-advance-v12" -ForegroundColor Gray
+Write-Host "  Hardware: ESP32-S3-WROOM-1-N16R8 (16MB Flash, 8MB PSRAM, v1.2 backlight)" -ForegroundColor Gray
+& $platformioExe run --environment elecrow-crowpanel-7-advance-v12
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "ERROR: Advance v1.2 firmware build failed!" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host "✓ Advance v1.2 firmware built successfully" -ForegroundColor Green
 Write-Host ""
 
 # Create web firmware directories
-Write-Host "[3/4] Creating web installer directories..." -ForegroundColor Yellow
+Write-Host "[4/5] Creating web installer directories..." -ForegroundColor Yellow
 
 # Determine output path based on version and preview mode
 if ($Preview -or $Version -match "_") {
@@ -222,12 +238,13 @@ if ($Preview -or $Version -match "_") {
 
 New-Item -ItemType Directory -Path "$outputBasePath/basic" -Force | Out-Null
 New-Item -ItemType Directory -Path "$outputBasePath/advance-v1.3" -Force | Out-Null
+New-Item -ItemType Directory -Path "$outputBasePath/advance-v1.2" -Force | Out-Null
 
 Write-Host "✓ Directories created" -ForegroundColor Green
 Write-Host ""
 
 # Copy firmware files
-Write-Host "[4/4] Copying firmware files to web installer..." -ForegroundColor Yellow
+Write-Host "[5/5] Copying firmware files to web installer..." -ForegroundColor Yellow
 
 # Get boot_app0.bin path (required for OTA updates)
 $bootApp0 = "$env:USERPROFILE\.platformio\packages\framework-arduinoespressif32\tools\partitions\boot_app0.bin"
@@ -245,19 +262,55 @@ Copy-Item ".pio/build/elecrow-crowpanel-7-basic/bootloader.bin" "$outputBasePath
 Copy-Item ".pio/build/elecrow-crowpanel-7-basic/partitions.bin" "$outputBasePath/basic/partitions.bin"
 Copy-Item $bootApp0 "$outputBasePath/basic/boot_app0.bin"
 
-# Copy Advance firmware (4 files required for ESP Web Tools)
-Write-Host "  Copying Advance firmware files..." -ForegroundColor Gray
-Copy-Item ".pio/build/elecrow-crowpanel-7-advance/firmware.bin" "$outputBasePath/advance-v1.3/firmware.bin"
-Copy-Item ".pio/build/elecrow-crowpanel-7-advance/bootloader.bin" "$outputBasePath/advance-v1.3/bootloader.bin"
-Copy-Item ".pio/build/elecrow-crowpanel-7-advance/partitions.bin" "$outputBasePath/advance-v1.3/partitions.bin"
+# Copy Advance v1.3 firmware (4 files required for ESP Web Tools)
+Write-Host "  Copying Advance v1.3 firmware files..." -ForegroundColor Gray
+Copy-Item ".pio/build/elecrow-crowpanel-7-advance-v13/firmware.bin" "$outputBasePath/advance-v1.3/firmware.bin"
+Copy-Item ".pio/build/elecrow-crowpanel-7-advance-v13/bootloader.bin" "$outputBasePath/advance-v1.3/bootloader.bin"
+Copy-Item ".pio/build/elecrow-crowpanel-7-advance-v13/partitions.bin" "$outputBasePath/advance-v1.3/partitions.bin"
 Copy-Item $bootApp0 "$outputBasePath/advance-v1.3/boot_app0.bin"
+
+# Copy Advance v1.2 firmware (4 files required for ESP Web Tools)
+Write-Host "  Copying Advance v1.2 firmware files..." -ForegroundColor Gray
+Copy-Item ".pio/build/elecrow-crowpanel-7-advance-v12/firmware.bin" "$outputBasePath/advance-v1.2/firmware.bin"
+Copy-Item ".pio/build/elecrow-crowpanel-7-advance-v12/bootloader.bin" "$outputBasePath/advance-v1.2/bootloader.bin"
+Copy-Item ".pio/build/elecrow-crowpanel-7-advance-v12/partitions.bin" "$outputBasePath/advance-v1.2/partitions.bin"
+Copy-Item $bootApp0 "$outputBasePath/advance-v1.2/boot_app0.bin"
 
 Write-Host "✓ All firmware files copied" -ForegroundColor Green
 Write-Host ""
 
+# Copy and update manifest files for versioned builds
+if ($Version -ne "local") {
+    Write-Host "Copying and updating manifest files..." -ForegroundColor Gray
+    
+    # Copy manifests to version folder
+    Copy-Item "web/manifest_basic.json" "$outputBasePath/manifest_basic.json"
+    Copy-Item "web/manifest_advance-v1.3.json" "$outputBasePath/manifest_advance-v1.3.json"
+    Copy-Item "web/manifest_advance-v1.2.json" "$outputBasePath/manifest_advance-v1.2.json"
+    
+    # Update paths in manifests to be relative to manifest location
+    $manifestBasic = Get-Content "$outputBasePath/manifest_basic.json" -Raw
+    $manifestBasic = $manifestBasic -replace 'firmware/basic/', 'basic/'
+    $manifestBasic = $manifestBasic -replace '"version":\s*"[^"]*"', """version"": ""$Version"""
+    $manifestBasic | Set-Content "$outputBasePath/manifest_basic.json" -Encoding UTF8
+    
+    $manifestAdvV13 = Get-Content "$outputBasePath/manifest_advance-v1.3.json" -Raw
+    $manifestAdvV13 = $manifestAdvV13 -replace 'firmware/advance-v1.3/', 'advance-v1.3/'
+    $manifestAdvV13 = $manifestAdvV13 -replace '"version":\s*"[^"]*"', """version"": ""$Version"""
+    $manifestAdvV13 | Set-Content "$outputBasePath/manifest_advance-v1.3.json" -Encoding UTF8
+    
+    $manifestAdvV12 = Get-Content "$outputBasePath/manifest_advance-v1.2.json" -Raw
+    $manifestAdvV12 = $manifestAdvV12 -replace 'firmware/advance-v1.2/', 'advance-v1.2/'
+    $manifestAdvV12 = $manifestAdvV12 -replace '"version":\s*"[^"]*"', """version"": ""$Version"""
+    $manifestAdvV12 | Set-Content "$outputBasePath/manifest_advance-v1.2.json" -Encoding UTF8
+    
+    Write-Host "✓ Manifests copied and updated" -ForegroundColor Green
+    Write-Host ""
+}
+
 # Update versions.json if requested
 if ($UpdateVersions) {
-    Write-Host "[5/5] Updating versions.json..." -ForegroundColor Yellow
+    Write-Host "[6/6] Updating versions.json..." -ForegroundColor Yellow
     
     $versionsPath = "web/versions.json"
     
@@ -270,9 +323,9 @@ if ($UpdateVersions) {
             default_hardware = "advance-v1.3"
             versions = @()
             hardware_info = @{
-                basic = "Basic (4MB flash, PWM backlight)"
-                "advance-v1.3" = "Advance v1.3 (16MB flash, IPS display)"
-                "advance-v1.2" = "Advance v1.2 (older revision)"
+                basic = "Basic (4MB flash, TN LCD, PWM backlight)"
+                "advance-v1.3" = "Advance v1.3 (16MB flash, IPS LCD, continuous brightness)"
+                "advance-v1.2" = "Advance v1.2 (16MB flash, IPS LCD, discrete brightness)"
             }
         }
     }
@@ -281,8 +334,14 @@ if ($UpdateVersions) {
     $isPreview = $Preview -or $Version -match "_"
     $versionEntry = @{
         id = $Version
-        hardware = @("basic", "advance-v1.3")
+        hardware = @("basic", "advance-v1.3", "advance-v1.2")
         is_preview = $isPreview
+    }
+    
+    # Add display name for preview builds
+    if ($isPreview) {
+        $buildDate = Get-Date -Format "yyyy-MM-dd"
+        $versionEntry.display_name = "$Version (Preview $buildDate)"
     }
     
     # Remove existing entry with same ID if present
@@ -312,24 +371,29 @@ Write-Host "Build Summary" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 
 $basicFirmware = Get-Item "$outputBasePath/basic/firmware.bin"
-$advanceFirmware = Get-Item "$outputBasePath/advance-v1.3/firmware.bin"
+$advanceV13Firmware = Get-Item "$outputBasePath/advance-v1.3/firmware.bin"
+$advanceV12Firmware = Get-Item "$outputBasePath/advance-v1.2/firmware.bin"
 
 $basicMB = [math]::Round($basicFirmware.Length / 1MB, 2)
-$advanceMB = [math]::Round($advanceFirmware.Length / 1MB, 2)
+$advanceV13MB = [math]::Round($advanceV13Firmware.Length / 1MB, 2)
+$advanceV12MB = [math]::Round($advanceV12Firmware.Length / 1MB, 2)
 $basicPercent = [math]::Round(($basicFirmware.Length / 3.25MB) * 100, 0)
-$advancePercent = [math]::Round(($advanceFirmware.Length / 6.5MB) * 100, 0)
+$advanceV13Percent = [math]::Round(($advanceV13Firmware.Length / 6.5MB) * 100, 0)
+$advanceV12Percent = [math]::Round(($advanceV12Firmware.Length / 6.5MB) * 100, 0)
 
 Write-Host "Version: $Version" -ForegroundColor White
 if ($Preview -or $Version -match "_") {
     Write-Host "  (Preview Build)" -ForegroundColor Magenta
 }
 Write-Host ""
-Write-Host "Basic firmware:   $basicMB MB of 3.25 MB (${basicPercent}% used)" -ForegroundColor White
-Write-Host "Advance firmware: $advanceMB MB of 6.5 MB (${advancePercent}% used)" -ForegroundColor White
+Write-Host "Basic firmware:       $basicMB MB of 3.25 MB (${basicPercent}% used)" -ForegroundColor White
+Write-Host "Advance v1.3 firmware: $advanceV13MB MB of 6.5 MB (${advanceV13Percent}% used)" -ForegroundColor White
+Write-Host "Advance v1.2 firmware: $advanceV12MB MB of 6.5 MB (${advanceV12Percent}% used)" -ForegroundColor White
 Write-Host ""
 Write-Host "Output directories:" -ForegroundColor Gray
 Write-Host "  $outputBasePath/basic/        - 4 files (bootloader, partitions, boot_app0, firmware)" -ForegroundColor Gray
 Write-Host "  $outputBasePath/advance-v1.3/ - 4 files (bootloader, partitions, boot_app0, firmware)" -ForegroundColor Gray
+Write-Host "  $outputBasePath/advance-v1.2/ - 4 files (bootloader, partitions, boot_app0, firmware)" -ForegroundColor Gray
 Write-Host ""
 
 # Display instructions
@@ -356,7 +420,7 @@ if ($UpdateVersions) {
 } else {
     Write-Host "   • Version dropdown will show available versions" -ForegroundColor Gray
 }
-Write-Host "   • Hardware: Basic (4MB) or Advance (16MB)" -ForegroundColor Gray
+Write-Host "   • Hardware: Basic (4MB), Advance v1.3 (16MB), or Advance v1.2 (16MB)" -ForegroundColor Gray
 Write-Host ""
 Write-Host "4. Connect ESP32-S3 device via USB cable" -ForegroundColor White
 Write-Host "   (Chrome/Edge will prompt for device selection)" -ForegroundColor DarkGray
@@ -369,9 +433,11 @@ if ($UpdateVersions) {
     if ($Preview -or $Version -match "_") {
         Write-Host "  firmware/preview/$Version/manifest_basic.json" -ForegroundColor Gray
         Write-Host "  firmware/preview/$Version/manifest_advance-v1.3.json" -ForegroundColor Gray
+        Write-Host "  firmware/preview/$Version/manifest_advance-v1.2.json" -ForegroundColor Gray
     } elseif ($Version -ne "local") {
         Write-Host "  firmware/$Version/manifest_basic.json" -ForegroundColor Gray
         Write-Host "  firmware/$Version/manifest_advance-v1.3.json" -ForegroundColor Gray
+        Write-Host "  firmware/$Version/manifest_advance-v1.2.json" -ForegroundColor Gray
     }
     Write-Host ""
 }

@@ -123,3 +123,12 @@ coverage.xml
 
 # Misc
 *.orig
+links.txt
+
+# Web installer build artifacts (local builds and previews)
+web/firmware/basic/
+web/firmware/advance-v1.3/
+web/firmware/advance-v1.2/
+web/firmware/preview/
+web/firmware/*/
+web/versions.json

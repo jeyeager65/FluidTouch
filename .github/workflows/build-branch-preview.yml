@@ -66,20 +66,26 @@ jobs:
     - name: Build firmware (Basic)
       run: platformio run --environment elecrow-crowpanel-7-basic
       
-    - name: Build firmware (Advance)
-      run: platformio run --environment elecrow-crowpanel-7-advance
+    - name: Build firmware (Advance v1.3)
+      run: platformio run --environment elecrow-crowpanel-7-advance-v13
+      
+    - name: Build firmware (Advance v1.2)
+      run: platformio run --environment elecrow-crowpanel-7-advance-v12
         
     - name: Prepare firmware artifacts
       run: |
         # Create temp directory and copy build artifacts before switching branches
         mkdir -p /tmp/firmware-artifacts/basic
-        mkdir -p /tmp/firmware-artifacts/advance
+        mkdir -p /tmp/firmware-artifacts/advance-v1.3
+        mkdir -p /tmp/firmware-artifacts/advance-v1.2
         mkdir -p /tmp/firmware-artifacts/web
         
         cp .pio/build/elecrow-crowpanel-7-basic/*.bin /tmp/firmware-artifacts/basic/
-        cp .pio/build/elecrow-crowpanel-7-advance/*.bin /tmp/firmware-artifacts/advance/
+        cp .pio/build/elecrow-crowpanel-7-advance-v13/*.bin /tmp/firmware-artifacts/advance-v1.3/
+        cp .pio/build/elecrow-crowpanel-7-advance-v12/*.bin /tmp/firmware-artifacts/advance-v1.2/
         cp web/manifest_basic.json /tmp/firmware-artifacts/web/
-        cp web/manifest_advance.json /tmp/firmware-artifacts/web/
+        cp web/manifest_advance-v1.3.json /tmp/firmware-artifacts/web/
+        cp web/manifest_advance-v1.2.json /tmp/firmware-artifacts/web/
         cp web/index.html /tmp/firmware-artifacts/web/
         
     - name: Checkout gh-pages branch
@@ -107,33 +113,42 @@ jobs:
         # Create preview directories (use VERSION_ID for full version path)
         mkdir -p firmware/preview/${VERSION_ID}/basic
         mkdir -p firmware/preview/${VERSION_ID}/advance-v1.3
+        mkdir -p firmware/preview/${VERSION_ID}/advance-v1.2
         
         # Copy firmware files from temp location
         cp /tmp/firmware-artifacts/basic/firmware.bin firmware/preview/${VERSION_ID}/basic/
         cp /tmp/firmware-artifacts/basic/bootloader.bin firmware/preview/${VERSION_ID}/basic/
         cp /tmp/firmware-artifacts/basic/partitions.bin firmware/preview/${VERSION_ID}/basic/
         
-        cp /tmp/firmware-artifacts/advance/firmware.bin firmware/preview/${VERSION_ID}/advance-v1.3/
-        cp /tmp/firmware-artifacts/advance/bootloader.bin firmware/preview/${VERSION_ID}/advance-v1.3/
-        cp /tmp/firmware-artifacts/advance/partitions.bin firmware/preview/${VERSION_ID}/advance-v1.3/
+        cp /tmp/firmware-artifacts/advance-v1.3/firmware.bin firmware/preview/${VERSION_ID}/advance-v1.3/
+        cp /tmp/firmware-artifacts/advance-v1.3/bootloader.bin firmware/preview/${VERSION_ID}/advance-v1.3/
+        cp /tmp/firmware-artifacts/advance-v1.3/partitions.bin firmware/preview/${VERSION_ID}/advance-v1.3/
+        
+        cp /tmp/firmware-artifacts/advance-v1.2/firmware.bin firmware/preview/${VERSION_ID}/advance-v1.2/
+        cp /tmp/firmware-artifacts/advance-v1.2/bootloader.bin firmware/preview/${VERSION_ID}/advance-v1.2/
+        cp /tmp/firmware-artifacts/advance-v1.2/partitions.bin firmware/preview/${VERSION_ID}/advance-v1.2/
         
         # Copy boot_app0.bin if available
         if [ -f ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin ]; then
           cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin firmware/preview/${VERSION_ID}/basic/
           cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin firmware/preview/${VERSION_ID}/advance-v1.3/
+          cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin firmware/preview/${VERSION_ID}/advance-v1.2/
         fi
         
         # Copy and update manifests
         cp /tmp/firmware-artifacts/web/manifest_basic.json firmware/preview/${VERSION_ID}/manifest_basic.json
-        cp /tmp/firmware-artifacts/web/manifest_advance.json firmware/preview/${VERSION_ID}/manifest_advance-v1.3.json
+        cp /tmp/firmware-artifacts/web/manifest_advance-v1.3.json firmware/preview/${VERSION_ID}/manifest_advance-v1.3.json
+        cp /tmp/firmware-artifacts/web/manifest_advance-v1.2.json firmware/preview/${VERSION_ID}/manifest_advance-v1.2.json
         
         # Update manifest paths (relative to manifest file location)
         sed -i "s|firmware/basic/|basic/|g" firmware/preview/${VERSION_ID}/manifest_basic.json
-        sed -i "s|firmware/advance/|advance-v1.3/|g" firmware/preview/${VERSION_ID}/manifest_advance-v1.3.json
+        sed -i "s|firmware/advance-v1.3/|advance-v1.3/|g" firmware/preview/${VERSION_ID}/manifest_advance-v1.3.json
+        sed -i "s|firmware/advance-v1.2/|advance-v1.2/|g" firmware/preview/${VERSION_ID}/manifest_advance-v1.2.json
         
         # Update version in manifests to include preview tag
         sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION_ID\"/" firmware/preview/${VERSION_ID}/manifest_basic.json
         sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION_ID\"/" firmware/preview/${VERSION_ID}/manifest_advance-v1.3.json
+        sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION_ID\"/" firmware/preview/${VERSION_ID}/manifest_advance-v1.2.json
         
     - name: Update versions.json with preview
       run: |
@@ -146,7 +161,7 @@ jobs:
         
         # Ensure versions.json exists
         if [ ! -f versions.json ]; then
-          echo '{"default_version":null,"default_hardware":"advance-v1.3","versions":[],"hardware_info":{"basic":"Basic (4MB flash, PWM backlight)","advance-v1.3":"Advance v1.3 (16MB flash, IPS display)","advance-v1.2":"Advance v1.2 (older revision)"}}' > versions.json
+          echo '{"default_version":null,"default_hardware":"advance-v1.3","versions":[],"hardware_info":{"basic":"Basic","advance-v1.3":"Advance v1.3","advance-v1.2":"Advance v1.2"}}' > versions.json
         fi
         
         # Remove existing preview entry with same ID if it exists, then add new one
@@ -156,7 +171,7 @@ jobs:
           .versions = ([{
             "id": $ver,
             "display_name": ($ver + " (Preview " + $date + ")"),
-            "hardware": ["basic", "advance-v1.3"],
+            "hardware": ["basic", "advance-v1.3", "advance-v1.2"],
             "is_preview": true
           }] + .versions)
         ' versions.json > versions.json.tmp && mv versions.json.tmp versions.json
