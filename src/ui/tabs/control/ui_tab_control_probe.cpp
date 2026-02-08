@@ -17,6 +17,10 @@ lv_obj_t* UITabControlProbe::parent_tab = nullptr;
 // Track which axis was last probed
 char UITabControlProbe::last_probed_axis = '\0';
 
+// Temporary storage for pending probe operation (when WCS is locked)
+static char pending_axis = '\0';
+static char pending_direction = '\0';
+
 // Static pointers to input fields for reading values
 static lv_obj_t* feed_input_ptr = nullptr;
 static lv_obj_t* dist_input_ptr = nullptr;
@@ -235,26 +239,26 @@ void UITabControlProbe::create(lv_obj_t *parent) {
 
 // Event handlers
 void UITabControlProbe::probe_x_minus_handler(lv_event_t* e) {
-    executeProbe("X", "-");
+    executeProbe('X', '-');
 }
 
 void UITabControlProbe::probe_x_plus_handler(lv_event_t* e) {
-    executeProbe("X", "+");
+    executeProbe('X', '+');
 }
 
 void UITabControlProbe::probe_y_minus_handler(lv_event_t* e) {
-    executeProbe("Y", "-");
+    executeProbe('Y', '-');
 }
 
 void UITabControlProbe::probe_y_plus_handler(lv_event_t* e) {
-    executeProbe("Y", "+");
+    executeProbe('Y', '+');
 }
 
 void UITabControlProbe::probe_z_minus_handler(lv_event_t* e) {
-    executeProbe("Z", "-");
+    executeProbe('Z', '-');
 }
 
-void UITabControlProbe::executeProbe(const char* axis, const char* direction) {
+void UITabControlProbe::executeProbe(char axis, char direction, bool checkWcsLock) {
     if (!FluidNCClient::isConnected()) {
         if (results_text) {
             lv_textarea_set_text(results_text, "Error: Not connected to FluidNC");
@@ -262,8 +266,8 @@ void UITabControlProbe::executeProbe(const char* axis, const char* direction) {
         return;
     }
     
-    // Check if current WCS is locked
-    if (WCSConfig::isCurrentWCSLocked()) {
+    // Check if current WCS is locked (if requested)
+    if (checkWcsLock && WCSConfig::isCurrentWCSLocked()) {
         const FluidNCStatus& status = FluidNCClient::getStatus();
         char wcs_name[32];
         WCSConfig::getCurrentWCSName(wcs_name, sizeof(wcs_name));
@@ -271,27 +275,19 @@ void UITabControlProbe::executeProbe(const char* axis, const char* direction) {
         Serial.printf("[Probe] WCS %s is locked, showing confirmation\n", status.modal_wcs);
         
         // Store probe parameters for callback
-        struct ProbeParams {
-            char axis;
-            char direction;
-        };
+        pending_axis = axis;
+        pending_direction = direction;
         
-        ProbeParams *params = new ProbeParams();
-        params->axis = axis[0];
-        params->direction = direction[0];
-        
-        // Show lock confirmation dialog - use lambda that captures params
+        // Show lock confirmation dialog - execute probe on confirmation (bypass lock check)
         UICommon::showWCSLockDialog(status.modal_wcs, wcs_name, [](lv_event_t *e) {
-            // Note: We need to re-execute the probe logic here
-            // Get the event's user_data which was set by showWCSLockDialog
-            // For now, user will need to click again after dismissing dialog
-            Serial.println("[Probe] Confirmed probe on locked WCS - please click probe button again");
+            Serial.println("[Probe] Confirmed probe on locked WCS - executing probe");
+            UITabControlProbe::executeProbe(pending_axis, pending_direction, false);
         });
         return;
     }
     
     // Store which axis is being probed for result filtering
-    last_probed_axis = axis[0];
+    last_probed_axis = axis;
     
     // Read parameters from input fields
     const char* feed_text = lv_textarea_get_text(feed_input_ptr);
@@ -315,7 +311,7 @@ void UITabControlProbe::executeProbe(const char* axis, const char* direction) {
     // Update result text to show probing in progress
     if (results_text) {
         char status[64];
-        snprintf(status, sizeof(status), "Probing %s%s...", axis, direction);
+        snprintf(status, sizeof(status), "Probing %c%c...", axis, direction);
         lv_textarea_set_text(results_text, status);
     }
     
@@ -330,10 +326,10 @@ void UITabControlProbe::executeProbe(const char* axis, const char* direction) {
     
     if (thickness > 0.001) {  // Use P parameter if thickness is specified
         snprintf(command, sizeof(command), "G38.2 %c%.1f F%.0f P%.2f\n", 
-                 axis[0], (direction[0] == '-' ? -max_dist : max_dist), feed_rate, thickness);
+                 axis, (direction == '-' ? -max_dist : max_dist), feed_rate, thickness);
     } else {
         snprintf(command, sizeof(command), "G38.2 %c%.1f F%.0f\n", 
-                 axis[0], (direction[0] == '-' ? -max_dist : max_dist), feed_rate);
+                 axis, (direction == '-' ? -max_dist : max_dist), feed_rate);
     }
     
     Serial.printf("Probe: Sending command: %s\n", command);
@@ -342,12 +338,12 @@ void UITabControlProbe::executeProbe(const char* axis, const char* direction) {
     // Send retract move if retract distance is specified
     if (retract > 0.001) {
         // Retract in opposite direction from probe (no + sign in GCode)
-        char retract_sign = (direction[0] == '-') ? ' ' : '-';
+        char retract_sign = (direction == '-') ? ' ' : '-';
         
         // Still in G91 mode from probe setup, send retract move
         char retract_command[64];
         snprintf(retract_command, sizeof(retract_command), "G0 %c%c%.2f\n", 
-                 axis[0], retract_sign, retract);
+                 axis, retract_sign, retract);
         Serial.printf("Probe: Sending retract: %s", retract_command);
         FluidNCClient::sendCommand(retract_command);
     }

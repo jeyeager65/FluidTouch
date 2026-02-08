@@ -29,7 +29,7 @@ private:
     static void probe_z_minus_handler(lv_event_t* e);
     
     // Helper to execute probe command
-    static void executeProbe(const char* axis, const char* direction);
+    static void executeProbe(char axis, char direction, bool checkWcsLock = true);
 };
 
 #endif // UI_TAB_CONTROL_PROBE_H
