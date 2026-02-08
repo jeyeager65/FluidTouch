@@ -4,10 +4,11 @@
   "versions": [
     {
       "id": "1.0.3_dev",
-      "display_name": "1.0.3_dev (Preview 2026-01-31)",
+      "display_name": "1.0.3_dev (Preview 2026-02-08)",
       "hardware": [
         "basic",
-        "advance-v1.3"
+        "advance-v1.3",
+        "advance-v1.2"
       ],
       "is_preview": true
     },

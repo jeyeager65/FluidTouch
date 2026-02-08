@@ -903,7 +903,7 @@
                             <label for="advance-version-select" style="display: block; margin-bottom: 6px; color: #00bcd4; font-weight: 600; font-size: 0.9em;">Hardware Revision</label>
                             <select id="advance-version-select" onchange="onAdvanceVersionChange()" style="width: 100%; padding: 8px; font-size: 14px; background: rgba(30, 30, 46, 0.9); color: #e8e8e8; border: 2px solid rgba(0, 188, 212, 0.5); border-radius: 6px; cursor: pointer;">
                                 <option value="advance-v1.3">v1.3 (Current)</option>
-                                <option value="advance-v1.2">v1.2</option>
+                                <option value="advance-v1.2">v1.2 (Untested)</option>
                             </select>
                         </div>
                     </div>
@@ -1017,7 +1017,8 @@
         // Load versions.json on page load
         async function loadVersions() {
             try {
-                const response = await fetch('./versions.json');
+                // Add timestamp to prevent caching
+                const response = await fetch(`./versions.json?t=${Date.now()}`);
                 versionsData = await response.json();
                 populateVersionDropdown();
                 updateAdvanceVersionDropdown();
