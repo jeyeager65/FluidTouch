@@ -2,6 +2,7 @@
 #include "ui/tabs/settings/ui_tab_settings_jog.h"
 #include "ui/ui_theme.h"
 #include "ui/machine_config.h"
+#include "ui/wcs_config.h"
 #include "ui/fonts/fontawesome_icons_20.h"
 #include "network/fluidnc_client.h"
 #include <Arduino.h>
@@ -1244,27 +1245,12 @@ void UITabStatus::showWCSPopup() {
     current_wcs_index = -1;  // Reset current WCS tracking
     
     // Load WCS configurations from Preferences
-    Preferences prefs;
-    MachineConfig config;
     char wcs_custom_names[6][32] = {{0}};  // Custom names for G54-G59
     bool wcs_locked[6] = {false};          // Lock status for G54-G59
     
-    if (MachineConfigManager::getSelectedMachine(config)) {
-        // Get machine index to load per-machine WCS settings
-        int machine_index = MachineConfigManager::getSelectedMachineIndex();
-        char namespace_name[32];
-        snprintf(namespace_name, sizeof(namespace_name), "machine_%d", machine_index);
-        
-        prefs.begin(namespace_name, true);  // Read-only
-        for (int i = 0; i < 6; i++) {
-            char key_name[16], key_lock[16];
-            snprintf(key_name, sizeof(key_name), "wcs_g5%d_name", 4 + i);
-            snprintf(key_lock, sizeof(key_lock), "wcs_g5%d_lock", 4 + i);
-            
-            prefs.getString(key_name, wcs_custom_names[i], sizeof(wcs_custom_names[i]));
-            wcs_locked[i] = prefs.getBool(key_lock, false);
-        }
-        prefs.end();
+    int machine_index = MachineConfigManager::getSelectedMachineIndex();
+    if (machine_index >= 0) {
+        WCSConfig::loadWCSConfig(machine_index, wcs_custom_names, wcs_locked);
     }
     
     for (int i = 0; i < 6; i++) {
