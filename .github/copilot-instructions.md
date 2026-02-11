@@ -142,7 +142,10 @@ The codebase follows a **strict modular pattern** with clear separation:
    ```
 
 2. **FluidNC Communication**:
-   - WebSocket client connects to FluidNC using machine configuration (IP/hostname + port, default 81)
+   - WebSocket client connects to FluidNC using machine configuration (IP/hostname + port)
+     - Port 80: FluidNC v4.0+
+     - Port 81: FluidNC v3.x (WebUI v2, default)
+     - Port 82: FluidNC v3.x (WebUI v3)
    - Uses **automatic reporting** (`$Report/Interval=250\n`) - FluidNC pushes updates every 250ms, no polling needed
    - Parses three message types:
      - Status reports (binary frames): `<Idle|MPos:x,y,z|FS:feed,spindle|Ov:feed,rapid,spindle|WCO:x,y,z|SD:percent,filename>`
@@ -501,7 +504,7 @@ All other hardcoded values live in `include/config.h`:
 
 ## External Dependencies
 
-- **FluidNC**: CNC controller firmware (WebSocket connection on port 81/82, automatic reporting enabled)
+- **FluidNC**: CNC controller firmware (WebSocket connection on port 80 for v4.0+, port 81/82 for v3.x, automatic reporting enabled)
 - **LVGL 9.4.0+**: UI library via PlatformIO lib_deps
 - **LovyanGFX 1.2.7+**: Hardware display driver with RGB parallel support
 - **WebSockets 2.5.4+**: WebSocket client library for FluidNC communication

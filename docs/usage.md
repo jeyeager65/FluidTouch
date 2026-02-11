@@ -38,6 +38,9 @@ Connect the display to power via USB-C or external power supply. The device will
    - **Name:** Friendly name (e.g., "CNC Router", "Laser")
    - **Hostname/IP:** FluidNC IP address (e.g., `192.168.1.100`)
    - **Port:** WebSocket port (default: `81`)
+     - Port 80 for FluidNC v4.0+
+     - Port 81 for FluidNC v3.x (WebUI v2)
+     - Port 82 for FluidNC v3.x (WebUI v3)
 4. Tap **Save**
 5. Select the machine to connect
 
@@ -273,7 +276,7 @@ Status tab displays:
 **Check:**
 - FluidNC is powered on and responsive
 - IP address/hostname is correct
-- Port is correct (default: 81)
+- Port is correct (80 for v4.0+, 81 for v3.x default)
 - Both devices on same WiFi network
 - WiFi password is configured (check machine settings)
 

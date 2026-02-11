@@ -23,6 +23,7 @@
   - [General](#general)
   - [Jog](#jog-settings)
   - [Probe](#probe-settings)
+  - [WCS](#wcs-settings)
   - [Power](#power-settings)
   - [About](#about)
 
@@ -164,7 +165,13 @@ Touching the WCS field in the upper right, will display this screen of the WCS c
 
 ![Status WCS](./images/status-wcs.png)
 
-Selecting the WCS and touching the Set button will active that WCS.
+Selecting the WCS and touching the Set button will activate that WCS.
+
+**WCS Lock Warning:**
+
+![WCS Warning Popup](./images/popup-wcs-warning.png)
+
+If attempting to probe or zero while a locked WCS is active, a warning popup appears requiring confirmation.
 
 ---
 
@@ -451,6 +458,15 @@ Probe operation defaults:
 - Max Distance (mm)
 - Retract Distance (mm)
 - Probe Thickness (mm)
+
+### WCS Settings
+
+![Settings WCS](./images/settings-wcs.png)
+
+Work Coordinate System configuration:
+- **Custom Name:** Provide meaningful name to a WCS
+- **Lock WCS:** Prevent accidental changes to selected work coordinate system
+
 
 ### Power Settings
 

@@ -132,3 +132,5 @@ web/firmware/advance-v1.2/
 web/firmware/preview/
 web/firmware/*/
 web/versions.json
+
+webui/

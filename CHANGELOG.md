@@ -5,6 +5,24 @@ All notable changes to FluidTouch will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2026-02-10
+
+### Added
+
+- **Advance Hardware v1.2 Support** - Added support for Elecrow CrowPanel 7" Advance v1.2 displays (⚠️ untested) (#11)
+  - Note: v1.2 requires same DIP switch configuration as v1.3 (S0 and S1 both set to position 1)
+- **mDNS Hostname Resolution** - Connect to FluidNC by hostname (e.g., `fluidnc.local`) instead of IP address (#26)
+- **Upload Directory Auto-Creation** - Automatically creates upload directory if it doesn't exist when uploading files from Display SD
+- **Open Upload Folder Button** - Quick access button to open the uploaded files folder on FluidNC
+- **WCS Display Enhancements** - Improved Work Coordinate System labeling and lock status indicators
+
+### Fixed
+
+- **Display Flicker** - Eliminated screen flicker by migrating to ESP-IDF 5.3 and optimizing display timing parameters
+- **Basic Hardware Touch Response** - Improved touch sensitivity and reliability on Basic hardware variant (#21, #23)
+- **Probe After WCS Confirmation** - Fixed probe operations failing after confirming Work Coordinate System updates
+- **Web Installer Caching** - Prevented browser caching of versions.json to ensure latest version list is always displayed
+
 ## [1.0.2] - 2026-01-24
 
 ### Changed
@@ -65,6 +83,7 @@ FluidTouch 1.0.0 is the first stable release of the ESP32-S3 touchscreen CNC con
 - Configuration guide for WiFi, machines, and settings
 - Development guide for building from source
 
+[1.0.3]: https://github.com/jeyeager65/FluidTouch/releases/tag/v1.0.3
 [1.0.2]: https://github.com/jeyeager65/FluidTouch/releases/tag/v1.0.2
 [1.0.1]: https://github.com/jeyeager65/FluidTouch/releases/tag/v1.0.1
 [1.0.0]: https://github.com/jeyeager65/FluidTouch/releases/tag/v1.0.0

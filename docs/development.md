@@ -34,9 +34,11 @@
     - I2C backlight control
     - Internal battery connector with JST PH 2.0mm 2-pin connector
     - Optional acrylic case includes space for battery (e.g., 1200mAh lithium polymer battery)
-    - ⚠️ **Advance Version Compatibility:** Currently only supports hardware Version 1.3
-    - **Version 1.3 Configuration:** DIP switches S0 and S1 must both be set to position 1
-    - If you have an earlier version (1.0, 1.1, 1.2), please [create a GitHub issue](https://github.com/jeyeager65/FluidTouch/issues) for assistance
+    - ⚠️ **ESP32-S3 ONLY** - ESP32-P4 versions are NOT supported
+    - ⚠️ **Advance Version Compatibility:** Supports hardware Versions 1.2 and 1.3
+    - **DIP Switch Configuration:** Both versions require DIP switches S0 and S1 set to position 1
+    - **Version 1.3:** Fully tested (use `elecrow-crowpanel-7-advance-v13` build environment)
+    - **Version 1.2:** ⚠️ Untested (use `elecrow-crowpanel-7-advance-v12` build environment)
 - Serial terminal (PlatformIO includes one)
 - Chrome/Edge browser (for ESP Web Tools testing)
 
@@ -69,21 +71,28 @@ code .
 
 **Build Environments:**
 - `elecrow-crowpanel-7-basic` - Basic hardware (4MB flash, PWM backlight)
-- `elecrow-crowpanel-7-advance` - Advance hardware (16MB flash, I2C backlight)
+- `elecrow-crowpanel-7-advance-v12` - Advance v1.2 hardware (16MB flash, I2C backlight)
+- `elecrow-crowpanel-7-advance-v13` - Advance v1.3 hardware (16MB flash, I2C backlight)
 
 **Windows PowerShell:**
 ```powershell
 # Build only (Basic)
 & "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run -e elecrow-crowpanel-7-basic
 
-# Build only (Advance)
-& "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run -e elecrow-crowpanel-7-advance
+# Build only (Advance v1.2)
+& "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run -e elecrow-crowpanel-7-advance-v12
+
+# Build only (Advance v1.3)
+& "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run -e elecrow-crowpanel-7-advance-v13
 
 # Build and upload (Basic)
 & "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run --target upload -e elecrow-crowpanel-7-basic
 
-# Build and upload (Advance)
-& "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run --target upload -e elecrow-crowpanel-7-advance
+# Build and upload (Advance v1.2)
+& "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run --target upload -e elecrow-crowpanel-7-advance-v12
+
+# Build and upload (Advance v1.3)
+& "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run --target upload -e elecrow-crowpanel-7-advance-v13
 
 # Clean build
 & "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run -t clean
@@ -97,14 +106,20 @@ code .
 # Build only (Basic)
 platformio run -e elecrow-crowpanel-7-basic
 
-# Build only (Advance)
-platformio run -e elecrow-crowpanel-7-advance
+# Build only (Advance v1.2)
+platformio run -e elecrow-crowpanel-7-advance-v12
+
+# Build only (Advance v1.3)
+platformio run -e elecrow-crowpanel-7-advance-v13
 
 # Build and upload (Basic)
 platformio run --target upload -e elecrow-crowpanel-7-basic
 
-# Build and upload (Advance)
-platformio run --target upload -e elecrow-crowpanel-7-advance
+# Build and upload (Advance v1.2)
+platformio run --target upload -e elecrow-crowpanel-7-advance-v12
+
+# Build and upload (Advance v1.3)
+platformio run --target upload -e elecrow-crowpanel-7-advance-v13
 
 # Clean build
 platformio run -t clean
@@ -117,13 +132,15 @@ platformio device monitor -b 115200
 
 **Flash Usage:** 
 - Basic: ~57% (1.86MB of 3.25MB)
-- Advance: ~28% (1.86MB of 6.5MB)
+- Advance v1.2: ~28% (1.86MB of 6.5MB)
+- Advance v1.3: ~28% (1.86MB of 6.5MB)
 
 **RAM Usage:** ~1.0% (82KB of 8.5MB)
 
 **Binary Locations:**
 - Basic Firmware: `.pio/build/elecrow-crowpanel-7-basic/firmware.bin`
-- Advance Firmware: `.pio/build/elecrow-crowpanel-7-advance/firmware.bin`
+- Advance v1.2 Firmware: `.pio/build/elecrow-crowpanel-7-advance-v12/firmware.bin`
+- Advance v1.3 Firmware: `.pio/build/elecrow-crowpanel-7-advance-v13/firmware.bin`
 
 ---
 

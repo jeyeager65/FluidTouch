@@ -66,8 +66,11 @@ Refer to the **[Development Guide](./docs/development.md)** for additional instr
 - I2C Backlight Control (STC8H1K28)
 - Internal battery connector (JST PH 2.0mm 2-pin)
 - Optional acrylic case with battery compartment (supports ~1200mAh LiPo batteries)
-- ⚠️ **Hardware Version 1.3 Only** 
-  - DIP switches S0 and S1 must both be set to position 1
+- ⚠️ **ESP32-S3 ONLY** - ESP32-P4 versions are NOT supported
+- **Hardware Versions 1.2 and 1.3 Supported**
+  - **Both versions:** DIP switches S0 and S1 must both be set to position 1
+  - **Version 1.2:** ⚠️ Support is untested - use v1.2 firmware from web installer
+  - **Version 1.3:** Fully tested and recommended
   - **Case Note:** When using acrylic case, install 6mm M3 screws in bottom mounting inserts to prevent accidental reset button presses
 - [Buy on Elecrow ↗](https://www.awin1.com/cread.php?awinmid=82721&awinaffid=2663106&ued=https%3A%2F%2Fwww.elecrow.com%2Fcrowpanel-advance-7-0-hmi-esp32-ai-display-800x480-artificial-intelligent-ips-touch-screen-support-meshtastic-and-arduino-lvgl-micropython.html) *(affiliate link)*
 
@@ -94,7 +97,9 @@ Detailed documentation is available in the [`docs/`](./docs/) folder:
    - WiFi SSID and Password (machine-specific)
    - FluidNC IP address or hostname (e.g. 192.168.0.1 or fluidnc.local)
    - WebSocket port (default: 81)
-     - Port 82 is used by WebUI v3 and can also be used.  FluidNC only allows one connection at a time but it will switch cleanly back and forth.
+     - Port 80 is used by FluidNC v4.0+
+     - Port 81 is used by WebUI v2 (FluidNC v3.x)
+     - Port 82 is used by WebUI v3 (FluidNC v3.x) - only allows one connection at a time but will switch cleanly between connections
 4. Click the "Save" button.
 5. Click the "Done" button.
 6. Click on the created machine.

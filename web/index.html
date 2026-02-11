@@ -805,7 +805,7 @@
             Web Installer
         </p>
         <div class="version-badge">
-            <span>Version 1.0.2</span>
+            <span>Version 1.0.3</span>
         </div>
         <p style="text-align: center; font-size: 1.2em; color: #c9d1d9; margin-bottom: 30px;">
             ESP32 Touchscreen CNC Controller for FluidNC
@@ -813,25 +813,18 @@
 
         <!-- Changelog -->
         <div class="changelog">
-            <h3>🎉 Version 1.0.2 - Display Rotation & Status Tab Enhancements</h3>
+            <h3>🎉 Version 1.0.3</h3>
             <div class="changelog-content">
                 <div class="changelog-version">
-                    <div class="changelog-date">January 24, 2026</div>
+                    <div class="changelog-date">February 10, 2026</div>
                     <ul class="changelog-items">
-                        <li><strong>Status Tab Updates:</strong>
-                            <ul>
-                                <li><strong>Pause/Resume and Stop Buttons</strong> - Pause/Resume/Stop from status tab</li>
-                                <li><strong>Position Update on Status Tab</strong> - Click positions on status tab to update</li>
-                                <li><strong>WCS Update on Status Tab</strong> - Click work position values to update Work Coordinate System</li>
-                            </ul>
-                        </li>
-                        <li><strong>Settings Updates:</strong>
-                            <ul>
-                                <li><strong>Display Rotation Support</strong> - Can now rotate display 180 degrees via Settings → General</li>
-                            </ul>
-                        </li>
-                        <li><strong>Web Installer Version Selection</strong> - Dropdown to select from multiple firmware versions including preview builds</li>
-                        <li><strong>Bugfix:</strong> Fixed handling of filenames containing spaces in upload operations</li>
+                        <li><strong>Display Flicker Fix:</strong> Eliminated screen flicker by migrating to ESP-IDF 5.3 and optimizing display timing</li>
+                        <li><strong>Basic Hardware Touch Fix:</strong> Improved touch sensitivity and reliability on Basic hardware variant</li>
+                        <li><strong>WCS Enhancements:</strong> Added support for WCS labels and locking specific WCSs requiring confirmation before zeroing or probing</li>
+                        <li><strong>Advance Hardware v1.2 Support (⚠️ Untested):</strong> Added support for Elecrow CrowPanel 7" Advance v1.2 displays</li>
+                        <li><strong>mDNS Hostname Resolution:</strong> Connect to FluidNC by hostname (e.g., fluidnc.local) instead of IP address</li>
+                        <li><strong>Upload Directory Auto-Creation:</strong> Automatically creates upload directory if it doesn't exist when uploading files</li>
+                        <li><strong>Open Upload Folder Button:</strong> Quick access button to open the uploaded files folder on FluidNC</li>
                     </ul>
                 </div>
             </div>
@@ -840,6 +833,26 @@
             <div class="changelog-collapsed" id="changelog-prior" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(0, 188, 212, 0.2);">
                 <h3 onclick="toggleChangelog('changelog-prior')">📜 Prior Releases</h3>
                 <div class="changelog-content">
+                    <div class="changelog-version">
+                        <h4>Version 1.0.2 - Display Rotation & Status Tab Enhancements</h4>
+                        <div class="changelog-date">January 24, 2026</div>
+                        <ul class="changelog-items">
+                            <li><strong>Status Tab Updates:</strong>
+                                <ul>
+                                    <li><strong>Pause/Resume and Stop Buttons</strong> - Pause/Resume/Stop from status tab</li>
+                                    <li><strong>Position Update on Status Tab</strong> - Click positions on status tab to update</li>
+                                    <li><strong>WCS Update on Status Tab</strong> - Click work position values to update Work Coordinate System</li>
+                                </ul>
+                            </li>
+                            <li><strong>Settings Updates:</strong>
+                                <ul>
+                                    <li><strong>Display Rotation Support</strong> - Can now rotate display 180 degrees via Settings → General</li>
+                                </ul>
+                            </li>
+                            <li><strong>Web Installer Version Selection</strong> - Dropdown to select from multiple firmware versions including preview builds</li>
+                            <li><strong>Bugfix:</strong> Fixed handling of filenames containing spaces in upload operations</li>
+                        </ul>
+                    </div>
                     <div class="changelog-version">
                         <h4>Version 1.0.1 - Bugfixes & Documentation</h4>
                         <div class="changelog-date">December 4, 2025</div>
@@ -898,6 +911,7 @@
                         <div><span class="spec-highlight">16MB</span> Flash Memory</div>
                         <div><span class="spec-highlight">8MB</span> PSRAM</div>
                         <div>ESP32-S3-WROOM-1-N16R8</div>
+                        <div style="color: #ffa726; font-weight: 600;">⚠️ ESP32-S3 ONLY (P4 not supported)</div>
                         <div>Display: 800×480 <span class="spec-highlight">IPS LCD</span></div>
                         <div id="advance-version-selector" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1); display: none;">
                             <label for="advance-version-select" style="display: block; margin-bottom: 6px; color: #00bcd4; font-weight: 600; font-size: 0.9em;">Hardware Revision</label>
@@ -923,6 +937,7 @@
                 <li><strong>Browser:</strong> Chrome, Edge, or Opera (required for Web Serial API)</li>
                 <li><strong>Cable:</strong> USB-C cable with data support (not charge-only)</li>
                 <li><strong>Permissions:</strong> Allow serial port access when prompted</li>
+                <li><strong>Hardware:</strong> ESP32-S3 boards only - ESP32-P4 versions are NOT supported</li>
                 <li><strong>Important:</strong> Installing wrong hardware firmware will result in non-functional display</li>
             </ul>
         </div>
