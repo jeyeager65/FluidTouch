@@ -86,6 +86,7 @@ $RECYCLE.BIN/
 *.log
 *.bak
 *.cache
+tmpclaude-*
 
 # IDE
 .idea/

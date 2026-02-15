@@ -1,6 +1,7 @@
 #include "ui/tabs/control/ui_tab_control_jog.h"
 #include "ui/tabs/settings/ui_tab_settings_jog.h"
 #include "ui/ui_theme.h"
+#include "ui/ui_common.h"
 #include "network/fluidnc_client.h"
 #include <Arduino.h>
 
@@ -17,6 +18,44 @@ int UITabControlJog::xy_current_step_index = 2;     // Will be recalculated
 int UITabControlJog::z_current_step_index = 1;      // Will be recalculated
 int UITabControlJog::xy_current_feed = 3000;        // Will be loaded from settings
 int UITabControlJog::z_current_feed = 1000;         // Will be loaded from settings
+
+// Z/A Toggle members
+lv_obj_t *UITabControlJog::btn_z_mode = nullptr;
+lv_obj_t *UITabControlJog::btn_a_mode = nullptr;
+lv_obj_t *UITabControlJog::za_header = nullptr;
+bool UITabControlJog::is_z_mode = true;  // Default to Z mode
+
+// A-axis UI references
+lv_obj_t *UITabControlJog::a_step_label = nullptr;
+lv_obj_t *UITabControlJog::a_step_display_label = nullptr;
+lv_obj_t *UITabControlJog::a_step_buttons[5] = {nullptr, nullptr, nullptr, nullptr, nullptr};
+lv_obj_t *UITabControlJog::a_feedrate_label = nullptr;
+lv_obj_t *UITabControlJog::btn_a_up = nullptr;
+lv_obj_t *UITabControlJog::btn_a_down = nullptr;
+lv_obj_t *UITabControlJog::a_step_display_bg = nullptr;
+lv_obj_t *UITabControlJog::a_feed_label = nullptr;
+lv_obj_t *UITabControlJog::a_feed_unit = nullptr;
+lv_obj_t *UITabControlJog::a_feed_minus1000_btn = nullptr;
+lv_obj_t *UITabControlJog::a_feed_minus100_btn = nullptr;
+lv_obj_t *UITabControlJog::a_feed_plus100_btn = nullptr;
+lv_obj_t *UITabControlJog::a_feed_plus1000_btn = nullptr;
+
+// A-axis state
+float UITabControlJog::a_current_step = 1.0f;
+int UITabControlJog::a_current_step_index = 1;
+int UITabControlJog::a_current_feed = 1000;
+
+// Z control references (for visibility toggle)
+lv_obj_t *UITabControlJog::z_step_label = nullptr;
+lv_obj_t *UITabControlJog::z_feed_label = nullptr;
+lv_obj_t *UITabControlJog::z_feed_unit = nullptr;
+lv_obj_t *UITabControlJog::btn_z_up = nullptr;
+lv_obj_t *UITabControlJog::btn_z_down = nullptr;
+lv_obj_t *UITabControlJog::z_step_display_bg = nullptr;
+lv_obj_t *UITabControlJog::btn_z_minus1000 = nullptr;
+lv_obj_t *UITabControlJog::btn_z_minus100 = nullptr;
+lv_obj_t *UITabControlJog::btn_z_plus100 = nullptr;
+lv_obj_t *UITabControlJog::btn_z_plus1000 = nullptr;
 
 void UITabControlJog::create(lv_obj_t *tab) {
     // Load default values from settings
@@ -43,7 +82,22 @@ void UITabControlJog::create(lv_obj_t *tab) {
             break;
         }
     }
-    
+
+    // Load A-axis defaults if enabled
+    if (UICommon::isAAxisEnabled()) {
+        a_current_step = UITabSettingsJog::getDefaultAStep();
+        a_current_feed = UITabSettingsJog::getDefaultAFeed();
+
+        // Find closest matching A step index
+        a_current_step_index = 1;  // Default to 1.0 (deg or mm)
+        for (int i = 0; i < UITheme::A_STEP_COUNT; i++) {
+            if (fabs(UITheme::A_STEP_VALUES[i] - a_current_step) < 0.01f) {
+                a_current_step_index = i;
+                break;
+            }
+        }
+    }
+
     // Calculate available height - Control tab content area is ~370px
     
     // ========== XY Section (Left side) ==========
@@ -206,16 +260,41 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_obj_center(lbl_xy_plus1000);
     
     // ========== Z Section (Right side) ==========
-    
-    // Z Jog header - centered above Z+ button
-    lv_obj_t *z_jog_header = lv_label_create(tab);
-    lv_label_set_text(z_jog_header, "Z JOG");
-    lv_obj_set_style_text_font(z_jog_header, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_text_color(z_jog_header, UITheme::AXIS_Z, 0);
-    lv_obj_set_pos(z_jog_header, 467, 5);  // Centered above Z+ button at x=460
-    
+
+    // Z/A Jog header - changes based on toggle state
+    za_header = lv_label_create(tab);
+    lv_label_set_text(za_header, "Z JOG");
+    lv_obj_set_style_text_font(za_header, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(za_header, UITheme::AXIS_Z, 0);
+    lv_obj_set_pos(za_header, 467, 5);  // Centered above Z+ button at x=460
+
+    // Z/A Mode buttons (segmented control) - only if A-axis enabled
+    if (UICommon::isAAxisEnabled()) {
+        // Z button (left side)
+        btn_z_mode = lv_button_create(tab);
+        lv_obj_set_size(btn_z_mode, 45, 45);
+        lv_obj_set_pos(btn_z_mode, 540, 5);  // Right of header
+        lv_obj_add_event_cb(btn_z_mode, za_toggle_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)1);  // 1 = Z mode
+        lv_obj_set_style_bg_color(btn_z_mode, UITheme::ACCENT_PRIMARY, 0);  // Selected by default
+        lv_obj_t *lbl_z = lv_label_create(btn_z_mode);
+        lv_label_set_text(lbl_z, "Z");
+        lv_obj_set_style_text_font(lbl_z, &lv_font_montserrat_18, 0);
+        lv_obj_center(lbl_z);
+
+        // A button (right side) - 5px gap to match step button spacing
+        btn_a_mode = lv_button_create(tab);
+        lv_obj_set_size(btn_a_mode, 45, 45);
+        lv_obj_set_pos(btn_a_mode, 590, 5);  // 540 + 45 + 5 = 590
+        lv_obj_add_event_cb(btn_a_mode, za_toggle_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)0);  // 0 = A mode
+        lv_obj_set_style_bg_color(btn_a_mode, UITheme::BG_BUTTON, 0);  // Unselected by default
+        lv_obj_t *lbl_a = lv_label_create(btn_a_mode);
+        lv_label_set_text(lbl_a, "A");
+        lv_obj_set_style_text_font(lbl_a, &lv_font_montserrat_18, 0);
+        lv_obj_center(lbl_a);
+    }
+
     // Z Step size selection - VERTICAL buttons on left of Z controls
-    lv_obj_t *z_step_label = lv_label_create(tab);
+    z_step_label = lv_label_create(tab);
     lv_label_set_text(z_step_label, "Z Step");
     lv_obj_set_style_text_font(z_step_label, &lv_font_montserrat_14, 0);
     lv_obj_set_pos(z_step_label, 395, 9);  // Moved down 4px total
@@ -235,9 +314,9 @@ void UITabControlJog::create(lv_obj_t *tab) {
         lv_obj_center(lbl);
     }
     update_z_step_button_styles();
-    
+
     // Z+ button - same size as XY buttons (70x70)
-    lv_obj_t *btn_z_up = lv_button_create(tab);
+    btn_z_up = lv_button_create(tab);
     lv_obj_set_size(btn_z_up, 70, 70);
     lv_obj_set_pos(btn_z_up, 460, 30);
     lv_obj_set_style_bg_color(btn_z_up, UITheme::AXIS_Z, 0);
@@ -246,23 +325,23 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_label_set_text(lbl_z_up, LV_SYMBOL_UP);
     lv_obj_set_style_text_font(lbl_z_up, &lv_font_montserrat_32, 0);
     lv_obj_center(lbl_z_up);
-    
+
     // Z step display (between up/down buttons)
-    lv_obj_t *z_step_display_bg = lv_obj_create(tab);
+    z_step_display_bg = lv_obj_create(tab);
     lv_obj_set_size(z_step_display_bg, 70, 70);
     lv_obj_set_pos(z_step_display_bg, 460, 110);
     lv_obj_set_style_bg_color(z_step_display_bg, UITheme::BG_DARKER, 0);
     lv_obj_set_style_border_width(z_step_display_bg, 0, 0);
     lv_obj_clear_flag(z_step_display_bg, LV_OBJ_FLAG_SCROLLABLE);
-    
+
     z_step_display_label = lv_label_create(z_step_display_bg);
     lv_obj_set_style_text_font(z_step_display_label, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_align(z_step_display_label, LV_TEXT_ALIGN_CENTER, 0);
     // Don't update yet - z_feedrate_label hasn't been created
     lv_obj_center(z_step_display_label);
-    
+
     // Z- button - same size as XY buttons (70x70)
-    lv_obj_t *btn_z_down = lv_button_create(tab);
+    btn_z_down = lv_button_create(tab);
     lv_obj_set_size(btn_z_down, 70, 70);
     lv_obj_set_pos(btn_z_down, 460, 190);
     lv_obj_set_style_bg_color(btn_z_down, UITheme::AXIS_Z, 0);
@@ -271,9 +350,9 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_label_set_text(lbl_z_down, LV_SYMBOL_DOWN);
     lv_obj_set_style_text_font(lbl_z_down, &lv_font_montserrat_32, 0);
     lv_obj_center(lbl_z_down);
-    
+
     // Z Feed rate control
-    lv_obj_t *z_feed_label = lv_label_create(tab);
+    z_feed_label = lv_label_create(tab);
     lv_label_set_text(z_feed_label, "Z Feed:");
     lv_obj_set_style_text_font(z_feed_label, &lv_font_montserrat_14, 0);
     lv_obj_set_pos(z_feed_label, 395, 280);
@@ -288,14 +367,14 @@ void UITabControlJog::create(lv_obj_t *tab) {
     
     // Now update Z step display (after feedrate label exists)
     update_z_step_display();
-    
-    lv_obj_t *z_feed_unit = lv_label_create(tab);
+
+    z_feed_unit = lv_label_create(tab);
     lv_label_set_text(z_feed_unit, "mm/min");
     lv_obj_set_style_text_font(z_feed_unit, &lv_font_montserrat_14, 0);
     lv_obj_set_pos(z_feed_unit, 505, 280);
-    
+
     // Z Feedrate adjustment buttons - all on one line: -1000, -100, +100, +1000
-    lv_obj_t *btn_z_minus1000 = lv_button_create(tab);
+    btn_z_minus1000 = lv_button_create(tab);
     lv_obj_set_size(btn_z_minus1000, 55, 45);
     lv_obj_set_pos(btn_z_minus1000, 395, 300);
     lv_obj_add_event_cb(btn_z_minus1000, z_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)-1000);
@@ -303,8 +382,8 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_label_set_text(lbl_z_minus1000, "-1000");
     lv_obj_set_style_text_font(lbl_z_minus1000, &lv_font_montserrat_14, 0);
     lv_obj_center(lbl_z_minus1000);
-    
-    lv_obj_t *btn_z_minus100 = lv_button_create(tab);
+
+    btn_z_minus100 = lv_button_create(tab);
     lv_obj_set_size(btn_z_minus100, 55, 45);
     lv_obj_set_pos(btn_z_minus100, 455, 300);
     lv_obj_add_event_cb(btn_z_minus100, z_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)-100);
@@ -312,8 +391,8 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_label_set_text(lbl_z_minus100, "-100");
     lv_obj_set_style_text_font(lbl_z_minus100, &lv_font_montserrat_14, 0);
     lv_obj_center(lbl_z_minus100);
-    
-    lv_obj_t *btn_z_plus100 = lv_button_create(tab);
+
+    btn_z_plus100 = lv_button_create(tab);
     lv_obj_set_size(btn_z_plus100, 55, 45);
     lv_obj_set_pos(btn_z_plus100, 515, 300);
     lv_obj_add_event_cb(btn_z_plus100, z_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)100);
@@ -321,8 +400,8 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_label_set_text(lbl_z_plus100, "+100");
     lv_obj_set_style_text_font(lbl_z_plus100, &lv_font_montserrat_14, 0);
     lv_obj_center(lbl_z_plus100);
-    
-    lv_obj_t *btn_z_plus1000 = lv_button_create(tab);
+
+    btn_z_plus1000 = lv_button_create(tab);
     lv_obj_set_size(btn_z_plus1000, 55, 45);
     lv_obj_set_pos(btn_z_plus1000, 575, 300);
     lv_obj_add_event_cb(btn_z_plus1000, z_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)1000);
@@ -351,6 +430,138 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_obj_set_style_text_font(lbl_cancel, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_cancel, lv_color_white(), 0);
     lv_obj_center(lbl_cancel);
+
+    // ========== A-Axis Section (Conditional, same positions as Z) ==========
+    if (UICommon::isAAxisEnabled()) {
+        // A Step size label
+        a_step_label = lv_label_create(tab);
+        lv_label_set_text(a_step_label, "A Step");
+        lv_obj_set_style_text_font(a_step_label, &lv_font_montserrat_14, 0);
+        lv_obj_set_pos(a_step_label, 395, 9);  // Same position as Z step label
+        lv_obj_add_flag(a_step_label, LV_OBJ_FLAG_HIDDEN);  // Hidden by default
+
+        // A Step size selection - VERTICAL buttons (same positions as Z)
+        for (int i = 0; i < UITheme::A_STEP_COUNT; i++) {
+            lv_obj_t *btn_step = lv_button_create(tab);
+            lv_obj_set_size(btn_step, 45, 45);
+            lv_obj_set_pos(btn_step, 395, 30 + i * 50);
+            lv_obj_add_event_cb(btn_step, a_step_button_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)i);
+            lv_obj_add_flag(btn_step, LV_OBJ_FLAG_HIDDEN);  // Hidden by default
+
+            a_step_buttons[i] = btn_step;
+
+            lv_obj_t *lbl = lv_label_create(btn_step);
+            lv_label_set_text(lbl, UITheme::A_STEP_LABELS[i]);
+            lv_obj_set_style_text_font(lbl, &lv_font_montserrat_14, 0);
+            lv_obj_center(lbl);
+        }
+
+        // A+ button
+        btn_a_up = lv_button_create(tab);
+        lv_obj_set_size(btn_a_up, 70, 70);
+        lv_obj_set_pos(btn_a_up, 460, 30);
+        lv_obj_set_style_bg_color(btn_a_up, UITheme::AXIS_A, 0);  // Orange
+        lv_obj_add_event_cb(btn_a_up, a_jog_button_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)1);
+        lv_obj_add_flag(btn_a_up, LV_OBJ_FLAG_HIDDEN);  // Hidden by default
+        lv_obj_t *lbl_a_up = lv_label_create(btn_a_up);
+        lv_label_set_text(lbl_a_up, LV_SYMBOL_UP);
+        lv_obj_set_style_text_font(lbl_a_up, &lv_font_montserrat_32, 0);
+        lv_obj_center(lbl_a_up);
+
+        // A step display (same position as Z)
+        a_step_display_bg = lv_obj_create(tab);
+        lv_obj_set_size(a_step_display_bg, 70, 70);
+        lv_obj_set_pos(a_step_display_bg, 460, 110);
+        lv_obj_set_style_bg_color(a_step_display_bg, UITheme::BG_DARKER, 0);
+        lv_obj_set_style_border_width(a_step_display_bg, 0, 0);
+        lv_obj_clear_flag(a_step_display_bg, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_add_flag(a_step_display_bg, LV_OBJ_FLAG_HIDDEN);  // Hidden by default
+
+        a_step_display_label = lv_label_create(a_step_display_bg);
+        lv_obj_set_style_text_font(a_step_display_label, &lv_font_montserrat_14, 0);
+        lv_obj_set_style_text_align(a_step_display_label, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_center(a_step_display_label);
+
+        // A- button
+        btn_a_down = lv_button_create(tab);
+        lv_obj_set_size(btn_a_down, 70, 70);
+        lv_obj_set_pos(btn_a_down, 460, 190);
+        lv_obj_set_style_bg_color(btn_a_down, UITheme::AXIS_A, 0);  // Orange
+        lv_obj_add_event_cb(btn_a_down, a_jog_button_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)-1);
+        lv_obj_add_flag(btn_a_down, LV_OBJ_FLAG_HIDDEN);  // Hidden by default
+        lv_obj_t *lbl_a_down = lv_label_create(btn_a_down);
+        lv_label_set_text(lbl_a_down, LV_SYMBOL_DOWN);
+        lv_obj_set_style_text_font(lbl_a_down, &lv_font_montserrat_32, 0);
+        lv_obj_center(lbl_a_down);
+
+        // A Feed rate controls (same positions as Z)
+        a_feed_label = lv_label_create(tab);
+        lv_label_set_text(a_feed_label, "A Feed:");
+        lv_obj_set_style_text_font(a_feed_label, &lv_font_montserrat_14, 0);
+        lv_obj_set_pos(a_feed_label, 395, 280);
+        lv_obj_add_flag(a_feed_label, LV_OBJ_FLAG_HIDDEN);  // Hidden by default
+
+        a_feedrate_label = lv_label_create(tab);
+        char a_feed_buf[16];
+        snprintf(a_feed_buf, sizeof(a_feed_buf), "%d", a_current_feed);
+        lv_label_set_text(a_feedrate_label, a_feed_buf);
+        lv_obj_set_style_text_font(a_feedrate_label, &lv_font_montserrat_14, 0);
+        lv_obj_set_pos(a_feedrate_label, 460, 280);
+        lv_obj_add_flag(a_feedrate_label, LV_OBJ_FLAG_HIDDEN);  // Hidden by default
+
+        // Update A step display now
+        update_a_step_display();
+
+        a_feed_unit = lv_label_create(tab);
+        lv_label_set_text(a_feed_unit, "mm/min");
+        lv_obj_set_style_text_font(a_feed_unit, &lv_font_montserrat_14, 0);
+        lv_obj_set_pos(a_feed_unit, 505, 280);
+        lv_obj_add_flag(a_feed_unit, LV_OBJ_FLAG_HIDDEN);  // Hidden by default
+
+        // A Feedrate adjustment buttons (same layout as Z)
+        a_feed_minus1000_btn = lv_button_create(tab);
+        lv_obj_set_size(a_feed_minus1000_btn, 55, 45);
+        lv_obj_set_pos(a_feed_minus1000_btn, 395, 300);
+        lv_obj_add_event_cb(a_feed_minus1000_btn, a_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)-1000);
+        lv_obj_add_flag(a_feed_minus1000_btn, LV_OBJ_FLAG_HIDDEN);  // Hidden by default
+        lv_obj_t *lbl_a_minus1000 = lv_label_create(a_feed_minus1000_btn);
+        lv_label_set_text(lbl_a_minus1000, "-1000");
+        lv_obj_set_style_text_font(lbl_a_minus1000, &lv_font_montserrat_14, 0);
+        lv_obj_center(lbl_a_minus1000);
+
+        a_feed_minus100_btn = lv_button_create(tab);
+        lv_obj_set_size(a_feed_minus100_btn, 55, 45);
+        lv_obj_set_pos(a_feed_minus100_btn, 455, 300);
+        lv_obj_add_event_cb(a_feed_minus100_btn, a_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)-100);
+        lv_obj_add_flag(a_feed_minus100_btn, LV_OBJ_FLAG_HIDDEN);  // Hidden by default
+        lv_obj_t *lbl_a_minus100 = lv_label_create(a_feed_minus100_btn);
+        lv_label_set_text(lbl_a_minus100, "-100");
+        lv_obj_set_style_text_font(lbl_a_minus100, &lv_font_montserrat_14, 0);
+        lv_obj_center(lbl_a_minus100);
+
+        a_feed_plus100_btn = lv_button_create(tab);
+        lv_obj_set_size(a_feed_plus100_btn, 55, 45);
+        lv_obj_set_pos(a_feed_plus100_btn, 515, 300);
+        lv_obj_add_event_cb(a_feed_plus100_btn, a_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)100);
+        lv_obj_add_flag(a_feed_plus100_btn, LV_OBJ_FLAG_HIDDEN);  // Hidden by default
+        lv_obj_t *lbl_a_plus100 = lv_label_create(a_feed_plus100_btn);
+        lv_label_set_text(lbl_a_plus100, "+100");
+        lv_obj_set_style_text_font(lbl_a_plus100, &lv_font_montserrat_14, 0);
+        lv_obj_center(lbl_a_plus100);
+
+        a_feed_plus1000_btn = lv_button_create(tab);
+        lv_obj_set_size(a_feed_plus1000_btn, 55, 45);
+        lv_obj_set_pos(a_feed_plus1000_btn, 575, 300);
+        lv_obj_add_event_cb(a_feed_plus1000_btn, a_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)1000);
+        lv_obj_add_flag(a_feed_plus1000_btn, LV_OBJ_FLAG_HIDDEN);  // Hidden by default
+        lv_obj_t *lbl_a_plus1000 = lv_label_create(a_feed_plus1000_btn);
+        lv_label_set_text(lbl_a_plus1000, "+1000");
+        lv_obj_set_style_text_font(lbl_a_plus1000, &lv_font_montserrat_14, 0);
+        lv_obj_center(lbl_a_plus1000);
+
+        // Update A step button styles
+        update_a_step_button_styles();
+    }
 }
 
 // XY Step button event handler
@@ -656,8 +867,214 @@ void UITabControlJog::cancel_jog_event_cb(lv_event_t *e) {
         Serial.println("[Jog] Not connected to FluidNC");
         return;
     }
-    
+
     // Send jog cancel command (0x85 or Ctrl-U)
     FluidNCClient::sendCommand("\x85");
     Serial.println("[Jog] Cancel jog command sent");
+}
+
+// Z/A Toggle event handler
+void UITabControlJog::za_toggle_event_cb(lv_event_t *e) {
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+
+    // Get which button was clicked: 1 = Z mode, 0 = A mode
+    int mode = (int)(intptr_t)lv_event_get_user_data(e);
+    bool new_is_z_mode = (mode == 1);
+
+    if (new_is_z_mode == is_z_mode) {
+        return;  // Already in this mode, no change needed
+    }
+
+    is_z_mode = new_is_z_mode;
+
+    // Update button styles
+    if (btn_z_mode != nullptr && btn_a_mode != nullptr) {
+        if (is_z_mode) {
+            lv_obj_set_style_bg_color(btn_z_mode, UITheme::ACCENT_PRIMARY, 0);
+            lv_obj_set_style_bg_color(btn_a_mode, UITheme::BG_BUTTON, 0);
+        } else {
+            lv_obj_set_style_bg_color(btn_z_mode, UITheme::BG_BUTTON, 0);
+            lv_obj_set_style_bg_color(btn_a_mode, UITheme::ACCENT_PRIMARY, 0);
+        }
+    }
+
+    if (is_z_mode) {
+        // Switch to Z mode: Show Z, hide A
+        lv_label_set_text(za_header, "Z JOG");
+        lv_obj_set_style_text_color(za_header, UITheme::AXIS_Z, 0);
+
+        // Show Z controls
+        lv_obj_clear_flag(z_step_label, LV_OBJ_FLAG_HIDDEN);
+        for (int i = 0; i < UITheme::Z_STEP_COUNT; i++) {
+            lv_obj_clear_flag(z_step_buttons[i], LV_OBJ_FLAG_HIDDEN);
+        }
+        lv_obj_clear_flag(btn_z_up, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(z_step_display_bg, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(btn_z_down, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(z_feed_label, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(z_feedrate_label, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(z_feed_unit, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(btn_z_minus1000, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(btn_z_minus100, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(btn_z_plus100, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(btn_z_plus1000, LV_OBJ_FLAG_HIDDEN);
+
+        // Hide A controls
+        if (a_step_label != nullptr) lv_obj_add_flag(a_step_label, LV_OBJ_FLAG_HIDDEN);
+        for (int i = 0; i < UITheme::A_STEP_COUNT; i++) {
+            if (a_step_buttons[i] != nullptr) {
+                lv_obj_add_flag(a_step_buttons[i], LV_OBJ_FLAG_HIDDEN);
+            }
+        }
+        if (btn_a_up != nullptr) lv_obj_add_flag(btn_a_up, LV_OBJ_FLAG_HIDDEN);
+        if (a_step_display_bg != nullptr) lv_obj_add_flag(a_step_display_bg, LV_OBJ_FLAG_HIDDEN);
+        if (btn_a_down != nullptr) lv_obj_add_flag(btn_a_down, LV_OBJ_FLAG_HIDDEN);
+        if (a_feed_label != nullptr) lv_obj_add_flag(a_feed_label, LV_OBJ_FLAG_HIDDEN);
+        if (a_feedrate_label != nullptr) lv_obj_add_flag(a_feedrate_label, LV_OBJ_FLAG_HIDDEN);
+        if (a_feed_unit != nullptr) lv_obj_add_flag(a_feed_unit, LV_OBJ_FLAG_HIDDEN);
+        if (a_feed_minus1000_btn != nullptr) lv_obj_add_flag(a_feed_minus1000_btn, LV_OBJ_FLAG_HIDDEN);
+        if (a_feed_minus100_btn != nullptr) lv_obj_add_flag(a_feed_minus100_btn, LV_OBJ_FLAG_HIDDEN);
+        if (a_feed_plus100_btn != nullptr) lv_obj_add_flag(a_feed_plus100_btn, LV_OBJ_FLAG_HIDDEN);
+        if (a_feed_plus1000_btn != nullptr) lv_obj_add_flag(a_feed_plus1000_btn, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        // Switch to A mode: Show A, hide Z
+        lv_label_set_text(za_header, "A JOG");
+        lv_obj_set_style_text_color(za_header, UITheme::AXIS_A, 0);
+
+        // Hide Z controls
+        lv_obj_add_flag(z_step_label, LV_OBJ_FLAG_HIDDEN);
+        for (int i = 0; i < UITheme::Z_STEP_COUNT; i++) {
+            lv_obj_add_flag(z_step_buttons[i], LV_OBJ_FLAG_HIDDEN);
+        }
+        lv_obj_add_flag(btn_z_up, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(z_step_display_bg, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(btn_z_down, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(z_feed_label, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(z_feedrate_label, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(z_feed_unit, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(btn_z_minus1000, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(btn_z_minus100, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(btn_z_plus100, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(btn_z_plus1000, LV_OBJ_FLAG_HIDDEN);
+
+        // Show A controls
+        if (a_step_label != nullptr) lv_obj_clear_flag(a_step_label, LV_OBJ_FLAG_HIDDEN);
+        for (int i = 0; i < UITheme::A_STEP_COUNT; i++) {
+            if (a_step_buttons[i] != nullptr) {
+                lv_obj_clear_flag(a_step_buttons[i], LV_OBJ_FLAG_HIDDEN);
+            }
+        }
+        if (btn_a_up != nullptr) lv_obj_clear_flag(btn_a_up, LV_OBJ_FLAG_HIDDEN);
+        if (a_step_display_bg != nullptr) lv_obj_clear_flag(a_step_display_bg, LV_OBJ_FLAG_HIDDEN);
+        if (btn_a_down != nullptr) lv_obj_clear_flag(btn_a_down, LV_OBJ_FLAG_HIDDEN);
+        if (a_feed_label != nullptr) lv_obj_clear_flag(a_feed_label, LV_OBJ_FLAG_HIDDEN);
+        if (a_feedrate_label != nullptr) lv_obj_clear_flag(a_feedrate_label, LV_OBJ_FLAG_HIDDEN);
+        if (a_feed_unit != nullptr) lv_obj_clear_flag(a_feed_unit, LV_OBJ_FLAG_HIDDEN);
+        if (a_feed_minus1000_btn != nullptr) lv_obj_clear_flag(a_feed_minus1000_btn, LV_OBJ_FLAG_HIDDEN);
+        if (a_feed_minus100_btn != nullptr) lv_obj_clear_flag(a_feed_minus100_btn, LV_OBJ_FLAG_HIDDEN);
+        if (a_feed_plus100_btn != nullptr) lv_obj_clear_flag(a_feed_plus100_btn, LV_OBJ_FLAG_HIDDEN);
+        if (a_feed_plus1000_btn != nullptr) lv_obj_clear_flag(a_feed_plus1000_btn, LV_OBJ_FLAG_HIDDEN);
+
+        // Update A step display
+        update_a_step_display();
+        update_a_step_button_styles();
+    }
+
+    Serial.printf("[Jog] Switched to %s mode\n", is_z_mode ? "Z" : "A");
+}
+
+// A-axis step selection
+void UITabControlJog::a_step_button_event_cb(lv_event_t *e) {
+    int index = (int)(intptr_t)lv_event_get_user_data(e);
+
+    a_current_step_index = index;
+    a_current_step = UITheme::A_STEP_VALUES[index];
+
+    update_a_step_display();
+    update_a_step_button_styles();
+
+    Serial.printf("A Step size changed to: %.1f\n", a_current_step);
+}
+
+// A-axis jog command
+void UITabControlJog::a_jog_button_event_cb(lv_event_t *e) {
+    if (!FluidNCClient::isConnected()) {
+        Serial.println("[Jog] Not connected - ignoring A jog");
+        return;
+    }
+
+    // Get direction: +1 for up (A+), -1 for down (A-)
+    int direction = (int)(intptr_t)lv_event_get_user_data(e);
+    float a_move = a_current_step * direction;
+
+    // Read feedrate from label
+    if (a_feedrate_label == nullptr) return;
+    const char *feedrate_text = lv_label_get_text(a_feedrate_label);
+    int feedrate = atoi(feedrate_text);
+
+    // Build jog command: $J=G91 A[value] F[feedrate]
+    char cmd[64];
+    snprintf(cmd, sizeof(cmd), "$J=G91 A%.3f F%d\n", a_move, feedrate);
+
+    Serial.printf("[Jog] A-axis: %s", cmd);
+    FluidNCClient::sendCommand(cmd);
+}
+
+// A-axis feedrate adjustment
+void UITabControlJog::a_feedrate_adj_event_cb(lv_event_t *e) {
+    int adjustment = (int)(intptr_t)lv_event_get_user_data(e);
+
+    if (a_feedrate_label == nullptr) return;
+
+    // Read current feedrate
+    const char *current_text = lv_label_get_text(a_feedrate_label);
+    int current_value = atoi(current_text);
+
+    // Apply adjustment and clamp (A-axis: 50-5000 mm/min, same as Z)
+    int new_value = current_value + adjustment;
+    if (new_value < 50) new_value = 50;
+    if (new_value > 5000) new_value = 5000;
+
+    a_current_feed = new_value;
+
+    // Update label
+    char buf[16];
+    snprintf(buf, sizeof(buf), "%d", new_value);
+    lv_label_set_text(a_feedrate_label, buf);
+
+    // Update step display
+    update_a_step_display();
+
+    Serial.printf("A Feedrate adjusted by %d to: %d mm/min\n", adjustment, new_value);
+}
+
+// A-axis update functions
+void UITabControlJog::update_a_step_button_styles() {
+    for (int i = 0; i < UITheme::A_STEP_COUNT; i++) {
+        if (a_step_buttons[i] != nullptr) {
+            if (i == a_current_step_index) {
+                lv_obj_set_style_bg_color(a_step_buttons[i], UITheme::ACCENT_PRIMARY, (lv_state_t)(LV_PART_MAIN | LV_STATE_DEFAULT));
+                lv_obj_set_style_bg_color(a_step_buttons[i], UITheme::ACCENT_PRIMARY_PRESSED, (lv_state_t)(LV_PART_MAIN | LV_STATE_PRESSED));
+            } else {
+                lv_obj_set_style_bg_color(a_step_buttons[i], UITheme::BG_BUTTON, (lv_state_t)(LV_PART_MAIN | LV_STATE_DEFAULT));
+                lv_obj_set_style_bg_color(a_step_buttons[i], UITheme::BORDER_LIGHT, (lv_state_t)(LV_PART_MAIN | LV_STATE_PRESSED));
+            }
+        }
+    }
+}
+
+void UITabControlJog::update_a_step_display() {
+    if (a_step_display_label == nullptr) return;
+    if (a_feedrate_label == nullptr) return;
+
+    const char *feedrate_text = lv_label_get_text(a_feedrate_label);
+
+    char buf[32];
+    if (a_current_step < 1.0f) {
+        snprintf(buf, sizeof(buf), "S:%.1f\nF:%s", a_current_step, feedrate_text);
+    } else {
+        snprintf(buf, sizeof(buf), "S:%.0f\nF:%s", a_current_step, feedrate_text);
+    }
+
+    lv_label_set_text(a_step_display_label, buf);
 }

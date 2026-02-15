@@ -75,6 +75,10 @@ void setup()
     Serial.println("Initializing FluidNC client...");
     FluidNCClient::init();
 
+    // Load system preferences once (cached for entire session)
+    Serial.println("Loading system preferences...");
+    UICommon::loadSystemPreferences();
+
     // Check for auto-import (only if no machines configured)
     Serial.println("Checking for settings auto-import...");
     if (SettingsManager::autoImportOnBoot()) {
@@ -179,18 +183,18 @@ void loop()
             
             UICommon::updateMachineState(state_str);
             UICommon::updateMachinePosition(status.mpos_x, status.mpos_y, status.mpos_z);
-            UICommon::updateWorkPosition(status.wpos_x, status.wpos_y, status.wpos_z);
-            
+            UICommon::updateWorkPosition(status.wpos_x, status.wpos_y, status.wpos_z, status.wpos_a);
+
             // Check for HOLD/ALARM state and show popups if needed
             UICommon::checkStatePopups(status.state, status.last_message);
-            
+
             // Update Control Actions pause/resume button based on machine state
             UITabControlActions::updatePauseButton(status.state);
-            
+
             // Update Status tab
             UITabStatus::updateState(state_str);
-            UITabStatus::updateWorkPosition(status.wpos_x, status.wpos_y, status.wpos_z);
-            UITabStatus::updateMachinePosition(status.mpos_x, status.mpos_y, status.mpos_z);
+            UITabStatus::updateWorkPosition(status.wpos_x, status.wpos_y, status.wpos_z, status.wpos_a);
+            UITabStatus::updateMachinePosition(status.mpos_x, status.mpos_y, status.mpos_z, status.mpos_a);
             UITabStatus::updateFeedRate(status.feed_rate, status.feed_override);
             UITabStatus::updateRapidOverride(status.rapid_override);
             UITabStatus::updateSpindle(status.spindle_speed, status.spindle_override);
@@ -287,12 +291,12 @@ void loop()
             // Machine disconnected - show OFFLINE state and reset all values to dashes
             UICommon::updateMachineState("OFFLINE");
             UICommon::updateMachinePosition(-9999.0f, -9999.0f, -9999.0f);  // Triggers dash display
-            UICommon::updateWorkPosition(-9999.0f, -9999.0f, -9999.0f);     // Triggers dash display
-            
+            UICommon::updateWorkPosition(-9999.0f, -9999.0f, -9999.0f, -9999.0f);     // Triggers dash display
+
             // Update Status tab with OFFLINE state and reset all values
             UITabStatus::updateState("OFFLINE");
-            UITabStatus::updateWorkPosition(-9999.0f, -9999.0f, -9999.0f);
-            UITabStatus::updateMachinePosition(-9999.0f, -9999.0f, -9999.0f);
+            UITabStatus::updateWorkPosition(-9999.0f, -9999.0f, -9999.0f, -9999.0f);
+            UITabStatus::updateMachinePosition(-9999.0f, -9999.0f, -9999.0f, -9999.0f);
             UITabStatus::updateFeedRate(-9999.0f, -9999.0f);  // Reset feed rate and override
             UITabStatus::updateRapidOverride(-9999.0f);        // Reset rapid override
             UITabStatus::updateSpindle(-9999.0f, -9999.0f);    // Reset spindle and override

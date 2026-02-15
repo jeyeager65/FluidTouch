@@ -1,5 +1,6 @@
 #include "ui/tabs/settings/ui_tab_settings_jog.h"
 #include "ui/ui_theme.h"
+#include "ui/ui_common.h"
 #include "ui/machine_config.h"
 #include "config.h"
 #include <Preferences.h>
@@ -7,10 +8,13 @@
 // Static member initialization - default values
 float UITabSettingsJog::default_xy_step = 10.0f;
 float UITabSettingsJog::default_z_step = 1.0f;
+float UITabSettingsJog::default_a_step = 1.0f;
 int UITabSettingsJog::default_xy_feed = 3000;
 int UITabSettingsJog::default_z_feed = 1000;
+int UITabSettingsJog::default_a_feed = 1000;
 int UITabSettingsJog::max_xy_feed = 3000;
 int UITabSettingsJog::max_z_feed = 1000;
+int UITabSettingsJog::max_a_feed = 1000;
 
 // Keyboard
 lv_obj_t *UITabSettingsJog::keyboard = nullptr;
@@ -19,10 +23,13 @@ lv_obj_t *UITabSettingsJog::parent_tab = nullptr;
 // UI element references
 static lv_obj_t *ta_xy_step = nullptr;
 static lv_obj_t *ta_z_step = nullptr;
+static lv_obj_t *ta_a_step = nullptr;
 static lv_obj_t *ta_xy_feed = nullptr;
 static lv_obj_t *ta_z_feed = nullptr;
+static lv_obj_t *ta_a_feed = nullptr;
 static lv_obj_t *ta_max_xy_feed = nullptr;
 static lv_obj_t *ta_max_z_feed = nullptr;
+static lv_obj_t *ta_max_a_feed = nullptr;
 static lv_obj_t *status_label = nullptr;
 
 // Forward declarations for event handlers
@@ -42,36 +49,57 @@ void UITabSettingsJog::create(lv_obj_t *tab) {
     
     // Load preferences
     loadPreferences();
-    
+
     int y_pos = 20;
-    int col1_label_x = 20;
-    int col1_field_x = 215;  // Shifted 50px right (was 165)
-    int col2_label_x = 360;  // Moved 20px left (was 380)
-    int col2_field_x = 555;  // Moved 20px left (was 575)
-    
-    // Title - Column 1
+
+    // 3-column layout: Step | Feed | Max
+    int col1_label_x = 20;    // Step label
+    int col1_field_x = 120;   // Step field (moved right for wider labels)
+    int col2_label_x = 240;   // Feed label
+    int col2_field_x = 340;   // Feed field (moved right for wider labels)
+    int col3_label_x = 460;   // Max label
+    int col3_field_x = 560;   // Max field (moved right for wider labels)
+
+    // Title
     lv_obj_t *title = lv_label_create(tab);
-    lv_label_set_text(title, "JOG CONTROL DEFAULTS");
+    lv_label_set_text(title, "JOG & JOYSTICK CONTROL DEFAULTS");
     lv_obj_set_style_text_font(title, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_text_color(title, UITheme::TEXT_DISABLED, 0);  // Gray color
+    lv_obj_set_style_text_color(title, UITheme::TEXT_DISABLED, 0);
     lv_obj_set_pos(title, col1_label_x, y_pos);
-    
-    // Title - Column 2
-    lv_obj_t *title2 = lv_label_create(tab);
-    lv_label_set_text(title2, "JOYSTICK CONTROL DEFAULTS");
-    lv_obj_set_style_text_font(title2, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_text_color(title2, UITheme::TEXT_DISABLED, 0);  // Gray color
-    lv_obj_set_pos(title2, col2_label_x, y_pos);
-    
-    y_pos += 40;
-    
-    // === XY Step Size ===
+
+    y_pos += 30;
+
+    // Column headers with units (positioned over the labels)
+    lv_obj_t *hdr_step = lv_label_create(tab);
+    lv_label_set_text(hdr_step, "Step (mm)");
+    lv_obj_set_style_text_font(hdr_step, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(hdr_step, UITheme::TEXT_DISABLED, 0);
+    lv_obj_set_pos(hdr_step, col1_label_x, y_pos);
+
+    lv_obj_t *hdr_feed = lv_label_create(tab);
+    lv_label_set_text(hdr_feed, "Feed (mm/min)");
+    lv_obj_set_style_text_font(hdr_feed, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(hdr_feed, UITheme::TEXT_DISABLED, 0);
+    lv_obj_set_pos(hdr_feed, col2_label_x, y_pos);
+
+    lv_obj_t *hdr_max = lv_label_create(tab);
+    lv_label_set_text(hdr_max, "Max (mm/min)");
+    lv_obj_set_style_text_font(hdr_max, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(hdr_max, UITheme::TEXT_DISABLED, 0);
+    lv_obj_set_pos(hdr_max, col3_label_x, y_pos);
+
+    y_pos += 25;
+
+    char buf[16];
+
+    // ========== XY ROW: Step | Feed | Max ==========
+    // XY Step
     lv_obj_t *lbl_xy_step = lv_label_create(tab);
-    lv_label_set_text(lbl_xy_step, "XY Step (mm):");
+    lv_label_set_text(lbl_xy_step, "XY Step:");
     lv_obj_set_style_text_font(lbl_xy_step, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_xy_step, UITheme::TEXT_LIGHT, 0);
-    lv_obj_set_pos(lbl_xy_step, col1_label_x, y_pos + 12);  // Align with text area content
-    
+    lv_obj_set_pos(lbl_xy_step, col1_label_x, y_pos + 12);
+
     ta_xy_step = lv_textarea_create(tab);
     lv_obj_set_size(ta_xy_step, 100, 40);
     lv_obj_set_pos(ta_xy_step, col1_field_x, y_pos);
@@ -80,20 +108,37 @@ void UITabSettingsJog::create(lv_obj_t *tab) {
     lv_textarea_set_accepted_chars(ta_xy_step, "0123456789");
     lv_obj_set_style_text_font(ta_xy_step, &lv_font_montserrat_18, 0);
     lv_obj_add_event_cb(ta_xy_step, textarea_focused_event_handler, LV_EVENT_FOCUSED, nullptr);
-    char buf[16];
     snprintf(buf, sizeof(buf), "%.0f", default_xy_step);
     lv_textarea_set_text(ta_xy_step, buf);
-    
-    // === Max XY Feed (Column 2) ===
+
+    // XY Feed
+    lv_obj_t *lbl_xy_feed = lv_label_create(tab);
+    lv_label_set_text(lbl_xy_feed, "XY Feed:");
+    lv_obj_set_style_text_font(lbl_xy_feed, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(lbl_xy_feed, UITheme::TEXT_LIGHT, 0);
+    lv_obj_set_pos(lbl_xy_feed, col2_label_x, y_pos + 12);
+
+    ta_xy_feed = lv_textarea_create(tab);
+    lv_obj_set_size(ta_xy_feed, 100, 40);
+    lv_obj_set_pos(ta_xy_feed, col2_field_x, y_pos);
+    lv_textarea_set_one_line(ta_xy_feed, true);
+    lv_textarea_set_max_length(ta_xy_feed, 6);
+    lv_textarea_set_accepted_chars(ta_xy_feed, "0123456789");
+    lv_obj_set_style_text_font(ta_xy_feed, &lv_font_montserrat_18, 0);
+    lv_obj_add_event_cb(ta_xy_feed, textarea_focused_event_handler, LV_EVENT_FOCUSED, nullptr);
+    snprintf(buf, sizeof(buf), "%d", default_xy_feed);
+    lv_textarea_set_text(ta_xy_feed, buf);
+
+    // Max XY
     lv_obj_t *lbl_max_xy_feed = lv_label_create(tab);
-    lv_label_set_text(lbl_max_xy_feed, "Max XY (mm/min):");
+    lv_label_set_text(lbl_max_xy_feed, "Max XY:");
     lv_obj_set_style_text_font(lbl_max_xy_feed, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_max_xy_feed, UITheme::TEXT_LIGHT, 0);
-    lv_obj_set_pos(lbl_max_xy_feed, col2_label_x, y_pos + 12);  // Align with text area content
-    
+    lv_obj_set_pos(lbl_max_xy_feed, col3_label_x, y_pos + 12);
+
     ta_max_xy_feed = lv_textarea_create(tab);
     lv_obj_set_size(ta_max_xy_feed, 100, 40);
-    lv_obj_set_pos(ta_max_xy_feed, col2_field_x, y_pos);
+    lv_obj_set_pos(ta_max_xy_feed, col3_field_x, y_pos);
     lv_textarea_set_one_line(ta_max_xy_feed, true);
     lv_textarea_set_max_length(ta_max_xy_feed, 6);
     lv_textarea_set_accepted_chars(ta_max_xy_feed, "0123456789");
@@ -101,15 +146,17 @@ void UITabSettingsJog::create(lv_obj_t *tab) {
     lv_obj_add_event_cb(ta_max_xy_feed, textarea_focused_event_handler, LV_EVENT_FOCUSED, nullptr);
     snprintf(buf, sizeof(buf), "%d", max_xy_feed);
     lv_textarea_set_text(ta_max_xy_feed, buf);
+
     y_pos += 50;
-    
-    // === Z Step Size ===
+
+    // ========== Z ROW: Step | Feed | Max ==========
+    // Z Step
     lv_obj_t *lbl_z_step = lv_label_create(tab);
-    lv_label_set_text(lbl_z_step, "Z Step (mm):");
+    lv_label_set_text(lbl_z_step, "Z Step:");
     lv_obj_set_style_text_font(lbl_z_step, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_z_step, UITheme::TEXT_LIGHT, 0);
-    lv_obj_set_pos(lbl_z_step, col1_label_x, y_pos + 12);  // Align with text area content
-    
+    lv_obj_set_pos(lbl_z_step, col1_label_x, y_pos + 12);
+
     ta_z_step = lv_textarea_create(tab);
     lv_obj_set_size(ta_z_step, 100, 40);
     lv_obj_set_pos(ta_z_step, col1_field_x, y_pos);
@@ -120,55 +167,17 @@ void UITabSettingsJog::create(lv_obj_t *tab) {
     lv_obj_add_event_cb(ta_z_step, textarea_focused_event_handler, LV_EVENT_FOCUSED, nullptr);
     snprintf(buf, sizeof(buf), "%.0f", default_z_step);
     lv_textarea_set_text(ta_z_step, buf);
-    
-    // === Max Z Feed (Column 2) ===
-    lv_obj_t *lbl_max_z_feed = lv_label_create(tab);
-    lv_label_set_text(lbl_max_z_feed, "Max Z (mm/min):");
-    lv_obj_set_style_text_font(lbl_max_z_feed, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_text_color(lbl_max_z_feed, UITheme::TEXT_LIGHT, 0);
-    lv_obj_set_pos(lbl_max_z_feed, col2_label_x, y_pos + 12);  // Align with text area content
-    
-    ta_max_z_feed = lv_textarea_create(tab);
-    lv_obj_set_size(ta_max_z_feed, 100, 40);
-    lv_obj_set_pos(ta_max_z_feed, col2_field_x, y_pos);
-    lv_textarea_set_one_line(ta_max_z_feed, true);
-    lv_textarea_set_max_length(ta_max_z_feed, 6);
-    lv_textarea_set_accepted_chars(ta_max_z_feed, "0123456789");
-    lv_obj_set_style_text_font(ta_max_z_feed, &lv_font_montserrat_18, 0);
-    lv_obj_add_event_cb(ta_max_z_feed, textarea_focused_event_handler, LV_EVENT_FOCUSED, nullptr);
-    snprintf(buf, sizeof(buf), "%d", max_z_feed);
-    lv_textarea_set_text(ta_max_z_feed, buf);
-    y_pos += 50;
-    
-    // === XY Feed Rate ===
-    lv_obj_t *lbl_xy_feed = lv_label_create(tab);
-    lv_label_set_text(lbl_xy_feed, "XY Feed (mm/min):");
-    lv_obj_set_style_text_font(lbl_xy_feed, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_text_color(lbl_xy_feed, UITheme::TEXT_LIGHT, 0);
-    lv_obj_set_pos(lbl_xy_feed, col1_label_x, y_pos + 12);  // Align with text area content
-    
-    ta_xy_feed = lv_textarea_create(tab);
-    lv_obj_set_size(ta_xy_feed, 100, 40);
-    lv_obj_set_pos(ta_xy_feed, col1_field_x, y_pos);
-    lv_textarea_set_one_line(ta_xy_feed, true);
-    lv_textarea_set_max_length(ta_xy_feed, 6);
-    lv_textarea_set_accepted_chars(ta_xy_feed, "0123456789");
-    lv_obj_set_style_text_font(ta_xy_feed, &lv_font_montserrat_18, 0);
-    lv_obj_add_event_cb(ta_xy_feed, textarea_focused_event_handler, LV_EVENT_FOCUSED, nullptr);
-    snprintf(buf, sizeof(buf), "%d", default_xy_feed);
-    lv_textarea_set_text(ta_xy_feed, buf);
-    y_pos += 50;
-    
-    // === Z Feed Rate ===
+
+    // Z Feed
     lv_obj_t *lbl_z_feed = lv_label_create(tab);
-    lv_label_set_text(lbl_z_feed, "Z Feed (mm/min):");
+    lv_label_set_text(lbl_z_feed, "Z Feed:");
     lv_obj_set_style_text_font(lbl_z_feed, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_z_feed, UITheme::TEXT_LIGHT, 0);
-    lv_obj_set_pos(lbl_z_feed, col1_label_x, y_pos + 12);  // Align with text area content
-    
+    lv_obj_set_pos(lbl_z_feed, col2_label_x, y_pos + 12);
+
     ta_z_feed = lv_textarea_create(tab);
     lv_obj_set_size(ta_z_feed, 100, 40);
-    lv_obj_set_pos(ta_z_feed, col1_field_x, y_pos);
+    lv_obj_set_pos(ta_z_feed, col2_field_x, y_pos);
     lv_textarea_set_one_line(ta_z_feed, true);
     lv_textarea_set_max_length(ta_z_feed, 6);
     lv_textarea_set_accepted_chars(ta_z_feed, "0123456789");
@@ -176,8 +185,86 @@ void UITabSettingsJog::create(lv_obj_t *tab) {
     lv_obj_add_event_cb(ta_z_feed, textarea_focused_event_handler, LV_EVENT_FOCUSED, nullptr);
     snprintf(buf, sizeof(buf), "%d", default_z_feed);
     lv_textarea_set_text(ta_z_feed, buf);
-    y_pos += 60;
-    
+
+    // Max Z
+    lv_obj_t *lbl_max_z_feed = lv_label_create(tab);
+    lv_label_set_text(lbl_max_z_feed, "Max Z:");
+    lv_obj_set_style_text_font(lbl_max_z_feed, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(lbl_max_z_feed, UITheme::TEXT_LIGHT, 0);
+    lv_obj_set_pos(lbl_max_z_feed, col3_label_x, y_pos + 12);
+
+    ta_max_z_feed = lv_textarea_create(tab);
+    lv_obj_set_size(ta_max_z_feed, 100, 40);
+    lv_obj_set_pos(ta_max_z_feed, col3_field_x, y_pos);
+    lv_textarea_set_one_line(ta_max_z_feed, true);
+    lv_textarea_set_max_length(ta_max_z_feed, 6);
+    lv_textarea_set_accepted_chars(ta_max_z_feed, "0123456789");
+    lv_obj_set_style_text_font(ta_max_z_feed, &lv_font_montserrat_18, 0);
+    lv_obj_add_event_cb(ta_max_z_feed, textarea_focused_event_handler, LV_EVENT_FOCUSED, nullptr);
+    snprintf(buf, sizeof(buf), "%d", max_z_feed);
+    lv_textarea_set_text(ta_max_z_feed, buf);
+
+    y_pos += 50;
+
+    // ========== A ROW (conditional): Step | Feed | Max ==========
+    if (UICommon::isAAxisEnabled()) {
+        // A Step
+        lv_obj_t *lbl_a_step = lv_label_create(tab);
+        lv_label_set_text(lbl_a_step, "A Step:");
+        lv_obj_set_style_text_font(lbl_a_step, &lv_font_montserrat_18, 0);
+        lv_obj_set_style_text_color(lbl_a_step, UITheme::TEXT_LIGHT, 0);
+        lv_obj_set_pos(lbl_a_step, col1_label_x, y_pos + 12);
+
+        ta_a_step = lv_textarea_create(tab);
+        lv_obj_set_size(ta_a_step, 100, 40);
+        lv_obj_set_pos(ta_a_step, col1_field_x, y_pos);
+        lv_textarea_set_one_line(ta_a_step, true);
+        lv_textarea_set_max_length(ta_a_step, 6);
+        lv_textarea_set_accepted_chars(ta_a_step, "0123456789");
+        lv_obj_set_style_text_font(ta_a_step, &lv_font_montserrat_18, 0);
+        lv_obj_add_event_cb(ta_a_step, textarea_focused_event_handler, LV_EVENT_FOCUSED, nullptr);
+        snprintf(buf, sizeof(buf), "%.0f", default_a_step);
+        lv_textarea_set_text(ta_a_step, buf);
+
+        // A Feed
+        lv_obj_t *lbl_a_feed = lv_label_create(tab);
+        lv_label_set_text(lbl_a_feed, "A Feed:");
+        lv_obj_set_style_text_font(lbl_a_feed, &lv_font_montserrat_18, 0);
+        lv_obj_set_style_text_color(lbl_a_feed, UITheme::TEXT_LIGHT, 0);
+        lv_obj_set_pos(lbl_a_feed, col2_label_x, y_pos + 12);
+
+        ta_a_feed = lv_textarea_create(tab);
+        lv_obj_set_size(ta_a_feed, 100, 40);
+        lv_obj_set_pos(ta_a_feed, col2_field_x, y_pos);
+        lv_textarea_set_one_line(ta_a_feed, true);
+        lv_textarea_set_max_length(ta_a_feed, 6);
+        lv_textarea_set_accepted_chars(ta_a_feed, "0123456789");
+        lv_obj_set_style_text_font(ta_a_feed, &lv_font_montserrat_18, 0);
+        lv_obj_add_event_cb(ta_a_feed, textarea_focused_event_handler, LV_EVENT_FOCUSED, nullptr);
+        snprintf(buf, sizeof(buf), "%d", default_a_feed);
+        lv_textarea_set_text(ta_a_feed, buf);
+
+        // Max A
+        lv_obj_t *lbl_max_a_feed = lv_label_create(tab);
+        lv_label_set_text(lbl_max_a_feed, "Max A:");
+        lv_obj_set_style_text_font(lbl_max_a_feed, &lv_font_montserrat_18, 0);
+        lv_obj_set_style_text_color(lbl_max_a_feed, UITheme::TEXT_LIGHT, 0);
+        lv_obj_set_pos(lbl_max_a_feed, col3_label_x, y_pos + 12);
+
+        ta_max_a_feed = lv_textarea_create(tab);
+        lv_obj_set_size(ta_max_a_feed, 100, 40);
+        lv_obj_set_pos(ta_max_a_feed, col3_field_x, y_pos);
+        lv_textarea_set_one_line(ta_max_a_feed, true);
+        lv_textarea_set_max_length(ta_max_a_feed, 6);
+        lv_textarea_set_accepted_chars(ta_max_a_feed, "0123456789");
+        lv_obj_set_style_text_font(ta_max_a_feed, &lv_font_montserrat_18, 0);
+        lv_obj_add_event_cb(ta_max_a_feed, textarea_focused_event_handler, LV_EVENT_FOCUSED, nullptr);
+        snprintf(buf, sizeof(buf), "%d", max_a_feed);
+        lv_textarea_set_text(ta_max_a_feed, buf);
+
+        y_pos += 50;
+    }
+
     // === Action Buttons (positioned at bottom with 20px margins) ===
     // Save button
     lv_obj_t *btn_save = lv_button_create(tab);
@@ -217,18 +304,24 @@ void UITabSettingsJog::loadPreferences() {
     if (MachineConfigManager::getMachine(machineIndex, config)) {
         default_xy_step = config.jog_xy_step;
         default_z_step = config.jog_z_step;
+        default_a_step = config.jog_a_step;
         default_xy_feed = config.jog_xy_feed;
         default_z_feed = config.jog_z_feed;
+        default_a_feed = config.jog_a_feed;
         max_xy_feed = config.jog_max_xy_feed;
         max_z_feed = config.jog_max_z_feed;
-        
+        max_a_feed = config.jog_max_a_feed;
+
         Serial.printf("Jog settings loaded for machine %d:\n", machineIndex);
         Serial.printf("  XY Step: %.0f mm\n", default_xy_step);
         Serial.printf("  Z Step: %.0f mm\n", default_z_step);
+        Serial.printf("  A Step: %.0f\n", default_a_step);
         Serial.printf("  XY Feed: %d mm/min\n", default_xy_feed);
         Serial.printf("  Z Feed: %d mm/min\n", default_z_feed);
+        Serial.printf("  A Feed: %d\n", default_a_feed);
         Serial.printf("  Max XY Feed: %d mm/min\n", max_xy_feed);
         Serial.printf("  Max Z Feed: %d mm/min\n", max_z_feed);
+        Serial.printf("  Max A Feed: %d\n", max_a_feed);
     } else {
         Serial.println("Failed to load machine config, using defaults");
     }
@@ -242,10 +335,13 @@ void UITabSettingsJog::savePreferences() {
     if (MachineConfigManager::getMachine(machineIndex, config)) {
         config.jog_xy_step = default_xy_step;
         config.jog_z_step = default_z_step;
+        config.jog_a_step = default_a_step;
         config.jog_xy_feed = default_xy_feed;
         config.jog_z_feed = default_z_feed;
+        config.jog_a_feed = default_a_feed;
         config.jog_max_xy_feed = max_xy_feed;
         config.jog_max_z_feed = max_z_feed;
+        config.jog_max_a_feed = max_a_feed;
         
         MachineConfigManager::saveMachine(machineIndex, config);
         Serial.printf("Jog settings saved for machine %d\n", machineIndex);
@@ -257,18 +353,24 @@ void UITabSettingsJog::savePreferences() {
 // Getters
 float UITabSettingsJog::getDefaultXYStep() { return default_xy_step; }
 float UITabSettingsJog::getDefaultZStep() { return default_z_step; }
+float UITabSettingsJog::getDefaultAStep() { return default_a_step; }
 int UITabSettingsJog::getDefaultXYFeed() { return default_xy_feed; }
 int UITabSettingsJog::getDefaultZFeed() { return default_z_feed; }
+int UITabSettingsJog::getDefaultAFeed() { return default_a_feed; }
 int UITabSettingsJog::getMaxXYFeed() { return max_xy_feed; }
 int UITabSettingsJog::getMaxZFeed() { return max_z_feed; }
+int UITabSettingsJog::getMaxAFeed() { return max_a_feed; }
 
 // Setters
 void UITabSettingsJog::setDefaultXYStep(float value) { default_xy_step = value; }
 void UITabSettingsJog::setDefaultZStep(float value) { default_z_step = value; }
+void UITabSettingsJog::setDefaultAStep(float value) { default_a_step = value; }
 void UITabSettingsJog::setDefaultXYFeed(int value) { default_xy_feed = value; }
 void UITabSettingsJog::setDefaultZFeed(int value) { default_z_feed = value; }
+void UITabSettingsJog::setDefaultAFeed(int value) { default_a_feed = value; }
 void UITabSettingsJog::setMaxXYFeed(int value) { max_xy_feed = value; }
 void UITabSettingsJog::setMaxZFeed(int value) { max_z_feed = value; }
+void UITabSettingsJog::setMaxAFeed(int value) { max_a_feed = value; }
 
 // Textarea focused event handler - show keyboard
 static void textarea_focused_event_handler(lv_event_t *e) {
@@ -347,39 +449,54 @@ static void btn_save_jog_event_handler(lv_event_t *e) {
         // Read values from text areas
         const char *xy_step_text = lv_textarea_get_text(ta_xy_step);
         const char *z_step_text = lv_textarea_get_text(ta_z_step);
+        const char *a_step_text = lv_textarea_get_text(ta_a_step);
         const char *xy_feed_text = lv_textarea_get_text(ta_xy_feed);
         const char *z_feed_text = lv_textarea_get_text(ta_z_feed);
+        const char *a_feed_text = lv_textarea_get_text(ta_a_feed);
         const char *max_xy_feed_text = lv_textarea_get_text(ta_max_xy_feed);
         const char *max_z_feed_text = lv_textarea_get_text(ta_max_z_feed);
-        
+        const char *max_a_feed_text = lv_textarea_get_text(ta_max_a_feed);
+
         // Validate and update
         float xy_step_val = atof(xy_step_text);
         float z_step_val = atof(z_step_text);
+        float a_step_val = atof(a_step_text);
         int xy_feed_val = atoi(xy_feed_text);
         int z_feed_val = atoi(z_feed_text);
+        int a_feed_val = atoi(a_feed_text);
         int max_xy_feed_val = atoi(max_xy_feed_text);
         int max_z_feed_val = atoi(max_z_feed_text);
-        
+        int max_a_feed_val = atoi(max_a_feed_text);
+
         // Clamp to reasonable ranges
         if (xy_step_val < 0.1f) xy_step_val = 0.1f;
         if (xy_step_val > 500.0f) xy_step_val = 500.0f;
         if (z_step_val < 0.1f) z_step_val = 0.1f;
         if (z_step_val > 100.0f) z_step_val = 100.0f;
+        if (a_step_val < 0.1f) a_step_val = 0.1f;
+        if (a_step_val > 100.0f) a_step_val = 100.0f;
         if (xy_feed_val < 100) xy_feed_val = 100;
         if (xy_feed_val > 10000) xy_feed_val = 10000;
         if (z_feed_val < 50) z_feed_val = 50;
         if (z_feed_val > 5000) z_feed_val = 5000;
+        if (a_feed_val < 50) a_feed_val = 50;
+        if (a_feed_val > 5000) a_feed_val = 5000;
         if (max_xy_feed_val < 100) max_xy_feed_val = 100;
         if (max_xy_feed_val > 15000) max_xy_feed_val = 15000;
         if (max_z_feed_val < 50) max_z_feed_val = 50;
         if (max_z_feed_val > 10000) max_z_feed_val = 10000;
-        
+        if (max_a_feed_val < 50) max_a_feed_val = 50;
+        if (max_a_feed_val > 10000) max_a_feed_val = 10000;
+
         UITabSettingsJog::setDefaultXYStep(xy_step_val);
         UITabSettingsJog::setDefaultZStep(z_step_val);
+        UITabSettingsJog::setDefaultAStep(a_step_val);
         UITabSettingsJog::setDefaultXYFeed(xy_feed_val);
         UITabSettingsJog::setDefaultZFeed(z_feed_val);
+        UITabSettingsJog::setDefaultAFeed(a_feed_val);
         UITabSettingsJog::setMaxXYFeed(max_xy_feed_val);
         UITabSettingsJog::setMaxZFeed(max_z_feed_val);
+        UITabSettingsJog::setMaxAFeed(max_a_feed_val);
         
         UITabSettingsJog::savePreferences();
         
@@ -398,10 +515,13 @@ static void btn_reset_event_handler(lv_event_t *e) {
         // Reset to hardcoded defaults
         lv_textarea_set_text(ta_xy_step, "10.0");
         lv_textarea_set_text(ta_z_step, "1.0");
+        lv_textarea_set_text(ta_a_step, "1.0");
         lv_textarea_set_text(ta_xy_feed, "3000");
         lv_textarea_set_text(ta_z_feed, "1000");
+        lv_textarea_set_text(ta_a_feed, "1000");
         lv_textarea_set_text(ta_max_xy_feed, "8000");
         lv_textarea_set_text(ta_max_z_feed, "3000");
+        lv_textarea_set_text(ta_max_a_feed, "3000");
         
         if (status_label != nullptr) {
             lv_label_set_text(status_label, "Reset to defaults (not saved)");

@@ -1,6 +1,7 @@
 #include "ui/tabs/control/ui_tab_control_joystick.h"
 #include "ui/tabs/settings/ui_tab_settings_jog.h"
 #include "ui/ui_theme.h"
+#include "ui/ui_common.h"
 #include "network/fluidnc_client.h"
 #include <lvgl.h>
 #include <math.h>
@@ -25,18 +26,42 @@ static lv_obj_t *btn_y = NULL;
 // XY jog label (updates based on mode)
 static lv_obj_t *xy_jog_label = NULL;
 
+// Z/A Toggle (only created if A-axis enabled)
+static lv_obj_t *btn_z_mode = NULL;
+static lv_obj_t *btn_a_mode = NULL;
+static lv_obj_t *za_jog_label = NULL;  // "Z JOG" or "A JOG"
+static bool is_z_mode = true;  // true = Z mode, false = A mode
+
+// Z slider references
+static lv_obj_t *z_container = NULL;
+static lv_obj_t *z_bg = NULL;
+static lv_obj_t *z_knob = NULL;
+static lv_obj_t *z_line = NULL;
+
+// A-axis slider references (same positions as Z)
+static lv_obj_t *a_container = NULL;
+static lv_obj_t *a_bg = NULL;
+static lv_obj_t *a_knob = NULL;
+static lv_obj_t *a_line = NULL;
+
 // Static label pointers for real-time updates
 static lv_obj_t *xy_percent_label = NULL;
 static lv_obj_t *xy_feedrate_label = NULL;
 static lv_obj_t *z_percent_label = NULL;
 static lv_obj_t *z_feedrate_label = NULL;
+static lv_obj_t *z_max_label = NULL;
+static lv_obj_t *a_percent_label = NULL;
+static lv_obj_t *a_feedrate_label = NULL;
+static lv_obj_t *a_max_label = NULL;
 
 // Jogging state tracking
 static bool xy_jogging = false;
 static bool z_jogging = false;
+static bool a_jogging = false;
 static float last_xy_x_percent = 0.0f;
 static float last_xy_y_percent = 0.0f;
 static float last_z_percent = 0.0f;
+static float last_a_percent = 0.0f;
 static unsigned long last_jog_time = 0;
 
 // Label update throttling (only update when values change significantly)
@@ -44,6 +69,8 @@ static int last_displayed_xy_percent = -1;
 static int last_displayed_xy_feedrate = -1;
 static int last_displayed_z_percent = -999;  // Use -999 to ensure first update
 static int last_displayed_z_feedrate = -1;
+static int last_displayed_a_percent = -999;
+static int last_displayed_a_feedrate = -1;
 
 // Jogging parameters
 static const unsigned long JOG_INTERVAL_MS = 50;  // Send jog command every 50ms (20Hz for balance of smoothness and performance)
@@ -721,6 +748,190 @@ static void axis_button_event_handler(lv_event_t *e) {
     }
 }
 
+// A-axis joystick drag event handler (vertical slider)
+static void a_joystick_event_handler(lv_event_t *e) {
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t *knob = (lv_obj_t *)lv_event_get_target(e);
+
+    // Safety check: ensure object is still valid
+    if (!knob || !lv_obj_is_valid(knob)) return;
+
+    if (code == LV_EVENT_PRESSING) {
+        lv_obj_t *bg = lv_obj_get_parent(knob);
+
+        // Safety check: ensure parent is valid
+        if (!bg || !lv_obj_is_valid(bg)) return;
+
+        lv_indev_t *indev = lv_indev_get_act();
+        if (indev == NULL) return;
+
+        lv_point_t point;
+        lv_indev_get_point(indev, &point);
+
+        // Get background dimensions
+        int32_t bg_h = lv_obj_get_height(bg);
+
+        // Get absolute position of background on screen
+        lv_area_t bg_coords;
+        lv_obj_get_coords(bg, &bg_coords);
+
+        int32_t bg_center_y = bg_coords.y1 + bg_h / 2;
+
+        // Calculate vertical offset from center (positive = down, negative = up)
+        int32_t dy = point.y - bg_center_y;
+
+        // Constrain knob movement within slider bounds
+        int32_t knob_size = lv_obj_get_height(knob);
+        int32_t max_offset = (bg_h - knob_size) / 2;
+        if (dy > max_offset) dy = max_offset;
+        if (dy < -max_offset) dy = -max_offset;
+
+        // Position knob (centered horizontally, offset vertically)
+        lv_obj_align(knob, LV_ALIGN_CENTER, 0, dy);
+
+        // Calculate A percentage (inverted: up = positive)
+        float a_percent = -(dy * 100.0f) / max_offset;
+
+        // Apply response curve for fine control near center
+        float a_percent_curved = applyJoystickCurve(a_percent);
+
+        // Get A-axis max feedrate from settings
+        int max_feedrate = UITabSettingsJog::getMaxAFeed();
+
+        // Calculate feedrate (proportional to curved percentage)
+        int feedrate = (int)(fabs(a_percent_curved) * max_feedrate / 100.0f);
+        if (feedrate < 1) feedrate = 1;  // Minimum 1 mm/min when moving
+
+        // Update labels only when value changes significantly (reduce flicker)
+        int current_percent_display = (int)a_percent_curved;
+        if (abs(current_percent_display - last_displayed_a_percent) >= 5 || !a_jogging) {
+            if (a_percent_label != NULL) {
+                char percent_text[16];
+                snprintf(percent_text, sizeof(percent_text), "%d%%", current_percent_display);
+                lv_label_set_text(a_percent_label, percent_text);
+            }
+            last_displayed_a_percent = current_percent_display;
+        }
+
+        if (labs(feedrate - last_displayed_a_feedrate) >= 50 || !a_jogging) {
+            if (a_feedrate_label != NULL) {
+                char feedrate_text[16];
+                snprintf(feedrate_text, sizeof(feedrate_text), "%d mm/min", feedrate);
+                lv_label_set_text(a_feedrate_label, feedrate_text);
+            }
+            last_displayed_a_feedrate = feedrate;
+        }
+
+        // Send jog commands at intervals (throttle to 20Hz)
+        unsigned long current_time = millis();
+        if (fabs(a_percent_curved) > 0.1f && (current_time - last_jog_time >= JOG_INTERVAL_MS)) {
+            if (FluidNCClient::isConnected()) {
+                // Calculate distance: feedrate * time (mm/min * min = mm)
+                float distance = (a_percent_curved / 100.0f) * feedrate * (JOG_TIME_INCREMENT / 60.0f);
+
+                // Build jog command: $J=G91 A[distance] F[feedrate]
+                char cmd[64];
+                snprintf(cmd, sizeof(cmd), "$J=G91 A%.4f F%d\n", distance, feedrate);
+                FluidNCClient::sendCommand(cmd);
+
+                a_jogging = true;
+                last_a_percent = a_percent_curved;
+                last_jog_time = current_time;
+            }
+        }
+    } else if (code == LV_EVENT_RELEASED) {
+        // Return knob to center
+        lv_obj_center(knob);
+
+        // Reset labels
+        if (a_percent_label != NULL) {
+            lv_label_set_text(a_percent_label, "0%");
+        }
+        if (a_feedrate_label != NULL) {
+            lv_label_set_text(a_feedrate_label, "0 mm/min");
+        }
+
+        // Send jog cancel if we were jogging
+        if (a_jogging) {
+            sendJogCancel();
+            a_jogging = false;
+            last_a_percent = 0.0f;
+
+            // Reset throttle state
+            last_displayed_a_percent = -999;
+            last_displayed_a_feedrate = -1;
+        }
+    }
+}
+
+// Z/A Toggle event handler for joystick
+static void za_joystick_toggle_event_cb(lv_event_t *e) {
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+
+    // Get which button was clicked: 1 = Z mode, 0 = A mode
+    int mode = (int)(intptr_t)lv_event_get_user_data(e);
+    bool new_is_z_mode = (mode == 1);
+
+    if (new_is_z_mode == is_z_mode) {
+        return;  // Already in this mode
+    }
+
+    is_z_mode = new_is_z_mode;
+
+    // Update button borders to show selection
+    if (btn_z_mode != NULL && btn_a_mode != NULL) {
+        if (is_z_mode) {
+            lv_obj_set_style_border_width(btn_z_mode, 3, LV_PART_MAIN);
+            lv_obj_set_style_border_color(btn_z_mode, lv_color_white(), LV_PART_MAIN);
+            lv_obj_set_style_border_width(btn_a_mode, 0, LV_PART_MAIN);
+        } else {
+            lv_obj_set_style_border_width(btn_z_mode, 0, LV_PART_MAIN);
+            lv_obj_set_style_border_width(btn_a_mode, 3, LV_PART_MAIN);
+            lv_obj_set_style_border_color(btn_a_mode, lv_color_white(), LV_PART_MAIN);
+        }
+    }
+
+    if (is_z_mode) {
+        // Switch to Z mode: Show Z, hide A
+        lv_label_set_text(za_jog_label, "Z JOG");
+        lv_obj_set_style_text_color(za_jog_label, UITheme::AXIS_Z, 0);
+
+        if (z_container != NULL) lv_obj_clear_flag(z_container, LV_OBJ_FLAG_HIDDEN);
+        if (a_container != NULL) lv_obj_add_flag(a_container, LV_OBJ_FLAG_HIDDEN);
+
+        // Show Z info labels, hide A info labels
+        if (z_percent_label != NULL) lv_obj_clear_flag(z_percent_label, LV_OBJ_FLAG_HIDDEN);
+        if (z_feedrate_label != NULL) lv_obj_clear_flag(z_feedrate_label, LV_OBJ_FLAG_HIDDEN);
+        if (z_max_label != NULL) lv_obj_clear_flag(z_max_label, LV_OBJ_FLAG_HIDDEN);
+        if (a_percent_label != NULL) lv_obj_add_flag(a_percent_label, LV_OBJ_FLAG_HIDDEN);
+        if (a_feedrate_label != NULL) lv_obj_add_flag(a_feedrate_label, LV_OBJ_FLAG_HIDDEN);
+        if (a_max_label != NULL) lv_obj_add_flag(a_max_label, LV_OBJ_FLAG_HIDDEN);
+
+        // Reset A-axis knob position
+        if (a_knob != NULL) lv_obj_center(a_knob);
+    } else {
+        // Switch to A mode: Show A, hide Z
+        lv_label_set_text(za_jog_label, "A JOG");
+        lv_obj_set_style_text_color(za_jog_label, UITheme::AXIS_A, 0);
+
+        if (z_container != NULL) lv_obj_add_flag(z_container, LV_OBJ_FLAG_HIDDEN);
+        if (a_container != NULL) lv_obj_clear_flag(a_container, LV_OBJ_FLAG_HIDDEN);
+
+        // Hide Z info labels, show A info labels
+        if (z_percent_label != NULL) lv_obj_add_flag(z_percent_label, LV_OBJ_FLAG_HIDDEN);
+        if (z_feedrate_label != NULL) lv_obj_add_flag(z_feedrate_label, LV_OBJ_FLAG_HIDDEN);
+        if (z_max_label != NULL) lv_obj_add_flag(z_max_label, LV_OBJ_FLAG_HIDDEN);
+        if (a_percent_label != NULL) lv_obj_clear_flag(a_percent_label, LV_OBJ_FLAG_HIDDEN);
+        if (a_feedrate_label != NULL) lv_obj_clear_flag(a_feedrate_label, LV_OBJ_FLAG_HIDDEN);
+        if (a_max_label != NULL) lv_obj_clear_flag(a_max_label, LV_OBJ_FLAG_HIDDEN);
+
+        // Reset Z-axis knob position
+        if (z_knob != NULL) lv_obj_center(z_knob);
+    }
+
+    Serial.printf("[Joystick] Switched to %s mode\n", is_z_mode ? "Z" : "A");
+}
+
 void UITabControlJoystick::create(lv_obj_t *parent) {
     // Set parent to use horizontal flex layout (XY joystick on left, info in center, Z slider on right)
     lv_obj_set_flex_flow(parent, LV_FLEX_FLOW_ROW);
@@ -852,15 +1063,57 @@ void UITabControlJoystick::create(lv_obj_t *parent) {
     lv_obj_set_style_text_color(z_feedrate_label, UITheme::TEXT_LIGHT, 0);
     
     // Z Max Feedrate (from settings)
-    lv_obj_t *z_max_label = lv_label_create(info_container);
+    z_max_label = lv_label_create(info_container);
     char z_max_text[32];
     snprintf(z_max_text, sizeof(z_max_text), "Max: %d mm/min", UITabSettingsJog::getMaxZFeed());
     lv_label_set_text(z_max_label, z_max_text);
     lv_obj_set_style_text_font(z_max_label, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(z_max_label, UITheme::UI_INFO, 0);
 
+    // A-axis info (conditional, hidden by default)
+    if (UICommon::isAAxisEnabled()) {
+        // A Percentage
+        a_percent_label = lv_label_create(info_container);
+        lv_label_set_text(a_percent_label, "A: 0%");
+        lv_obj_set_style_text_font(a_percent_label, &lv_font_montserrat_20, 0);
+        lv_obj_set_style_text_color(a_percent_label, UITheme::AXIS_A, 0);
+        lv_obj_add_flag(a_percent_label, LV_OBJ_FLAG_HIDDEN);  // Hidden by default
+
+        // A Feedrate
+        a_feedrate_label = lv_label_create(info_container);
+        lv_label_set_text(a_feedrate_label, "0 mm/min");
+        lv_obj_set_style_text_font(a_feedrate_label, &lv_font_montserrat_18, 0);
+        lv_obj_set_style_text_color(a_feedrate_label, UITheme::TEXT_LIGHT, 0);
+        lv_obj_add_flag(a_feedrate_label, LV_OBJ_FLAG_HIDDEN);  // Hidden by default
+
+        // A Max Feedrate (from settings)
+        a_max_label = lv_label_create(info_container);
+        char a_max_text[32];
+        snprintf(a_max_text, sizeof(a_max_text), "Max: %d mm/min", UITabSettingsJog::getMaxAFeed());
+        lv_label_set_text(a_max_label, a_max_text);
+        lv_obj_set_style_text_font(a_max_label, &lv_font_montserrat_14, 0);
+        lv_obj_set_style_text_color(a_max_label, UITheme::UI_INFO, 0);
+        lv_obj_add_flag(a_max_label, LV_OBJ_FLAG_HIDDEN);  // Hidden by default
+    }
+
+    // ========== Z/A Slider Section (Vertical layout like XY) ==========
+    lv_obj_t *za_outer_container = lv_obj_create(parent);
+    lv_obj_set_size(za_outer_container, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+    lv_obj_set_style_pad_all(za_outer_container, 5, 0);
+    lv_obj_set_flex_flow(za_outer_container, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(za_outer_container, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_clear_flag(za_outer_container, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_opa(za_outer_container, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(za_outer_container, 0, 0);
+
+    // Z/A Label (centered above slider) - will update based on mode
+    za_jog_label = lv_label_create(za_outer_container);
+    lv_label_set_text(za_jog_label, "Z JOG");
+    lv_obj_set_style_text_font(za_jog_label, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(za_jog_label, UITheme::AXIS_Z, 0);
+
     // ========== Z Slider (Vertical) ==========
-    lv_obj_t *z_container = lv_obj_create(parent);
+    z_container = lv_obj_create(za_outer_container);
     lv_obj_set_size(z_container, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
     lv_obj_set_style_pad_all(z_container, 5, 0);
     lv_obj_set_flex_flow(z_container, LV_FLEX_FLOW_COLUMN);
@@ -868,15 +1121,9 @@ void UITabControlJoystick::create(lv_obj_t *parent) {
     lv_obj_clear_flag(z_container, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_opa(z_container, LV_OPA_TRANSP, 0);  // Transparent background
     lv_obj_set_style_border_width(z_container, 0, 0);  // No border
-    
-    // Z Label (centered above slider) - Settings-style header with Z axis color
-    lv_obj_t *z_label = lv_label_create(z_container);
-    lv_label_set_text(z_label, "Z JOG");
-    lv_obj_set_style_text_font(z_label, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_text_color(z_label, UITheme::AXIS_Z, 0);
 
     // Background slider (80x220 vertical)
-    lv_obj_t *z_bg = lv_obj_create(z_container);
+    z_bg = lv_obj_create(z_container);
     lv_obj_set_size(z_bg, 80, 220);
     lv_obj_set_style_radius(z_bg, 15, 0);
     lv_obj_set_style_bg_color(z_bg, UITheme::JOYSTICK_BG, 0);
@@ -885,29 +1132,113 @@ void UITabControlJoystick::create(lv_obj_t *parent) {
     lv_obj_clear_flag(z_bg, LV_OBJ_FLAG_SCROLLABLE);  // Disable scrolling
 
     // Center line
-    lv_obj_t *z_line = lv_obj_create(z_bg);
+    z_line = lv_obj_create(z_bg);
     lv_obj_set_size(z_line, LV_PCT(100), 2);
     lv_obj_set_style_bg_color(z_line, UITheme::JOYSTICK_LINE, 0);
     lv_obj_set_style_border_width(z_line, 0, 0);
     lv_obj_center(z_line);
 
     // Draggable knob (70x70, purple, centered initially)
-    lv_obj_t *z_knob = lv_obj_create(z_bg);
+    z_knob = lv_obj_create(z_bg);
     lv_obj_set_size(z_knob, 70, 70);
     lv_obj_set_style_radius(z_knob, 15, 0);
     lv_obj_set_style_bg_color(z_knob, UITheme::JOYSTICK_Z, 0);
     lv_obj_set_style_border_width(z_knob, 3, 0);
     lv_obj_set_style_border_color(z_knob, lv_color_white(), 0);
     lv_obj_center(z_knob);
-    
+
     // Add label to Z knob
     lv_obj_t *z_knob_label = lv_label_create(z_knob);
     lv_label_set_text(z_knob_label, "Z");
     lv_obj_set_style_text_font(z_knob_label, &lv_font_montserrat_20, 0);
     lv_obj_center(z_knob_label);
-    
-    // Add drag event to knob
+
+   // Add drag event to knob
     lv_obj_add_flag(z_knob, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(z_knob, z_joystick_event_handler, LV_EVENT_PRESSING, NULL);
     lv_obj_add_event_cb(z_knob, z_joystick_event_handler, LV_EVENT_RELEASED, NULL);
+
+    // ========== A-Axis Slider (Conditional, same position as Z) ==========
+    if (UICommon::isAAxisEnabled()) {
+        a_container = lv_obj_create(za_outer_container);
+        lv_obj_set_size(a_container, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+        lv_obj_set_style_pad_all(a_container, 5, 0);
+        lv_obj_set_flex_flow(a_container, LV_FLEX_FLOW_COLUMN);
+        lv_obj_set_flex_align(a_container, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+        lv_obj_clear_flag(a_container, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_style_bg_opa(a_container, LV_OPA_TRANSP, 0);
+        lv_obj_set_style_border_width(a_container, 0, 0);
+        lv_obj_add_flag(a_container, LV_OBJ_FLAG_HIDDEN);  // Hidden by default
+
+        // Background slider (80x220 vertical)
+        a_bg = lv_obj_create(a_container);
+        lv_obj_set_size(a_bg, 80, 220);
+        lv_obj_set_style_radius(a_bg, 15, 0);
+        lv_obj_set_style_bg_color(a_bg, UITheme::JOYSTICK_BG, 0);
+        lv_obj_set_style_border_width(a_bg, 2, 0);
+        lv_obj_set_style_border_color(a_bg, UITheme::JOYSTICK_BORDER, 0);
+        lv_obj_clear_flag(a_bg, LV_OBJ_FLAG_SCROLLABLE);
+
+        // Center line
+        a_line = lv_obj_create(a_bg);
+        lv_obj_set_size(a_line, LV_PCT(100), 2);
+        lv_obj_set_style_bg_color(a_line, UITheme::JOYSTICK_LINE, 0);
+        lv_obj_set_style_border_width(a_line, 0, 0);
+        lv_obj_center(a_line);
+
+        // Draggable knob (70x70, orange for A-axis, centered initially)
+        a_knob = lv_obj_create(a_bg);
+        lv_obj_set_size(a_knob, 70, 70);
+        lv_obj_set_style_radius(a_knob, 15, 0);
+        lv_obj_set_style_bg_color(a_knob, UITheme::AXIS_A, 0);  // Orange
+        lv_obj_set_style_border_width(a_knob, 3, 0);
+        lv_obj_set_style_border_color(a_knob, lv_color_white(), 0);
+        lv_obj_center(a_knob);
+
+        // Add label to A knob
+        lv_obj_t *a_knob_label = lv_label_create(a_knob);
+        lv_label_set_text(a_knob_label, "A");
+        lv_obj_set_style_text_font(a_knob_label, &lv_font_montserrat_20, 0);
+        lv_obj_center(a_knob_label);
+
+        // Add drag event to knob
+        lv_obj_add_flag(a_knob, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_event_cb(a_knob, a_joystick_event_handler, LV_EVENT_PRESSING, NULL);
+        lv_obj_add_event_cb(a_knob, a_joystick_event_handler, LV_EVENT_RELEASED, NULL);
+    }
+
+    // Z/A Mode selection buttons (below sliders, only if A-axis enabled)
+    if (UICommon::isAAxisEnabled()) {
+        lv_obj_t *za_button_container = lv_obj_create(za_outer_container);
+        lv_obj_set_size(za_button_container, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+        lv_obj_set_style_pad_all(za_button_container, 5, 0);
+        lv_obj_set_flex_flow(za_button_container, LV_FLEX_FLOW_ROW);
+        lv_obj_set_flex_align(za_button_container, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+        lv_obj_set_style_pad_gap(za_button_container, 5, 0);
+        lv_obj_clear_flag(za_button_container, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_style_bg_opa(za_button_container, LV_OPA_TRANSP, 0);
+        lv_obj_set_style_border_width(za_button_container, 0, 0);
+
+        // Z button (initially selected with border)
+        btn_z_mode = lv_button_create(za_button_container);
+        lv_obj_set_size(btn_z_mode, 60, 40);
+        lv_obj_set_style_bg_color(btn_z_mode, UITheme::JOYSTICK_Z, LV_PART_MAIN);
+        lv_obj_set_style_border_width(btn_z_mode, 3, LV_PART_MAIN);  // Initial selection border
+        lv_obj_set_style_border_color(btn_z_mode, lv_color_white(), LV_PART_MAIN);
+        lv_obj_t *lbl_z = lv_label_create(btn_z_mode);
+        lv_label_set_text(lbl_z, "Z");
+        lv_obj_set_style_text_font(lbl_z, &lv_font_montserrat_16, 0);
+        lv_obj_center(lbl_z);
+        lv_obj_add_event_cb(btn_z_mode, za_joystick_toggle_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)1);
+
+        // A button
+        btn_a_mode = lv_button_create(za_button_container);
+        lv_obj_set_size(btn_a_mode, 60, 40);
+        lv_obj_set_style_bg_color(btn_a_mode, UITheme::AXIS_A, LV_PART_MAIN);
+        lv_obj_t *lbl_a = lv_label_create(btn_a_mode);
+        lv_label_set_text(lbl_a, "A");
+        lv_obj_set_style_text_font(lbl_a, &lv_font_montserrat_16, 0);
+        lv_obj_center(lbl_a);
+        lv_obj_add_event_cb(btn_a_mode, za_joystick_toggle_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)0);
+    }
 }

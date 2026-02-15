@@ -3,6 +3,7 @@
 #include "ui/ui_common.h"
 #include "ui/wcs_config.h"
 #include "network/fluidnc_client.h"
+#include "config.h"
 
 // Static member initialization
 lv_obj_t *UITabControlActions::btn_pause = nullptr;
@@ -15,7 +16,7 @@ void UITabControlActions::create(lv_obj_t *tab) {
     const int middle_col_x = left_col_x + col_width + col_spacing;
     const int right_col_x = middle_col_x + col_width + col_spacing;
     const int btn_height = 55;  // Uniform button height
-    const int spacing = 10;     // Vertical spacing between buttons
+    const int spacing = 8;     // Vertical spacing between buttons
     
     // ========== LEFT COLUMN: Control Buttons ==========
     lv_obj_t *control_label = lv_label_create(tab);
@@ -177,9 +178,24 @@ void UITabControlActions::create(lv_obj_t *tab) {
     lv_obj_set_style_text_font(lbl_zero_z, &lv_font_montserrat_18, 0);
     lv_obj_center(lbl_zero_z);
     lv_obj_add_event_cb(btn_zero_z, onZeroZClicked, LV_EVENT_CLICKED, nullptr);
-    
+
     y_pos += btn_height + spacing;
-    
+
+    // Zero A (conditional on A-axis enabled)
+    if (UICommon::isAAxisEnabled()) {
+        lv_obj_t *btn_zero_a = lv_button_create(tab);
+        lv_obj_set_size(btn_zero_a, col_width, btn_height);
+        lv_obj_set_pos(btn_zero_a, right_col_x, y_pos);
+        lv_obj_set_style_bg_color(btn_zero_a, UITheme::AXIS_A, LV_PART_MAIN);
+        lv_obj_t *lbl_zero_a = lv_label_create(btn_zero_a);
+        lv_label_set_text(lbl_zero_a, LV_SYMBOL_GPS " A");
+        lv_obj_set_style_text_font(lbl_zero_a, &lv_font_montserrat_18, 0);
+        lv_obj_center(lbl_zero_a);
+        lv_obj_add_event_cb(btn_zero_a, onZeroAClicked, LV_EVENT_CLICKED, nullptr);
+
+        y_pos += btn_height + spacing;
+    }
+
     // Zero All
     lv_obj_t *btn_zero_all = lv_button_create(tab);
     lv_obj_set_size(btn_zero_all, col_width, btn_height);
@@ -376,30 +392,65 @@ void UITabControlActions::onZeroZClicked(lv_event_t *e) {
     FluidNCClient::sendCommand("G10 L20 P0 Z0\n");
 }
 
-void UITabControlActions::onZeroAllClicked(lv_event_t *e) {
+void UITabControlActions::onZeroAClicked(lv_event_t *e) {
     if (!FluidNCClient::isConnected()) {
         Serial.println("[Actions] Not connected to FluidNC");
         return;
     }
-    
+
     // Check if current WCS is locked
     if (WCSConfig::isCurrentWCSLocked()) {
         const FluidNCStatus& status = FluidNCClient::getStatus();
         char wcs_name[32];
         WCSConfig::getCurrentWCSName(wcs_name, sizeof(wcs_name));
-        
+
         Serial.printf("[Actions] WCS %s is locked, showing confirmation\n", status.modal_wcs);
-        
+
         // Show lock confirmation dialog
         UICommon::showWCSLockDialog(status.modal_wcs, wcs_name, [](lv_event_t *e) {
-            Serial.println("[Actions] Confirmed Zero All on locked WCS");
-            FluidNCClient::sendCommand("G10 L20 P0 X0 Y0 Z0\n");
+            Serial.println("[Actions] Confirmed Zero A on locked WCS");
+            FluidNCClient::sendCommand("G10 L20 P0 A0\n");
         });
         return;
     }
-    
-    Serial.println("[Actions] Sending Zero All command (G10 L20 P0 X0 Y0 Z0)");
-    FluidNCClient::sendCommand("G10 L20 P0 X0 Y0 Z0\n");
+
+    Serial.println("[Actions] Sending Zero A command (G10 L20 P0 A0)");
+    FluidNCClient::sendCommand("G10 L20 P0 A0\n");
+}
+
+void UITabControlActions::onZeroAllClicked(lv_event_t *e) {
+    if (!FluidNCClient::isConnected()) {
+        Serial.println("[Actions] Not connected to FluidNC");
+        return;
+    }
+
+    // Check if current WCS is locked
+    if (WCSConfig::isCurrentWCSLocked()) {
+        const FluidNCStatus& status = FluidNCClient::getStatus();
+        char wcs_name[32];
+        WCSConfig::getCurrentWCSName(wcs_name, sizeof(wcs_name));
+
+        Serial.printf("[Actions] WCS %s is locked, showing confirmation\n", status.modal_wcs);
+
+        // Show lock confirmation dialog
+        UICommon::showWCSLockDialog(status.modal_wcs, wcs_name, [](lv_event_t *e) {
+            Serial.println("[Actions] Confirmed Zero All on locked WCS");
+            if (UICommon::isAAxisEnabled()) {
+                FluidNCClient::sendCommand("G10 L20 P0 X0 Y0 Z0 A0\n");
+            } else {
+                FluidNCClient::sendCommand("G10 L20 P0 X0 Y0 Z0\n");
+            }
+        });
+        return;
+    }
+
+    if (UICommon::isAAxisEnabled()) {
+        Serial.println("[Actions] Sending Zero All command (G10 L20 P0 X0 Y0 Z0 A0)");
+        FluidNCClient::sendCommand("G10 L20 P0 X0 Y0 Z0 A0\n");
+    } else {
+        Serial.println("[Actions] Sending Zero All command (G10 L20 P0 X0 Y0 Z0)");
+        FluidNCClient::sendCommand("G10 L20 P0 X0 Y0 Z0\n");
+    }
 }
 
 void UITabControlActions::onQuickStopClicked(lv_event_t *e) {

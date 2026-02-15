@@ -35,6 +35,7 @@ namespace UITheme {
     static constexpr lv_color_t AXIS_X = LV_COLOR_MAKE(0x00, 0x6F, 0xAA);       // X-axis (darker blue-cyan)
     static constexpr lv_color_t AXIS_Y = LV_COLOR_MAKE(0x00, 0xAA, 0x00);       // Y-axis (darker green)
     static constexpr lv_color_t AXIS_Z = LV_COLOR_MAKE(0x9B, 0x59, 0xB6);       // Z-axis (purple)
+    static constexpr lv_color_t AXIS_A = LV_COLOR_MAKE(0xFF, 0x8C, 0x00);       // A-axis (orange)
     static constexpr lv_color_t AXIS_XY = LV_COLOR_MAKE(0x00, 0xAA, 0x88);      // XY combined (teal, between cyan and green)
     
     // Position Display Colors
@@ -101,6 +102,10 @@ namespace UITheme {
     static constexpr float Z_STEP_VALUES[] = {50.0f, 25.0f, 10.0f, 1.0f, 0.1f};
     static constexpr const char* Z_STEP_LABELS[] = {"50", "25", "10", "1", "0.1"};
     static constexpr int Z_STEP_COUNT = 5;
+
+    static constexpr float A_STEP_VALUES[] = {50.0f, 25.0f, 10.0f, 1.0f, 0.1f};
+    static constexpr const char* A_STEP_LABELS[] = {"50", "25", "10", "1", "0.1"};
+    static constexpr int A_STEP_COUNT = 5;
 }
 
 #endif // UI_THEME_H

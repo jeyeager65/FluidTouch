@@ -28,10 +28,10 @@ struct FluidNCStatus {
     // Machine state
     MachineState state;
     
-    // Positions (X, Y, Z) in mm
-    float mpos_x, mpos_y, mpos_z;  // Machine position
-    float wpos_x, wpos_y, wpos_z;  // Work position
-    float wco_x, wco_y, wco_z;     // Work coordinate offset (WPos = MPos - WCO)
+    // Positions (X, Y, Z, A) in mm (or degrees for A)
+    float mpos_x, mpos_y, mpos_z, mpos_a;  // Machine position
+    float wpos_x, wpos_y, wpos_z, wpos_a;  // Work position
+    float wco_x, wco_y, wco_z, wco_a;      // Work coordinate offset (WPos = MPos - WCO)
     
     // Feed and spindle
     float feed_rate;        // Current feed rate (mm/min)
@@ -66,10 +66,10 @@ struct FluidNCStatus {
     uint32_t last_update_ms;
     
     // Constructor
-    FluidNCStatus() : state(STATE_DISCONNECTED), 
-                     mpos_x(0), mpos_y(0), mpos_z(0),
-                     wpos_x(0), wpos_y(0), wpos_z(0),
-                     wco_x(0), wco_y(0), wco_z(0),
+    FluidNCStatus() : state(STATE_DISCONNECTED),
+                     mpos_x(0), mpos_y(0), mpos_z(0), mpos_a(0),
+                     wpos_x(0), wpos_y(0), wpos_z(0), wpos_a(0),
+                     wco_x(0), wco_y(0), wco_z(0), wco_a(0),
                      feed_rate(0), feed_override(100), rapid_override(100),
                      spindle_speed(0), spindle_override(100),
                      is_sd_printing(false), sd_percent(0), sd_start_time_ms(0), sd_elapsed_ms(0),

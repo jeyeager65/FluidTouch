@@ -41,6 +41,7 @@ lv_obj_t *UICommon::lbl_wpos_label = nullptr;
 lv_obj_t *UICommon::lbl_wpos_x = nullptr;
 lv_obj_t *UICommon::lbl_wpos_y = nullptr;
 lv_obj_t *UICommon::lbl_wpos_z = nullptr;
+lv_obj_t *UICommon::lbl_wpos_a = nullptr;
 
 // Machine Position labels
 lv_obj_t *UICommon::lbl_mpos_label = nullptr;
@@ -62,9 +63,14 @@ lv_obj_t *UICommon::lbl_estimated_unit = nullptr;
 float UICommon::last_wpos_x = -9999.0f;
 float UICommon::last_wpos_y = -9999.0f;
 float UICommon::last_wpos_z = -9999.0f;
+float UICommon::last_wpos_a = -9999.0f;
 float UICommon::last_mpos_x = -9999.0f;
 float UICommon::last_mpos_y = -9999.0f;
 float UICommon::last_mpos_z = -9999.0f;
+
+// Cached system preferences (loaded once at startup)
+bool UICommon::enable_a_axis = false;
+
 static char last_machine_state[16] = "";  // Cached state to avoid unnecessary updates
 static bool last_machine_connected = false;  // Cached connection status
 static bool last_wifi_connected = false;     // Cached WiFi status
@@ -356,6 +362,10 @@ void UICommon::createMainUI() {
 }
 
 void UICommon::createStatusBar() {
+    // Debug: Check A-axis state at status bar creation
+    bool a_axis_enabled = isAAxisEnabled();
+    Serial.printf("[StatusBar] Creating status bar - A-axis enabled: %d\n", a_axis_enabled);
+
     // Create status bar at bottom (always visible) - 2 lines with CNC info
     status_bar = lv_obj_create(lv_screen_active());
     lv_obj_set_size(status_bar, SCREEN_WIDTH, STATUS_BAR_HEIGHT);
@@ -400,7 +410,7 @@ void UICommon::createStatusBar() {
     lv_obj_t *lbl_wpos_label = lv_label_create(status_bar);
     lv_label_set_text(lbl_wpos_label, "WPos:");
     lv_obj_set_style_text_font(lbl_wpos_label, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_text_color(lbl_wpos_label, UITheme::POS_WORK, 0);  // Orange - primary data
+    lv_obj_set_style_text_color(lbl_wpos_label, UITheme::ACCENT_SECONDARY, 0);  // Teal
     lv_obj_set_style_text_align(lbl_wpos_label, LV_TEXT_ALIGN_RIGHT, 0);
     lv_obj_set_width(lbl_wpos_label, 60);  // Fixed width for right alignment
     lv_obj_set_pos(lbl_wpos_label, 200, 3);  // Top line
@@ -423,32 +433,50 @@ void UICommon::createStatusBar() {
     lv_obj_set_style_text_color(lbl_wpos_z, UITheme::AXIS_Z, 0);
     lv_obj_set_pos(lbl_wpos_z, 490, 3);
 
+    // A-axis position label (conditionally shown when A-axis is enabled)
+    // Position at MPos X location (line 2) when A-axis is enabled
+    if (isAAxisEnabled()) {
+        Serial.println("[StatusBar] Creating A-axis label");
+        lbl_wpos_a = lv_label_create(status_bar);
+        lv_label_set_text(lbl_wpos_a, "A ----.---");
+        lv_obj_set_style_text_font(lbl_wpos_a, &lv_font_montserrat_18, 0);
+        lv_obj_set_style_text_color(lbl_wpos_a, UITheme::AXIS_A, 0);
+        lv_obj_set_pos(lbl_wpos_a, 270, 27);  // Line 2, where MPos X would be
+    }
+
     // Machine Position - Line 2
-    lbl_mpos_label = lv_label_create(status_bar);
-    lv_label_set_text(lbl_mpos_label, "MPos:");
-    lv_obj_set_style_text_font(lbl_mpos_label, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_text_color(lbl_mpos_label, UITheme::POS_MACHINE, 0);  // Cyan - secondary data
-    lv_obj_set_style_text_align(lbl_mpos_label, LV_TEXT_ALIGN_RIGHT, 0);
-    lv_obj_set_width(lbl_mpos_label, 60);  // Fixed width for right alignment
-    lv_obj_set_pos(lbl_mpos_label, 200, 27);  // Bottom line, aligned with WiFi name
+    // Only create when A-axis is disabled (no room for both)
+    if (!isAAxisEnabled()) {
+        lbl_mpos_label = lv_label_create(status_bar);
+        lv_label_set_text(lbl_mpos_label, "MPos:");
+        lv_obj_set_style_text_font(lbl_mpos_label, &lv_font_montserrat_18, 0);
+        lv_obj_set_style_text_color(lbl_mpos_label, UITheme::POS_MACHINE, 0);  // Cyan - secondary data
+        lv_obj_set_style_text_align(lbl_mpos_label, LV_TEXT_ALIGN_RIGHT, 0);
+        lv_obj_set_width(lbl_mpos_label, 60);  // Fixed width for right alignment
+        lv_obj_set_pos(lbl_mpos_label, 200, 27);  // Bottom line, aligned with WiFi name
 
-    lbl_mpos_x = lv_label_create(status_bar);
-    lv_label_set_text(lbl_mpos_x, "X ----.---");
-    lv_obj_set_style_text_font(lbl_mpos_x, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_text_color(lbl_mpos_x, UITheme::AXIS_X, 0);
-    lv_obj_set_pos(lbl_mpos_x, 270, 27);
+        lbl_mpos_x = lv_label_create(status_bar);
+        lv_label_set_text(lbl_mpos_x, "X ----.---");
+        lv_obj_set_style_text_font(lbl_mpos_x, &lv_font_montserrat_18, 0);
+        lv_obj_set_style_text_color(lbl_mpos_x, UITheme::AXIS_X, 0);
+        lv_obj_set_pos(lbl_mpos_x, 270, 27);
 
-    lbl_mpos_y = lv_label_create(status_bar);
-    lv_label_set_text(lbl_mpos_y, "Y ----.---");
-    lv_obj_set_style_text_font(lbl_mpos_y, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_text_color(lbl_mpos_y, UITheme::AXIS_Y, 0);
-    lv_obj_set_pos(lbl_mpos_y, 380, 27);
+        lbl_mpos_y = lv_label_create(status_bar);
+        lv_label_set_text(lbl_mpos_y, "Y ----.---");
+        lv_obj_set_style_text_font(lbl_mpos_y, &lv_font_montserrat_18, 0);
+        lv_obj_set_style_text_color(lbl_mpos_y, UITheme::AXIS_Y, 0);
+        lv_obj_set_pos(lbl_mpos_y, 380, 27);
 
-    lbl_mpos_z = lv_label_create(status_bar);
-    lv_label_set_text(lbl_mpos_z, "Z ----.---");
-    lv_obj_set_style_text_font(lbl_mpos_z, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_text_color(lbl_mpos_z, UITheme::AXIS_Z, 0);
-    lv_obj_set_pos(lbl_mpos_z, 490, 27);
+        lbl_mpos_z = lv_label_create(status_bar);
+        lv_label_set_text(lbl_mpos_z, "Z ----.---");
+        lv_obj_set_style_text_font(lbl_mpos_z, &lv_font_montserrat_18, 0);
+        lv_obj_set_style_text_color(lbl_mpos_z, UITheme::AXIS_Z, 0);
+        lv_obj_set_pos(lbl_mpos_z, 490, 27);
+
+        Serial.println("[StatusBar] Created MPos labels (A-axis disabled)");
+    } else {
+        Serial.println("[StatusBar] Skipped MPos labels creation (A-axis enabled)");
+    }
 
     // Job Progress Container (hidden by default, shown when printing)
     lbl_file_progress_container = lv_obj_create(status_bar);
@@ -594,11 +622,16 @@ void UICommon::updateModalStates(const char *text) {
 }
 
 void UICommon::updateMachinePosition(float x, float y, float z) {
+    // Don't update machine position when A-axis is enabled (MPos is hidden)
+    if (isAAxisEnabled()) {
+        return;
+    }
+
     // Only update if values changed (avoid unnecessary redraws)
     if (x == last_mpos_x && y == last_mpos_y && z == last_mpos_z) {
         return;
     }
-    
+
     char buf[16];
     
     if (status_bar && lbl_mpos_x && x != last_mpos_x) {
@@ -630,14 +663,14 @@ void UICommon::updateMachinePosition(float x, float y, float z) {
     }
 }
 
-void UICommon::updateWorkPosition(float x, float y, float z) {
+void UICommon::updateWorkPosition(float x, float y, float z, float a) {
     // Only update if values changed (avoid unnecessary redraws)
-    if (x == last_wpos_x && y == last_wpos_y && z == last_wpos_z) {
+    if (x == last_wpos_x && y == last_wpos_y && z == last_wpos_z && a == last_wpos_a) {
         return;
     }
-    
+
     char buf[16];
-    
+
     if (status_bar && lbl_wpos_x && x != last_wpos_x) {
         if (x <= -9999.0f) {
             lv_label_set_text(lbl_wpos_x, "X ----.---");
@@ -664,6 +697,12 @@ void UICommon::updateWorkPosition(float x, float y, float z) {
             lv_label_set_text(lbl_wpos_z, buf);
         }
         last_wpos_z = z;
+    }
+    // Update A-axis if enabled and value changed
+    if (status_bar && lbl_wpos_a && a != last_wpos_a && a > -9999.0f) {
+        snprintf(buf, sizeof(buf), "A %04.3f", a);
+        lv_label_set_text(lbl_wpos_a, buf);
+        last_wpos_a = a;
     }
 }
 
@@ -1571,5 +1610,26 @@ void UICommon::showWCSLockDialog(const char *wcs_code, const char *wcs_name, voi
         lv_obj_delete(data->backdrop);
         free(data);
     }, LV_EVENT_CLICKED, data);
+}
+
+// Load system preferences once at startup
+void UICommon::loadSystemPreferences() {
+    Preferences prefs;
+    prefs.begin(PREFS_SYSTEM_NAMESPACE, true);  // Read-only
+    enable_a_axis = prefs.getBool("enable_a_axis", false);  // Default to false
+    prefs.end();
+
+    Serial.printf("UICommon: Loaded system preferences - enable_a_axis=%d\n", enable_a_axis);
+}
+
+// Get cached A-axis enabled preference
+bool UICommon::isAAxisEnabled() {
+    return enable_a_axis;
+}
+
+// Set cached A-axis enabled preference (call after saving to preferences)
+void UICommon::setAAxisEnabled(bool enabled) {
+    enable_a_axis = enabled;
+    Serial.printf("UICommon: Updated enable_a_axis to %d\n", enabled);
 }
 
