@@ -807,7 +807,7 @@ static void a_joystick_event_handler(lv_event_t *e) {
         if (abs(current_percent_display - last_displayed_a_percent) >= 5 || !a_jogging) {
             if (a_percent_label != NULL) {
                 char percent_text[16];
-                snprintf(percent_text, sizeof(percent_text), "%d%%", current_percent_display);
+                snprintf(percent_text, sizeof(percent_text), "A: %d%%", current_percent_display);
                 lv_label_set_text(a_percent_label, percent_text);
             }
             last_displayed_a_percent = current_percent_display;
@@ -845,7 +845,7 @@ static void a_joystick_event_handler(lv_event_t *e) {
 
         // Reset labels
         if (a_percent_label != NULL) {
-            lv_label_set_text(a_percent_label, "0%");
+            lv_label_set_text(a_percent_label, "A: 0%");
         }
         if (a_feedrate_label != NULL) {
             lv_label_set_text(a_feedrate_label, "0 mm/min");
