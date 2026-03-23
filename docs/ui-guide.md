@@ -118,10 +118,10 @@ The status bar at the top displays:
 Real-time machine status display with four columns:
 
 **Column 1 - Work Position:**
-- X, Y, Z coordinates in work coordinate system
+- X, Y, Z (and optionally A) coordinates in work coordinate system
 
 **Column 2 - Machine Position:**
-- X, Y, Z coordinates in machine coordinate system
+- X, Y, Z (and optionally A) coordinates in machine coordinate system
 
 **Column 3 - Rates:**
 - Feed Rate with override percentage
@@ -188,8 +188,9 @@ The Control tab contains five sub-tabs for different control operations:
 Machine control buttons:
 - **Home All** - Execute homing cycle ($H)
 - **Home X/Y/Z** - Home individual axes
-- **Zero All** - Zero all work coordinates (G10 L20 P0 X0 Y0 Z0)
+- **Zero All** - Zero all work coordinates (G10 L20 P0 X0 Y0 Z0 [A0])
 - **Zero X/Y/Z** - Zero individual work coordinates
+- **Zero A** - Zero A-axis work coordinate (visible only when A-axis is enabled)
 - **Unlock** - Clear alarm state ($X)
 - **Reset** - Soft reset (Ctrl+X)
 
@@ -200,17 +201,23 @@ Machine control buttons:
 Button-based jogging interface:
 
 **XY Section (Left):**
-- Step selection buttons: 100, 50, 10, 1, 0.1 mm
+- Step selection buttons (configurable in Settings → Jog, default: 100, 50, 10, 1, 0.1 mm)
 - 3×3 jog pad with diagonal movements
 - Axis-colored buttons (XY=cyan, Y=green, X=cyan)
 - Feed rate controls (±100, ±1000 mm/min)
 - Stop button
 
 **Z Section (Right):**
-- Step selection buttons: 50, 25, 10, 1, 0.1 mm
+- Step selection buttons (configurable in Settings → Jog, default: 50, 25, 10, 1, 0.1 mm)
 - Z+ / Z- buttons (magenta)
 - Feed rate controls
 - Stop button (Jog Cancel)
+
+**A Section (Right, when A-axis enabled):**
+- Tab toggle: **Z** / **A** buttons to switch between Z and A jog controls
+- Step selection buttons (configurable in Settings → Jog, default: 50, 25, 10, 1, 0.1)
+- A+ / A- buttons (orange)
+- Feed rate controls
 
 ### Joystick
 
@@ -248,10 +255,17 @@ Analog-style jogging with multiple axis selection modes:
 - Vertical Z slider
 - Useful for side operations
 
+![Control Joystick A](./images/control-joystick-a.png)
+- Only when A-axis is enabled
+
+**Right Slider Z/A Toggle (when A-axis enabled):**
+- **Z** and **A** buttons appear above the right slider to switch between Z-axis and A-axis jogging
+- Active axis shown with white border on its button
+
 **Common Features:**
 - Mode buttons below joystick with white border on selected mode
 - Quadratic response curve for precise control near center
-- Info display shows: current percentage (X/Y/Z), feed rate (mm/min), max feed rate from settings
+- Info display shows: current percentage (X/Y/Z/A), feed rate (mm/min), max feed rate from settings
 
 ### Probe
 
@@ -423,6 +437,10 @@ The Settings tab contains six sub-tabs for configuration:
 **Rotate 180 degrees**
 - Whether or not to rotate the screen 180 degrees.
 
+**Enable A-Axis:**
+- When enabled, a 4th A-axis is shown in the status bar, Status tab, Jog tab, Joystick tab, and Actions tab.
+- Requires a restart to take effect after changing.
+
 ### Backup
 
 ![Settings Backup](./images/settings-backup.png)
@@ -445,9 +463,12 @@ The Settings tab contains six sub-tabs for configuration:
 ![Settings Jog](./images/settings-jog.png)
 
 Jogging preferences:
-- XY Max Feed Rate (mm/min)
-- Z Max Feed Rate (mm/min)
-- Default step sizes
+- **XY Max Feed Rate** (mm/min) - maximum speed for XY jogging and joystick
+- **Z Max Feed Rate** (mm/min) - maximum speed for Z-axis jogging and joystick
+- **A Max Feed Rate** (mm/min) - maximum speed for A-axis jogging and joystick (visible when A-axis enabled)
+- **XY Steps** - comma-separated list of step button values for XY jogging (e.g., `100,50,10,1,0.1`)
+- **Z Steps** - comma-separated list of step button values for Z jogging
+- **A Steps** - comma-separated list of step button values for A jogging (visible when A-axis enabled)
 
 ### Probe Settings
 

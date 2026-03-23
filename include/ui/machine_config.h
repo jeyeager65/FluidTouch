@@ -22,10 +22,16 @@ struct MachineConfig {
     // Jog control defaults
     float jog_xy_step;       // Default XY step size (mm)
     float jog_z_step;        // Default Z step size (mm)
+    float jog_a_step;        // Default A step size (mm or degrees)
     int jog_xy_feed;         // Default XY feed rate (mm/min)
     int jog_z_feed;          // Default Z feed rate (mm/min)
+    int jog_a_feed;          // Default A feed rate (mm/min or deg/min)
     int jog_max_xy_feed;     // Max XY feed for joystick (mm/min)
     int jog_max_z_feed;      // Max Z feed for joystick (mm/min)
+    int jog_max_a_feed;      // Max A feed for joystick (mm/min or deg/min)
+    char jog_xy_steps[64];   // XY step values (comma-separated, e.g., "100,50,10,1,0.1")
+    char jog_z_steps[64];    // Z step values (comma-separated)
+    char jog_a_steps[64];    // A step values (comma-separated)
     
     // Probe control defaults
     int probe_feed_rate;     // Default probe feed rate (mm/min)
@@ -35,15 +41,18 @@ struct MachineConfig {
     
     // Constructor with defaults
     MachineConfig() : connection_type(CONN_WIRELESS), websocket_port(81), is_configured(false),
-                      jog_xy_step(10.0f), jog_z_step(1.0f), 
-                      jog_xy_feed(3000), jog_z_feed(1000),
-                      jog_max_xy_feed(3000), jog_max_z_feed(1000),
+                      jog_xy_step(10.0f), jog_z_step(1.0f), jog_a_step(1.0f),
+                      jog_xy_feed(3000), jog_z_feed(1000), jog_a_feed(1000),
+                      jog_max_xy_feed(3000), jog_max_z_feed(1000), jog_max_a_feed(1000),
                       probe_feed_rate(100), probe_max_distance(10),
                       probe_retract(2), probe_thickness(0.0f) {
         name[0] = '\0';
         ssid[0] = '\0';
         password[0] = '\0';
         fluidnc_url[0] = '\0';
+        strcpy(jog_xy_steps, "100,50,10,1,0.1");
+        strcpy(jog_z_steps, "50,25,10,1,0.1");
+        strcpy(jog_a_steps, "50,25,10,1,0.1");
     }
 };
 

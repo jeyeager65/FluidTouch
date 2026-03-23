@@ -805,7 +805,7 @@
             Web Installer
         </p>
         <div class="version-badge">
-            <span>Version 1.0.3</span>
+            <span>Version 1.0.4</span>
         </div>
         <p style="text-align: center; font-size: 1.2em; color: #c9d1d9; margin-bottom: 30px;">
             ESP32 Touchscreen CNC Controller for FluidNC
@@ -813,18 +813,22 @@
 
         <!-- Changelog -->
         <div class="changelog">
-            <h3>🎉 Version 1.0.3</h3>
+            <h3>🎉 Version 1.0.4</h3>
             <div class="changelog-content">
                 <div class="changelog-version">
-                    <div class="changelog-date">February 10, 2026</div>
+                    <div class="changelog-date">March 23, 2026</div>
                     <ul class="changelog-items">
-                        <li><strong>Display Flicker Fix:</strong> Eliminated screen flicker by migrating to ESP-IDF 5.3 and optimizing display timing</li>
-                        <li><strong>Basic Hardware Touch Fix:</strong> Improved touch sensitivity and reliability on Basic hardware variant</li>
-                        <li><strong>WCS Enhancements:</strong> Added support for WCS labels and locking specific WCSs requiring confirmation before zeroing or probing</li>
-                        <li><strong>Advance Hardware v1.2 Support (⚠️ Untested):</strong> Added support for Elecrow CrowPanel 7" Advance v1.2 displays</li>
-                        <li><strong>mDNS Hostname Resolution:</strong> Connect to FluidNC by hostname (e.g., fluidnc.local) instead of IP address</li>
-                        <li><strong>Upload Directory Auto-Creation:</strong> Automatically creates upload directory if it doesn't exist when uploading files</li>
-                        <li><strong>Open Upload Folder Button:</strong> Quick access button to open the uploaded files folder on FluidNC</li>
+                        <li><strong>A-Axis Support:</strong> Full optional 4th-axis support — enable via Settings → General → Enable A-Axis (takes effect after restart)
+                            <ul class="changelog-items">
+                                <li><strong>Jogging:</strong> A-axis section in Jog tab, Z/A toggle on Joystick tab right slider, Zero A button in Actions</li>
+                                <li><strong>Settings:</strong> Configure A-axis max feed rate and step sizes in Settings → Jog</li>
+                            </ul>
+                        </li>
+                        <li><strong>Configurable Jog Steps:</strong> XY, Z, and A-axis step button values are now fully customizable per machine in Settings → Jog</li>
+                        <li><strong>Bugfix:</strong> Resolved crash when browsing directories with large numbers of files</li>
+                        <li><strong>Bugfix:</strong> First touch after wake from deep sleep no longer triggers unintended UI actions</li>
+                        <li><strong>Improvement:</strong> Message display now filters to info/error messages only, reducing noise</li>
+                        <li><strong>Serial Forwarding:</strong> Commands entered in a serial terminal are forwarded to FluidNC for debugging</li>
                     </ul>
                 </div>
             </div>
@@ -833,6 +837,19 @@
             <div class="changelog-collapsed" id="changelog-prior" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(0, 188, 212, 0.2);">
                 <h3 onclick="toggleChangelog('changelog-prior')">📜 Prior Releases</h3>
                 <div class="changelog-content">
+                    <div class="changelog-version">
+                        <h4>Version 1.0.3 - Advance v1.2 Support, mDNS, WCS Enhancements</h4>
+                        <div class="changelog-date">February 10, 2026</div>
+                        <ul class="changelog-items">
+                            <li><strong>Display Flicker Fix:</strong> Eliminated screen flicker by migrating to ESP-IDF 5.3 and optimizing display timing</li>
+                            <li><strong>Basic Hardware Touch Fix:</strong> Improved touch sensitivity and reliability on Basic hardware variant</li>
+                            <li><strong>WCS Enhancements:</strong> Added support for WCS labels and locking specific WCSs requiring confirmation before zeroing or probing</li>
+                            <li><strong>Advance Hardware v1.2 Support (⚠️ Untested):</strong> Added support for Elecrow CrowPanel 7" Advance v1.2 displays</li>
+                            <li><strong>mDNS Hostname Resolution:</strong> Connect to FluidNC by hostname (e.g., fluidnc.local) instead of IP address</li>
+                            <li><strong>Upload Directory Auto-Creation:</strong> Automatically creates upload directory if it doesn't exist when uploading files</li>
+                            <li><strong>Open Upload Folder Button:</strong> Quick access button to open the uploaded files folder on FluidNC</li>
+                        </ul>
+                    </div>
                     <div class="changelog-version">
                         <h4>Version 1.0.2 - Display Rotation & Status Tab Enhancements</h4>
                         <div class="changelog-date">January 24, 2026</div>
@@ -894,7 +911,7 @@
             </div>
             
             <div class="hardware-cards">
-                <div class="hardware-card selected" data-hardware="basic" onclick="selectHardware('basic')">
+                <div class="hardware-card" data-hardware="basic" onclick="selectHardware('basic')">
                     <h3>Elecrow CrowPanel 7" Basic</h3>
                     <div class="hardware-specs">
                         <div><span class="spec-highlight">4MB</span> Flash Memory</div>
@@ -905,7 +922,7 @@
                     <a href="https://www.awin1.com/cread.php?awinmid=82721&awinaffid=2663106&ued=https%3A%2F%2Fwww.elecrow.com%2Fesp32-display-7-inch-hmi-display-rgb-tft-lcd-touch-screen-support-lvgl.html" 
                        target="_blank" class="product-link">Buy on Elecrow ↗ <span style="font-size: 0.85em; opacity: 0.7;">(affiliate link)</span></a>
                 </div>
-                <div class="hardware-card" data-hardware="advance" onclick="selectHardware('advance')">
+                <div class="hardware-card selected" data-hardware="advance" onclick="selectHardware('advance')">
                     <h3>Elecrow CrowPanel 7" Advance <span class="hardware-badge" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">Recommended</span></h3>
                     <div class="hardware-specs">
                         <div><span class="spec-highlight">16MB</span> Flash Memory</div>
@@ -916,7 +933,7 @@
                         <div id="advance-version-selector" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1); display: none;">
                             <label for="advance-version-select" style="display: block; margin-bottom: 6px; color: #00bcd4; font-weight: 600; font-size: 0.9em;">Hardware Revision</label>
                             <select id="advance-version-select" onchange="onAdvanceVersionChange()" style="width: 100%; padding: 8px; font-size: 14px; background: rgba(30, 30, 46, 0.9); color: #e8e8e8; border: 2px solid rgba(0, 188, 212, 0.5); border-radius: 6px; cursor: pointer;">
-                                <option value="advance-v1.3">v1.3 (Current)</option>
+                                <option value="advance-v1.3">v1.3+ (Current)</option>
                                 <option value="advance-v1.2">v1.2 (Untested)</option>
                             </select>
                         </div>
@@ -1018,14 +1035,14 @@
         }
 
         // Hardware selection with version support
-        let selectedHardware = 'basic';
+        let selectedHardware = 'advance';
         let selectedAdvanceVersion = 'advance-v1.3';
         let versionsData = null;
         let selectedVersion = null;
         
         const hardwareNames = {
             'basic': 'Elecrow CrowPanel 7" Basic',
-            'advance-v1.3': 'Elecrow CrowPanel 7" Advance v1.3',
+            'advance-v1.3': 'Elecrow CrowPanel 7" Advance v1.3+',
             'advance-v1.2': 'Elecrow CrowPanel 7" Advance v1.2'
         };
 
@@ -1100,7 +1117,7 @@
                 if (hasV13) {
                     const opt = document.createElement('option');
                     opt.value = 'advance-v1.3';
-                    opt.textContent = 'v1.3 (Current)';
+                    opt.textContent = 'v1.3+ (Current)';
                     advanceSelect.appendChild(opt);
                 }
                 if (hasV12) {

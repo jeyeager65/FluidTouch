@@ -10,8 +10,8 @@ public:
     // Update methods for live data
     static void updateMessage(const char *message);
     static void updateState(const char *state);
-    static void updateWorkPosition(float x, float y, float z);
-    static void updateMachinePosition(float x, float y, float z);
+    static void updateWorkPosition(float x, float y, float z, float a = -9999.0f);
+    static void updateMachinePosition(float x, float y, float z, float a = -9999.0f);
     static void updateFeedRate(float rate, float override_pct);
     static void updateRapidOverride(float override_pct);
     static void updateSpindle(float speed, float override_pct);
@@ -32,9 +32,11 @@ private:
     static lv_obj_t *lbl_wpos_x;
     static lv_obj_t *lbl_wpos_y;
     static lv_obj_t *lbl_wpos_z;
+    static lv_obj_t *lbl_wpos_a;
     static lv_obj_t *lbl_mpos_x;
     static lv_obj_t *lbl_mpos_y;
     static lv_obj_t *lbl_mpos_z;
+    static lv_obj_t *lbl_mpos_a;
     
     // Keyboards for position editing
     static lv_obj_t *keyboard;
@@ -66,8 +68,8 @@ private:
     static lv_obj_t *lbl_modal_tool;
     
     // Cached values for delta checking (prevent unnecessary redraws)
-    static float last_wpos_x, last_wpos_y, last_wpos_z;
-    static float last_mpos_x, last_mpos_y, last_mpos_z;
+    static float last_wpos_x, last_wpos_y, last_wpos_z, last_wpos_a;
+    static float last_mpos_x, last_mpos_y, last_mpos_z, last_mpos_a;
     static float last_feed_rate, last_feed_override;
     static float last_rapid_override;
     static float last_spindle_speed, last_spindle_override;

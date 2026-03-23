@@ -90,11 +90,40 @@ Configure default jogging behavior:
 ### Z Max Feed Rate
 
 - **Range:** 1-5000 mm/min
-- **Default:** 500 mm/min
+- **Default:** 1000 mm/min
 - **Usage:**
   - Maximum speed for Z-axis jogging
   - Used by joystick (0-100% scaling)
   - Used by Z jog buttons
+
+### A Max Feed Rate
+
+- **Range:** 1-10000 mm/min (or deg/min)
+- **Default:** 1000 mm/min
+- **Usage:**
+  - Maximum speed for A-axis jogging
+  - Used by joystick Z/A slider in A mode
+  - Used by A jog buttons
+- **Note:** Only visible when A-axis is enabled in Settings → General
+
+### XY Steps
+
+- **Format:** Comma-separated values (e.g., `100,50,10,1,0.1`)
+- **Default:** `100,50,10,1,0.1`
+- **Usage:** Defines the step size buttons shown in the XY jog section
+
+### Z Steps
+
+- **Format:** Comma-separated values (e.g., `50,25,10,1,0.1`)
+- **Default:** `50,25,10,1,0.1`
+- **Usage:** Defines the step size buttons shown in the Z jog section
+
+### A Steps
+
+- **Format:** Comma-separated values (e.g., `50,25,10,1,0.1`)
+- **Default:** `50,25,10,1,0.1`
+- **Usage:** Defines the step size buttons shown in the A jog section
+- **Note:** Only visible when A-axis is enabled in Settings → General
 
 ---
 

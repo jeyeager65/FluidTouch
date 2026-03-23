@@ -75,6 +75,10 @@ void setup()
     Serial.println("Initializing FluidNC client...");
     FluidNCClient::init();
 
+    // Load system preferences once (cached for entire session)
+    Serial.println("Loading system preferences...");
+    UICommon::loadSystemPreferences();
+
     // Check for auto-import (only if no machines configured)
     Serial.println("Checking for settings auto-import...");
     if (SettingsManager::autoImportOnBoot()) {
@@ -131,6 +135,24 @@ void setup()
 
 void loop()
 {
+    // Forward any Serial input to FluidNC (for debugging via Serial Monitor)
+    static char serial_buf[128];
+    static uint8_t serial_buf_pos = 0;
+    while (Serial.available()) {
+        char c = Serial.read();
+        if (c == '\n' || c == '\r') {
+            if (serial_buf_pos > 0) {
+                serial_buf[serial_buf_pos++] = '\n';
+                serial_buf[serial_buf_pos] = '\0';
+                Serial.printf("[Serial->FluidNC] %s", serial_buf);
+                FluidNCClient::sendCommand(serial_buf);
+                serial_buf_pos = 0;
+            }
+        } else if (serial_buf_pos < sizeof(serial_buf) - 2) {
+            serial_buf[serial_buf_pos++] = c;
+        }
+    }
+
     // Handle screenshot server web requests
     ScreenshotServer::handleClient();
     
@@ -179,18 +201,18 @@ void loop()
             
             UICommon::updateMachineState(state_str);
             UICommon::updateMachinePosition(status.mpos_x, status.mpos_y, status.mpos_z);
-            UICommon::updateWorkPosition(status.wpos_x, status.wpos_y, status.wpos_z);
-            
+            UICommon::updateWorkPosition(status.wpos_x, status.wpos_y, status.wpos_z, status.wpos_a);
+
             // Check for HOLD/ALARM state and show popups if needed
             UICommon::checkStatePopups(status.state, status.last_message);
-            
+
             // Update Control Actions pause/resume button based on machine state
             UITabControlActions::updatePauseButton(status.state);
-            
+
             // Update Status tab
             UITabStatus::updateState(state_str);
-            UITabStatus::updateWorkPosition(status.wpos_x, status.wpos_y, status.wpos_z);
-            UITabStatus::updateMachinePosition(status.mpos_x, status.mpos_y, status.mpos_z);
+            UITabStatus::updateWorkPosition(status.wpos_x, status.wpos_y, status.wpos_z, status.wpos_a);
+            UITabStatus::updateMachinePosition(status.mpos_x, status.mpos_y, status.mpos_z, status.mpos_a);
             UITabStatus::updateFeedRate(status.feed_rate, status.feed_override);
             UITabStatus::updateRapidOverride(status.rapid_override);
             UITabStatus::updateSpindle(status.spindle_speed, status.spindle_override);
@@ -287,12 +309,12 @@ void loop()
             // Machine disconnected - show OFFLINE state and reset all values to dashes
             UICommon::updateMachineState("OFFLINE");
             UICommon::updateMachinePosition(-9999.0f, -9999.0f, -9999.0f);  // Triggers dash display
-            UICommon::updateWorkPosition(-9999.0f, -9999.0f, -9999.0f);     // Triggers dash display
-            
+            UICommon::updateWorkPosition(-9999.0f, -9999.0f, -9999.0f, -9999.0f);     // Triggers dash display
+
             // Update Status tab with OFFLINE state and reset all values
             UITabStatus::updateState("OFFLINE");
-            UITabStatus::updateWorkPosition(-9999.0f, -9999.0f, -9999.0f);
-            UITabStatus::updateMachinePosition(-9999.0f, -9999.0f, -9999.0f);
+            UITabStatus::updateWorkPosition(-9999.0f, -9999.0f, -9999.0f, -9999.0f);
+            UITabStatus::updateMachinePosition(-9999.0f, -9999.0f, -9999.0f, -9999.0f);
             UITabStatus::updateFeedRate(-9999.0f, -9999.0f);  // Reset feed rate and override
             UITabStatus::updateRapidOverride(-9999.0f);        // Reset rapid override
             UITabStatus::updateSpindle(-9999.0f, -9999.0f);    // Reset spindle and override

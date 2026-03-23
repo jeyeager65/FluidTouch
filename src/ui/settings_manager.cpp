@@ -60,6 +60,9 @@ bool SettingsManager::exportSettings(const char* filepath) {
         jog["z_feed_rate"] = machine_configs[i].jog_z_feed;
         jog["xy_step"] = machine_configs[i].jog_xy_step;
         jog["z_step"] = machine_configs[i].jog_z_step;
+        jog["xy_steps"] = machine_configs[i].jog_xy_steps;
+        jog["z_steps"] = machine_configs[i].jog_z_steps;
+        jog["a_steps"] = machine_configs[i].jog_a_steps;
         
         // Probe settings
         JsonObject probe = machine["probe"].to<JsonObject>();
@@ -228,6 +231,17 @@ bool SettingsManager::importSettings(const char* filepath) {
             machine_configs[machine_index].jog_z_feed = jog["z_feed_rate"] | 500;
             machine_configs[machine_index].jog_xy_step = jog["xy_step"] | 10.0f;
             machine_configs[machine_index].jog_z_step = jog["z_step"] | 1.0f;
+            
+            // Step values (comma-separated lists)
+            strncpy(machine_configs[machine_index].jog_xy_steps, 
+                    jog["xy_steps"] | "100,50,10,1,0.1", 
+                    sizeof(machine_configs[machine_index].jog_xy_steps) - 1);
+            strncpy(machine_configs[machine_index].jog_z_steps, 
+                    jog["z_steps"] | "50,25,10,1,0.1", 
+                    sizeof(machine_configs[machine_index].jog_z_steps) - 1);
+            strncpy(machine_configs[machine_index].jog_a_steps, 
+                    jog["a_steps"] | "50,25,10,1,0.1", 
+                    sizeof(machine_configs[machine_index].jog_a_steps) - 1);
             
             // Probe settings
             JsonObject probe = machine["probe"];

@@ -172,6 +172,10 @@ const FluidNCStatus& FluidNCClient::getStatus() {
     return currentStatus;
 }
 
+void FluidNCClient::clearLastMessage() {
+    currentStatus.last_message[0] = '\0';
+}
+
 void FluidNCClient::sendCommand(const char* command) {
     if (!currentStatus.is_connected) {
         Serial.println("[FluidNC] Error: Not connected");
@@ -266,6 +270,10 @@ void FluidNCClient::onMessageCallback(WebsocketsMessage message) {
     } else if (payload[0] == '[') {
         // Other realtime feedback: [MSG:...], [G92:...], etc.
         parseRealtimeFeedback(payload);
+    } else if (strncmp(payload, "error:", 6) == 0 || strncmp(payload, "ALARM:", 6) == 0) {
+        // Plain-text error/alarm lines, e.g. "error:9" or "ALARM:2"
+        strncpy(currentStatus.last_message, payload, sizeof(currentStatus.last_message) - 1);
+        currentStatus.last_message[sizeof(currentStatus.last_message) - 1] = '\0';
     }
 }
 
@@ -398,18 +406,32 @@ void FluidNCClient::parseStatusReport(const char* message) {
     currentStatus.state = newState;
     previousState = newState;
     
-    // Parse machine position (MPos:x,y,z)
+    // Parse machine position (MPos:x,y,z,a)
     const char* mpos = strstr(message, "MPos:");
     if (mpos) {
-        sscanf(mpos + 5, "%f,%f,%f", &currentStatus.mpos_x, &currentStatus.mpos_y, &currentStatus.mpos_z);
+        // Try parsing 4 values (X,Y,Z,A), but allow 3 values (X,Y,Z) for machines without A-axis
+        int parsed = sscanf(mpos + 5, "%f,%f,%f,%f",
+                           &currentStatus.mpos_x, &currentStatus.mpos_y,
+                           &currentStatus.mpos_z, &currentStatus.mpos_a);
+        if (parsed == 3) {
+            // Only 3 axes parsed - machine doesn't have A-axis, set to 0
+            currentStatus.mpos_a = 0.0f;
+        }
     }
     
-    // Parse work coordinate offset (WCO:x,y,z) - sent periodically by FluidNC
+    // Parse work coordinate offset (WCO:x,y,z,a) - sent periodically by FluidNC
     const char* wco = strstr(message, "WCO:");
     if (wco) {
-        sscanf(wco + 4, "%f,%f,%f", &currentStatus.wco_x, &currentStatus.wco_y, &currentStatus.wco_z);
-        Serial.printf("[FluidNC] WCO updated: (%.3f,%.3f,%.3f)\n", 
-                      currentStatus.wco_x, currentStatus.wco_y, currentStatus.wco_z);
+        // Try parsing 4 values (X,Y,Z,A), but allow 3 values (X,Y,Z) for machines without A-axis
+        int parsed = sscanf(wco + 4, "%f,%f,%f,%f",
+                           &currentStatus.wco_x, &currentStatus.wco_y,
+                           &currentStatus.wco_z, &currentStatus.wco_a);
+        if (parsed == 3) {
+            // Only 3 axes parsed - machine doesn't have A-axis, set to 0
+            currentStatus.wco_a = 0.0f;
+        }
+        Serial.printf("[FluidNC] WCO updated: (%.3f,%.3f,%.3f,%.3f)\n",
+                      currentStatus.wco_x, currentStatus.wco_y, currentStatus.wco_z, currentStatus.wco_a);
     }
     
     // Calculate work position: WPos = MPos - WCO
@@ -417,11 +439,19 @@ void FluidNCClient::parseStatusReport(const char* message) {
     currentStatus.wpos_x = currentStatus.mpos_x - currentStatus.wco_x;
     currentStatus.wpos_y = currentStatus.mpos_y - currentStatus.wco_y;
     currentStatus.wpos_z = currentStatus.mpos_z - currentStatus.wco_z;
+    currentStatus.wpos_a = currentStatus.mpos_a - currentStatus.wco_a;
     
-    // Parse work position directly (WPos:x,y,z) - rarely sent, but handle it
+    // Parse work position directly (WPos:x,y,z,a) - rarely sent, but handle it
     const char* wpos = strstr(message, "WPos:");
     if (wpos) {
-        sscanf(wpos + 5, "%f,%f,%f", &currentStatus.wpos_x, &currentStatus.wpos_y, &currentStatus.wpos_z);
+        // Try parsing 4 values (X,Y,Z,A), but allow 3 values (X,Y,Z) for machines without A-axis
+        int parsed = sscanf(wpos + 5, "%f,%f,%f,%f",
+                           &currentStatus.wpos_x, &currentStatus.wpos_y,
+                           &currentStatus.wpos_z, &currentStatus.wpos_a);
+        if (parsed == 3) {
+            // Only 3 axes parsed - machine doesn't have A-axis, set to 0
+            currentStatus.wpos_a = 0.0f;
+        }
     }
     
     // Parse feed and spindle (FS:feed,spindle)
@@ -489,10 +519,10 @@ void FluidNCClient::parseStatusReport(const char* message) {
     // Parse modal states (Pn:, WCO:, etc.)
     // Note: Full parser state might come in separate $G response
     
-    Serial.printf("[FluidNC] Status: State=%d, MPos=(%.3f,%.3f,%.3f), WPos=(%.3f,%.3f,%.3f)\n",
+    Serial.printf("[FluidNC] Status: State=%d, MPos=(%.3f,%.3f,%.3f,%.3f), WPos=(%.3f,%.3f,%.3f,%.3f)\n",
                   currentStatus.state,
-                  currentStatus.mpos_x, currentStatus.mpos_y, currentStatus.mpos_z,
-                  currentStatus.wpos_x, currentStatus.wpos_y, currentStatus.wpos_z);
+                  currentStatus.mpos_x, currentStatus.mpos_y, currentStatus.mpos_z, currentStatus.mpos_a,
+                  currentStatus.wpos_x, currentStatus.wpos_y, currentStatus.wpos_z, currentStatus.wpos_a);
 }
 
 void FluidNCClient::parseRealtimeFeedback(const char* message) {
@@ -530,23 +560,42 @@ void FluidNCClient::parseRealtimeFeedback(const char* message) {
         }
     }
     
-    // Extract message content from [MSG:...] format
-    if (strncmp(message, "[MSG:", 5) == 0) {
-        // Find the closing bracket
+    // Update last_message for [MSG:INFO...], [MSG:WARN...] and [MSG:ERR...] messages
+    if (strncmp(message, "[MSG:INFO", 9) == 0 ||
+        strncmp(message, "[MSG:WARN", 9) == 0 ||
+        strncmp(message, "[MSG:ERR",  8) == 0) {
         const char* end = strchr(message, ']');
         if (end) {
-            // Copy message content (skip "[MSG:" and "]")
-            size_t len = end - (message + 5);
+            // Skip past "[MSG:LEVEL:" by finding the second colon
+            const char* first_colon = strchr(message + 1, ':');
+            const char* content = first_colon ? strchr(first_colon + 1, ':') : nullptr;
+            if (content && content < end) {
+                content++;  // skip the colon after the level tag
+            } else {
+                content = end;  // nothing to extract
+            }
+
+            // Trim leading spaces
+            while (*content == ' ' && content < end) content++;
+
+            // Strip "MSG" prefix + one extra character, then trim spaces
+            if (content + 3 < end && strncmp(content, "MSG", 3) == 0) {
+                content += 4;
+                while (*content == ' ' && content < end) content++;
+            }
+            // Strip "PRINT" prefix + one extra character, then trim spaces
+            else if (content + 5 < end && strncmp(content, "PRINT", 5) == 0) {
+                content += 6;
+                while (*content == ' ' && content < end) content++;
+            }
+
+            size_t len = (content < end) ? (size_t)(end - content) : 0;
             if (len >= sizeof(currentStatus.last_message)) {
                 len = sizeof(currentStatus.last_message) - 1;
             }
-            strncpy(currentStatus.last_message, message + 5, len);
+            strncpy(currentStatus.last_message, content, len);
             currentStatus.last_message[len] = '\0';
         }
-    } else {
-        // For other feedback messages, store the whole thing
-        strncpy(currentStatus.last_message, message, sizeof(currentStatus.last_message) - 1);
-        currentStatus.last_message[sizeof(currentStatus.last_message) - 1] = '\0';
     }
 }
 

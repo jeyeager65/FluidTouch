@@ -8,7 +8,8 @@ static struct {
     uint16_t y;
     bool pressed;
     bool was_pressed;  // Track previous state for edge detection
-} touchPoint = {0, 0, false, false};
+    bool waking_from_dim;  // Suppress the wakeup touch from reaching LVGL
+} touchPoint = {0, 0, false, false, false};
 
 // Static LCD instance pointer (set during init)
 static LGFX *lcd_instance = nullptr;
@@ -57,12 +58,23 @@ void TouchDriver::my_touchpad_read(lv_indev_t *indev, lv_indev_data_t *data) {
     
     // Detect touch press edge (transition from not pressed to pressed)
     if (touchPoint.pressed && !touchPoint.was_pressed) {
-        // Notify power manager of user activity
+        // If display is not at full brightness, this touch is a wake-up tap —
+        // restore brightness but suppress the touch from reaching LVGL
+        if (PowerManager::getCurrentState() != PowerManager::FULL_BRIGHTNESS) {
+            touchPoint.waking_from_dim = true;
+        }
+        // Notify power manager of user activity (restores brightness)
         PowerManager::onUserActivity();
     }
+    
+    // Clear the waking flag once the finger is lifted
+    if (!touchPoint.pressed) {
+        touchPoint.waking_from_dim = false;
+    }
+    
     touchPoint.was_pressed = touchPoint.pressed;
     
-    if (touchPoint.pressed) {
+    if (touchPoint.pressed && !touchPoint.waking_from_dim) {
         data->state = LV_INDEV_STATE_PRESSED;
         data->point.x = touchPoint.x;
         data->point.y = touchPoint.y;

@@ -5,6 +5,31 @@ All notable changes to FluidTouch will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.4] - 2026-03-23
+
+### Added
+
+- **A-Axis Support** - Optional 4th-axis support for rotary and A-axis machines (#34)
+  - Enable/disable via **Settings → General → Enable A-Axis** (takes effect after restart)
+  - A-axis position display in status bar and Status tab (orange color)
+  - A-axis jog section in **Control → Jog** tab (mirrors Z-axis layout with its own step buttons)
+  - Z/A toggle on the right slider in **Control → Joystick** tab when A-axis is enabled
+  - **Zero A** button in **Control → Actions** when A-axis is enabled
+  - A-axis max feed rate and step size configuration in **Settings → Jog**
+- **Configurable Jog Steps** - Per-machine jog step button values now configurable in **Settings → Jog**
+  - XY, Z, and A-axis step lists are fully customizable (comma-separated values)
+  - Changes saved per machine
+
+### Fixed
+
+- **File List Out of Memory** - Resolved crash when browsing directories with large numbers of files (#35)
+- **Message Display Filtering** - Status bar and Status tab now only show informational and error messages, reducing noise from status report data
+- **Wakeup Touch Suppression** - First touch input after wake from deep sleep or display-off state no longer triggers unintended UI actions
+
+### Changed
+
+- **Serial Input Forwarding** - Commands entered in a serial terminal (e.g., Arduino IDE Serial Monitor at 115200 baud) are now forwarded to FluidNC for debugging convenience
+
 ## [1.0.3] - 2026-02-10
 
 ### Added
@@ -83,6 +108,7 @@ FluidTouch 1.0.0 is the first stable release of the ESP32-S3 touchscreen CNC con
 - Configuration guide for WiFi, machines, and settings
 - Development guide for building from source
 
+[1.0.4]: https://github.com/jeyeager65/FluidTouch/releases/tag/v1.0.4
 [1.0.3]: https://github.com/jeyeager65/FluidTouch/releases/tag/v1.0.3
 [1.0.2]: https://github.com/jeyeager65/FluidTouch/releases/tag/v1.0.2
 [1.0.1]: https://github.com/jeyeager65/FluidTouch/releases/tag/v1.0.1

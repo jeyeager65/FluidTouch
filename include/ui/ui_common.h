@@ -18,7 +18,7 @@ public:
     // Update functions for status bar
     static void updateModalStates(const char *text);
     static void updateMachinePosition(float x, float y, float z);
-    static void updateWorkPosition(float x, float y, float z);
+    static void updateWorkPosition(float x, float y, float z, float a = -9999.0f);
     static void updateMachineState(const char *state);
     static void updateConnectionStatus(bool machine_connected, bool wifi_connected);
     static void updateFileProgress(bool is_printing, float percent, const char *filename, uint32_t elapsed_ms);
@@ -42,7 +42,12 @@ public:
     
     // WCS lock confirmation dialog
     static void showWCSLockDialog(const char *wcs_code, const char *wcs_name, void (*continue_callback)(lv_event_t*));
-    
+
+    // System preferences caching (load once at startup, access via getters)
+    static void loadSystemPreferences();
+    static bool isAAxisEnabled();
+    static void setAAxisEnabled(bool enabled);
+
     // Getters for shared objects
     static lv_obj_t* getStatusBar() { return status_bar; }
     static lv_display_t* getDisplay() { return display; }
@@ -58,7 +63,9 @@ private:
     static lv_obj_t *connecting_popup;       // Connecting popup
     static lv_obj_t *connection_error_dialog; // Connection error dialog
     static lv_obj_t *hold_popup;             // HOLD state popup
+    static lv_obj_t *hold_popup_msg_label;   // Message label inside HOLD popup (for live updates)
     static lv_obj_t *alarm_popup;            // ALARM state popup
+    static lv_obj_t *alarm_popup_msg_label;  // Message label inside ALARM popup (for live updates)
     static int last_popup_state;             // Track last state to detect changes
     static bool hold_popup_dismissed;        // User dismissed HOLD popup
     static bool alarm_popup_dismissed;       // User dismissed ALARM popup
@@ -76,7 +83,8 @@ private:
     static lv_obj_t *lbl_wpos_x;
     static lv_obj_t *lbl_wpos_y;
     static lv_obj_t *lbl_wpos_z;
-    
+    static lv_obj_t *lbl_wpos_a;
+
     // Machine Position labels (individual axes)
     static lv_obj_t *lbl_mpos_label;
     static lv_obj_t *lbl_mpos_x;
@@ -94,8 +102,11 @@ private:
     static lv_obj_t *lbl_estimated_unit;
     
     // Cached values for delta checking (prevent unnecessary redraws)
-    static float last_wpos_x, last_wpos_y, last_wpos_z;
+    static float last_wpos_x, last_wpos_y, last_wpos_z, last_wpos_a;
     static float last_mpos_x, last_mpos_y, last_mpos_z;
+
+    // Cached system preferences (loaded once at startup)
+    static bool enable_a_axis;
 };
 
 #endif // UI_COMMON_H

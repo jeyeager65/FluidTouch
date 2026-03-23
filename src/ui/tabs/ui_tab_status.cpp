@@ -1,6 +1,7 @@
 #include "ui/tabs/ui_tab_status.h"
 #include "ui/tabs/settings/ui_tab_settings_jog.h"
 #include "ui/ui_theme.h"
+#include "ui/ui_common.h"
 #include "ui/machine_config.h"
 #include "ui/wcs_config.h"
 #include "ui/fonts/fontawesome_icons_20.h"
@@ -20,9 +21,11 @@ lv_obj_t *UITabStatus::btn_cancel_jog = nullptr;
 lv_obj_t *UITabStatus::lbl_wpos_x = nullptr;
 lv_obj_t *UITabStatus::lbl_wpos_y = nullptr;
 lv_obj_t *UITabStatus::lbl_wpos_z = nullptr;
+lv_obj_t *UITabStatus::lbl_wpos_a = nullptr;
 lv_obj_t *UITabStatus::lbl_mpos_x = nullptr;
 lv_obj_t *UITabStatus::lbl_mpos_y = nullptr;
 lv_obj_t *UITabStatus::lbl_mpos_z = nullptr;
+lv_obj_t *UITabStatus::lbl_mpos_a = nullptr;
 lv_obj_t *UITabStatus::keyboard = nullptr;
 lv_obj_t *UITabStatus::active_textarea = nullptr;
 char UITabStatus::original_value[32] = "";
@@ -48,9 +51,11 @@ lv_obj_t *UITabStatus::lbl_modal_tool = nullptr;
 float UITabStatus::last_wpos_x = -9999.0f;
 float UITabStatus::last_wpos_y = -9999.0f;
 float UITabStatus::last_wpos_z = -9999.0f;
+float UITabStatus::last_wpos_a = -9999.0f;
 float UITabStatus::last_mpos_x = -9999.0f;
 float UITabStatus::last_mpos_y = -9999.0f;
 float UITabStatus::last_mpos_z = -9999.0f;
+float UITabStatus::last_mpos_a = -9999.0f;
 float UITabStatus::last_feed_rate = -1.0f;
 float UITabStatus::last_feed_override = -1.0f;
 float UITabStatus::last_rapid_override = -1.0f;
@@ -339,6 +344,65 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_obj_add_event_cb(lbl_mpos_z, position_field_event_handler, LV_EVENT_FOCUSED, NULL);
     lv_obj_add_event_cb(lbl_mpos_z, position_field_event_handler, LV_EVENT_DEFOCUSED, NULL);
 
+    // A-AXIS POSITIONS (Conditional, only if A-axis enabled)
+    if (UICommon::isAAxisEnabled()) {
+        // Work Position A
+        lv_obj_t *wpos_a_label = lv_label_create(tab);
+        lv_label_set_text(wpos_a_label, "A");
+        lv_obj_set_style_text_font(wpos_a_label, &lv_font_montserrat_32, 0);
+        lv_obj_set_style_text_color(wpos_a_label, UITheme::AXIS_A, 0);
+        lv_obj_set_pos(wpos_a_label, 0, 230);
+
+        lbl_wpos_a = lv_textarea_create(tab);
+        lv_textarea_set_text(lbl_wpos_a, "----.---");
+        lv_textarea_set_one_line(lbl_wpos_a, true);
+        lv_textarea_set_max_length(lbl_wpos_a, 10);
+        lv_obj_set_size(lbl_wpos_a, 180, 40);
+        lv_obj_set_pos(lbl_wpos_a, 35, 230);
+        lv_obj_clear_flag(lbl_wpos_a, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_style_text_font(lbl_wpos_a, &lv_font_montserrat_32, 0);
+        lv_obj_set_style_pad_top(lbl_wpos_a, 2, 0);
+        lv_obj_set_style_pad_bottom(lbl_wpos_a, 2, 0);
+        lv_obj_set_style_pad_left(lbl_wpos_a, 5, 0);
+        lv_obj_set_style_text_align(lbl_wpos_a, LV_TEXT_ALIGN_LEFT, 0);
+        lv_obj_set_style_text_color(lbl_wpos_a, UITheme::AXIS_A, 0);
+        lv_obj_set_style_bg_color(lbl_wpos_a, UITheme::BG_BLACK, 0);
+        lv_obj_set_style_border_width(lbl_wpos_a, 0, 0);
+        lv_obj_set_style_border_width(lbl_wpos_a, 2, LV_STATE_FOCUSED);
+        lv_obj_set_style_border_color(lbl_wpos_a, UITheme::AXIS_A, LV_STATE_FOCUSED);
+        lv_obj_set_user_data(lbl_wpos_a, (void*)"WA");
+        lv_obj_add_event_cb(lbl_wpos_a, position_field_event_handler, LV_EVENT_FOCUSED, NULL);
+        lv_obj_add_event_cb(lbl_wpos_a, position_field_event_handler, LV_EVENT_DEFOCUSED, NULL);
+
+        // Machine Position A
+        lv_obj_t *mpos_a_label = lv_label_create(tab);
+        lv_label_set_text(mpos_a_label, "A");
+        lv_obj_set_style_text_font(mpos_a_label, &lv_font_montserrat_32, 0);
+        lv_obj_set_style_text_color(mpos_a_label, UITheme::AXIS_A, 0);
+        lv_obj_set_pos(mpos_a_label, 225, 230);
+
+        lbl_mpos_a = lv_textarea_create(tab);
+        lv_textarea_set_text(lbl_mpos_a, "----.---");
+        lv_textarea_set_one_line(lbl_mpos_a, true);
+        lv_textarea_set_max_length(lbl_mpos_a, 10);
+        lv_obj_set_size(lbl_mpos_a, 180, 40);
+        lv_obj_set_pos(lbl_mpos_a, 260, 230);
+        lv_obj_clear_flag(lbl_mpos_a, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_style_text_font(lbl_mpos_a, &lv_font_montserrat_32, 0);
+        lv_obj_set_style_pad_top(lbl_mpos_a, 2, 0);
+        lv_obj_set_style_pad_bottom(lbl_mpos_a, 2, 0);
+        lv_obj_set_style_pad_left(lbl_mpos_a, 5, 0);
+        lv_obj_set_style_text_align(lbl_mpos_a, LV_TEXT_ALIGN_LEFT, 0);
+        lv_obj_set_style_text_color(lbl_mpos_a, UITheme::AXIS_A, 0);
+        lv_obj_set_style_bg_color(lbl_mpos_a, UITheme::BG_BLACK, 0);
+        lv_obj_set_style_border_width(lbl_mpos_a, 0, 0);
+        lv_obj_set_style_border_width(lbl_mpos_a, 2, LV_STATE_FOCUSED);
+        lv_obj_set_style_border_color(lbl_mpos_a, UITheme::AXIS_A, LV_STATE_FOCUSED);
+        lv_obj_set_user_data(lbl_mpos_a, (void*)"MA");
+        lv_obj_add_event_cb(lbl_mpos_a, position_field_event_handler, LV_EVENT_FOCUSED, NULL);
+        lv_obj_add_event_cb(lbl_mpos_a, position_field_event_handler, LV_EVENT_DEFOCUSED, NULL);
+    }
+
     // MODAL STATES - Right column (labels at x=615, values at x=735)
     lv_obj_t *modal_header = lv_label_create(tab);
     lv_label_set_text(modal_header, "MODAL");
@@ -533,15 +597,25 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_obj_set_pos(lbl_spindle_units, 455, 222);  // Second line
 
     // MESSAGE - Bottom section spanning columns 1-3
+    // Position depends on whether A-axis is enabled
+    int message_label_y = UICommon::isAAxisEnabled() ? 255 : 235;  // Label position
+    int message_y = UICommon::isAAxisEnabled() ? 280 : 260;  // Field position
+    int message_height = UICommon::isAAxisEnabled() ? 60 : 80;
+
     lv_obj_t *message_header = lv_label_create(tab);
     lv_label_set_text(message_header, "MESSAGE");
     lv_obj_set_style_text_font(message_header, &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_color(message_header, UITheme::TEXT_DISABLED, 0);
-    lv_obj_set_pos(message_header, 0, 235);
+    lv_obj_set_pos(message_header, 0, message_label_y);
+
+    // Hide MESSAGE label when A-axis is enabled to avoid interference with A position fields
+    if (UICommon::isAAxisEnabled()) {
+        lv_obj_add_flag(message_header, LV_OBJ_FLAG_HIDDEN);
+    }
 
     lbl_message = lv_label_create(tab);
     lv_label_set_text(lbl_message, "No messages.");
-    lv_obj_set_size(lbl_message, 600, 80);  // Height to fit 10px margin at bottom
+    lv_obj_set_size(lbl_message, 600, message_height);
     lv_label_set_long_mode(lbl_message, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_font(lbl_message, &lv_font_montserrat_20, 0);
     lv_obj_set_style_text_color(lbl_message, UITheme::TEXT_LIGHT, 0);
@@ -551,7 +625,7 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_obj_set_style_border_color(lbl_message, UITheme::BORDER_MEDIUM, 0);
     lv_obj_set_style_radius(lbl_message, 5, 0);
     lv_obj_set_style_pad_all(lbl_message, 5, 0);
-    lv_obj_set_pos(lbl_message, 0, 260);
+    lv_obj_set_pos(lbl_message, 0, message_y);
 }
 
 void UITabStatus::updateMessage(const char *message) {
@@ -595,14 +669,14 @@ void UITabStatus::updateState(const char *state) {
     }
 }
 
-void UITabStatus::updateWorkPosition(float x, float y, float z) {
+void UITabStatus::updateWorkPosition(float x, float y, float z, float a) {
     // Only update if values changed (avoid unnecessary redraws)
-    if (x == last_wpos_x && y == last_wpos_y && z == last_wpos_z) {
+    if (x == last_wpos_x && y == last_wpos_y && z == last_wpos_z && a == last_wpos_a) {
         return;
     }
-    
+
     char buf[20];
-    
+
     if (lbl_wpos_x && x != last_wpos_x) {
         if (x <= -9999.0f) {
             lv_textarea_set_text(lbl_wpos_x, "----.---");
@@ -612,7 +686,7 @@ void UITabStatus::updateWorkPosition(float x, float y, float z) {
         }
         last_wpos_x = x;
     }
-    
+
     if (lbl_wpos_y && y != last_wpos_y) {
         if (y <= -9999.0f) {
             lv_textarea_set_text(lbl_wpos_y, "----.---");
@@ -622,7 +696,7 @@ void UITabStatus::updateWorkPosition(float x, float y, float z) {
         }
         last_wpos_y = y;
     }
-    
+
     if (lbl_wpos_z && z != last_wpos_z) {
         if (z <= -9999.0f) {
             lv_textarea_set_text(lbl_wpos_z, "----.---");
@@ -632,16 +706,27 @@ void UITabStatus::updateWorkPosition(float x, float y, float z) {
         }
         last_wpos_z = z;
     }
+
+    // Update A-axis if enabled and value provided
+    if (lbl_wpos_a && a != last_wpos_a && a > -9999.0f) {
+        if (a <= -9998.0f) {
+            lv_textarea_set_text(lbl_wpos_a, "----.---");
+        } else {
+            snprintf(buf, sizeof(buf), "%.3f", a);
+            lv_textarea_set_text(lbl_wpos_a, buf);
+        }
+        last_wpos_a = a;
+    }
 }
 
-void UITabStatus::updateMachinePosition(float x, float y, float z) {
+void UITabStatus::updateMachinePosition(float x, float y, float z, float a) {
     // Only update if values changed (avoid unnecessary redraws)
-    if (x == last_mpos_x && y == last_mpos_y && z == last_mpos_z) {
+    if (x == last_mpos_x && y == last_mpos_y && z == last_mpos_z && a == last_mpos_a) {
         return;
     }
-    
+
     char buf[20];
-    
+
     if (lbl_mpos_x && x != last_mpos_x) {
         if (x <= -9999.0f) {
             lv_textarea_set_text(lbl_mpos_x, "----.---");
@@ -651,7 +736,7 @@ void UITabStatus::updateMachinePosition(float x, float y, float z) {
         }
         last_mpos_x = x;
     }
-    
+
     if (lbl_mpos_y && y != last_mpos_y) {
         if (y <= -9999.0f) {
             lv_textarea_set_text(lbl_mpos_y, "----.---");
@@ -661,7 +746,7 @@ void UITabStatus::updateMachinePosition(float x, float y, float z) {
         }
         last_mpos_y = y;
     }
-    
+
     if (lbl_mpos_z && z != last_mpos_z) {
         if (z <= -9999.0f) {
             lv_textarea_set_text(lbl_mpos_z, "----.---");
@@ -670,6 +755,17 @@ void UITabStatus::updateMachinePosition(float x, float y, float z) {
             lv_textarea_set_text(lbl_mpos_z, buf);
         }
         last_mpos_z = z;
+    }
+
+    // Update A-axis if enabled and value provided
+    if (lbl_mpos_a && a != last_mpos_a && a > -9999.0f) {
+        if (a <= -9998.0f) {
+            lv_textarea_set_text(lbl_mpos_a, "----.---");
+        } else {
+            snprintf(buf, sizeof(buf), "%.3f", a);
+            lv_textarea_set_text(lbl_mpos_a, buf);
+        }
+        last_mpos_a = a;
     }
 }
 
@@ -1024,9 +1120,11 @@ void UITabStatus::position_field_event_handler(lv_event_t *e) {
             bool switching_fields = (lv_obj_has_state(lbl_wpos_x, LV_STATE_FOCUSED) ||
                                     lv_obj_has_state(lbl_wpos_y, LV_STATE_FOCUSED) ||
                                     lv_obj_has_state(lbl_wpos_z, LV_STATE_FOCUSED) ||
+                                    (lbl_wpos_a && lv_obj_has_state(lbl_wpos_a, LV_STATE_FOCUSED)) ||
                                     lv_obj_has_state(lbl_mpos_x, LV_STATE_FOCUSED) ||
                                     lv_obj_has_state(lbl_mpos_y, LV_STATE_FOCUSED) ||
-                                    lv_obj_has_state(lbl_mpos_z, LV_STATE_FOCUSED));
+                                    lv_obj_has_state(lbl_mpos_z, LV_STATE_FOCUSED) ||
+                                    (lbl_mpos_a && lv_obj_has_state(lbl_mpos_a, LV_STATE_FOCUSED)));
             
             // Only close keyboard if we're not switching to another position field
             if (!switching_fields) {
@@ -1105,16 +1203,23 @@ void UITabStatus::keyboard_event_handler(lv_event_t *e) {
                     return;
                 }
                 
-                char axis = axis_id[1];  // X, Y, or Z
-                
+                char axis = axis_id[1];  // X, Y, Z, or A
+
                 // Note: Position bounds validation would require checking if machine is homed
-                // and querying $/axes/{axis}/max_travel_mm. For simplicity, we rely on 
+                // and querying $/axes/{axis}/max_travel_mm. For simplicity, we rely on
                 // FluidNC's soft limits to reject invalid moves and provide feedback.
-                
+
                 char command[64];
-                
+
                 // Get appropriate feed rate based on axis
-                int feed_rate = (axis == 'Z') ? UITabSettingsJog::getDefaultZFeed() : UITabSettingsJog::getDefaultXYFeed();
+                int feed_rate;
+                if (axis == 'Z') {
+                    feed_rate = UITabSettingsJog::getDefaultZFeed();
+                } else if (axis == 'A') {
+                    feed_rate = UITabSettingsJog::getDefaultAFeed();
+                } else {
+                    feed_rate = UITabSettingsJog::getDefaultXYFeed();
+                }
                 
                 // Determine if work or machine coordinates and which axis
                 if (axis_id[0] == 'W') {

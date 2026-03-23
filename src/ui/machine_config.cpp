@@ -40,10 +40,20 @@ void MachineConfigManager::loadMachines(MachineConfig machines[MAX_MACHINES]) {
             // Load jog settings (with defaults if not present)
             machines[i].jog_xy_step = prefs.getFloat((prefix + "jxy_st").c_str(), 10.0f);
             machines[i].jog_z_step = prefs.getFloat((prefix + "jz_st").c_str(), 1.0f);
+            machines[i].jog_a_step = prefs.getFloat((prefix + "ja_st").c_str(), 1.0f);
             machines[i].jog_xy_feed = prefs.getInt((prefix + "jxy_fd").c_str(), 3000);
             machines[i].jog_z_feed = prefs.getInt((prefix + "jz_fd").c_str(), 1000);
+            machines[i].jog_a_feed = prefs.getInt((prefix + "ja_fd").c_str(), 1000);
             machines[i].jog_max_xy_feed = prefs.getInt((prefix + "jxy_mx").c_str(), 3000);
             machines[i].jog_max_z_feed = prefs.getInt((prefix + "jz_mx").c_str(), 1000);
+            machines[i].jog_max_a_feed = prefs.getInt((prefix + "ja_mx").c_str(), 1000);
+            prefs.getString((prefix + "jxy_sts").c_str(), machines[i].jog_xy_steps, sizeof(machines[i].jog_xy_steps));
+            prefs.getString((prefix + "jz_sts").c_str(), machines[i].jog_z_steps, sizeof(machines[i].jog_z_steps));
+            prefs.getString((prefix + "ja_sts").c_str(), machines[i].jog_a_steps, sizeof(machines[i].jog_a_steps));
+            // If step values are empty, set defaults
+            if (strlen(machines[i].jog_xy_steps) == 0) strcpy(machines[i].jog_xy_steps, "100,50,10,1,0.1");
+            if (strlen(machines[i].jog_z_steps) == 0) strcpy(machines[i].jog_z_steps, "50,25,10,1,0.1");
+            if (strlen(machines[i].jog_a_steps) == 0) strcpy(machines[i].jog_a_steps, "50,25,10,1,0.1");
             
             // Load probe settings (with defaults if not present)
             machines[i].probe_feed_rate = prefs.getInt((prefix + "p_feed").c_str(), 100);
@@ -86,10 +96,16 @@ void MachineConfigManager::saveMachines(const MachineConfig machines[MAX_MACHINE
             // Save jog settings
             prefs.putFloat((prefix + "jxy_st").c_str(), machines[i].jog_xy_step);
             prefs.putFloat((prefix + "jz_st").c_str(), machines[i].jog_z_step);
+            prefs.putFloat((prefix + "ja_st").c_str(), machines[i].jog_a_step);
             prefs.putInt((prefix + "jxy_fd").c_str(), machines[i].jog_xy_feed);
             prefs.putInt((prefix + "jz_fd").c_str(), machines[i].jog_z_feed);
+            prefs.putInt((prefix + "ja_fd").c_str(), machines[i].jog_a_feed);
             prefs.putInt((prefix + "jxy_mx").c_str(), machines[i].jog_max_xy_feed);
             prefs.putInt((prefix + "jz_mx").c_str(), machines[i].jog_max_z_feed);
+            prefs.putInt((prefix + "ja_mx").c_str(), machines[i].jog_max_a_feed);
+            prefs.putString((prefix + "jxy_sts").c_str(), machines[i].jog_xy_steps);
+            prefs.putString((prefix + "jz_sts").c_str(), machines[i].jog_z_steps);
+            prefs.putString((prefix + "ja_sts").c_str(), machines[i].jog_a_steps);
             
             // Save probe settings
             prefs.putInt((prefix + "p_feed").c_str(), machines[i].probe_feed_rate);

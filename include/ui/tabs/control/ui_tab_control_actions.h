@@ -20,6 +20,7 @@ private:
     static void onZeroXClicked(lv_event_t *e);
     static void onZeroYClicked(lv_event_t *e);
     static void onZeroZClicked(lv_event_t *e);
+    static void onZeroAClicked(lv_event_t *e);
     static void onZeroAllClicked(lv_event_t *e);
     static void onQuickStopClicked(lv_event_t *e);
     
