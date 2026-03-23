@@ -1,7 +1,16 @@
 {
-  "default_version": "1.0.3",
+  "default_version": "1.0.4",
   "default_hardware": "advance-v1.3",
   "versions": [
+    {
+      "id": "1.0.4",
+      "hardware": [
+        "basic",
+        "advance-v1.3",
+        "advance-v1.2"
+      ],
+      "is_preview": false
+    },
     {
       "id": "1.0.4_dev",
       "display_name": "1.0.4_dev (Preview 2026-03-23)",
