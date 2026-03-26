@@ -56,42 +56,53 @@ jobs:
       
     - name: Build firmware (Advance v1.2)
       run: platformio run --environment elecrow-crowpanel-7-advance-v12
-      
+
+    - name: Build firmware (ESP32-8048S070C)
+      run: platformio run --environment esp32-8048s070c
+
     - name: Prepare firmware files
       run: |
         # Create directories for all hardware variants
         mkdir -p web/firmware/basic
         mkdir -p web/firmware/advance-v1.3
         mkdir -p web/firmware/advance-v1.2
-        
+        mkdir -p web/firmware/esp32-8048s070c
+
         # Copy Basic variant firmware
         cp .pio/build/elecrow-crowpanel-7-basic/firmware.bin web/firmware/basic/
         cp .pio/build/elecrow-crowpanel-7-basic/bootloader.bin web/firmware/basic/
         cp .pio/build/elecrow-crowpanel-7-basic/partitions.bin web/firmware/basic/
-        
+
         # Copy Advance v1.3 variant firmware
         cp .pio/build/elecrow-crowpanel-7-advance-v13/firmware.bin web/firmware/advance-v1.3/
         cp .pio/build/elecrow-crowpanel-7-advance-v13/bootloader.bin web/firmware/advance-v1.3/
         cp .pio/build/elecrow-crowpanel-7-advance-v13/partitions.bin web/firmware/advance-v1.3/
-        
+
         # Copy Advance v1.2 variant firmware
         cp .pio/build/elecrow-crowpanel-7-advance-v12/firmware.bin web/firmware/advance-v1.2/
         cp .pio/build/elecrow-crowpanel-7-advance-v12/bootloader.bin web/firmware/advance-v1.2/
         cp .pio/build/elecrow-crowpanel-7-advance-v12/partitions.bin web/firmware/advance-v1.2/
-        
+
+        # Copy ESP32-8048S070C variant firmware
+        cp .pio/build/esp32-8048s070c/firmware.bin web/firmware/esp32-8048s070c/
+        cp .pio/build/esp32-8048s070c/bootloader.bin web/firmware/esp32-8048s070c/
+        cp .pio/build/esp32-8048s070c/partitions.bin web/firmware/esp32-8048s070c/
+
         # boot_app0.bin location varies, try common paths (same for all)
         if [ -f ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin ]; then
           cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin web/firmware/basic/
           cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin web/firmware/advance-v1.3/
           cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin web/firmware/advance-v1.2/
+          cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin web/firmware/esp32-8048s070c/
         fi
-      
+
     - name: Update manifest files with version
       run: |
         sed -i 's/"version": ".*"/"version": "${{ steps.version.outputs.VERSION }}"/' web/manifest_basic.json
         sed -i 's/"version": ".*"/"version": "${{ steps.version.outputs.VERSION }}"/' web/manifest_advance-v1.3.json
         sed -i 's/"version": ".*"/"version": "${{ steps.version.outputs.VERSION }}"/' web/manifest_advance-v1.2.json
-        
+        sed -i 's/"version": ".*"/"version": "${{ steps.version.outputs.VERSION }}"/' web/manifest_esp32-8048s070c.json
+
     - name: Upload firmware artifacts
       uses: actions/upload-artifact@v4
       with:
@@ -101,15 +112,17 @@ jobs:
           web/manifest_basic.json
           web/manifest_advance-v1.3.json
           web/manifest_advance-v1.2.json
+          web/manifest_esp32-8048s070c.json
           web/index.html
-          
+
     - name: Rename firmware files for release
       run: |
         mkdir -p release
         cp .pio/build/elecrow-crowpanel-7-basic/firmware.bin release/fluidtouch-basic-${{ steps.version.outputs.VERSION }}.bin
         cp .pio/build/elecrow-crowpanel-7-advance-v13/firmware.bin release/fluidtouch-advance-v1.3-${{ steps.version.outputs.VERSION }}.bin
         cp .pio/build/elecrow-crowpanel-7-advance-v12/firmware.bin release/fluidtouch-advance-v1.2-${{ steps.version.outputs.VERSION }}.bin
-        
+        cp .pio/build/esp32-8048s070c/firmware.bin release/fluidtouch-esp32-8048s070c-${{ steps.version.outputs.VERSION }}.bin
+
     - name: Create Release
       uses: softprops/action-gh-release@v1
       if: startsWith(github.ref, 'refs/tags/')
@@ -118,25 +131,28 @@ jobs:
           release/fluidtouch-basic-${{ steps.version.outputs.VERSION }}.bin
           release/fluidtouch-advance-v1.3-${{ steps.version.outputs.VERSION }}.bin
           release/fluidtouch-advance-v1.2-${{ steps.version.outputs.VERSION }}.bin
+          release/fluidtouch-esp32-8048s070c-${{ steps.version.outputs.VERSION }}.bin
         body: |
           ## FluidTouch ${{ steps.version.outputs.VERSION }}
-          
+
           ### Web Installer
           Install directly from your browser: [FluidTouch Web Installer](https://jeyeager65.github.io/FluidTouch/)
-          
+
           Select your hardware variant during installation:
           - **Basic**: Elecrow CrowPanel 7" Basic (4MB flash, TN LCD, PWM backlight)
           - **Advance v1.3**: Elecrow CrowPanel 7" Advance v1.3 (16MB flash, IPS LCD, continuous brightness 0-245)
           - **Advance v1.2**: Elecrow CrowPanel 7" Advance v1.2 (16MB flash, IPS LCD, discrete brightness 0x05-0x10)
-          
+          - **ESP32-8048S070C**: ESP32-8048S070C ESP32-8048S070 (16MB flash, IPS LCD, PWM backlight)
+
           ### Manual Installation
           Download the appropriate firmware file for your hardware variant and flash using:
           - [esptool.py](https://docs.espressif.com/projects/esptool/en/latest/esp32s3/index.html): `esptool.py --chip esp32s3 write_flash 0x10000 fluidtouch-[variant]-${{ steps.version.outputs.VERSION }}.bin`
-          
+
           ### Hardware Requirements
           - Elecrow CrowPanel 7" ESP32-S3 HMI Display (Basic or Advance variant)
+          - ESP32-8048S070C ESP32-8048S070 7" Display
           - USB-C cable with data support
-          
+
           ### Installation Notes
           - **IMPORTANT**: Choose the correct firmware for your hardware variant
           - First-time installation will erase existing data
@@ -193,21 +209,25 @@ jobs:
         mkdir -p firmware/${VERSION}/basic
         mkdir -p firmware/${VERSION}/advance-v1.3
         mkdir -p firmware/${VERSION}/advance-v1.2
-        
+        mkdir -p firmware/${VERSION}/esp32-8048s070c
+
         # Copy firmware files (artifacts are in artifacts/firmware-VERSION/)
         find artifacts -path "*/basic/*.bin" -exec cp {} firmware/${VERSION}/basic/ \;
         find artifacts -path "*/advance-v1.3/*.bin" -exec cp {} firmware/${VERSION}/advance-v1.3/ \;
         find artifacts -path "*/advance-v1.2/*.bin" -exec cp {} firmware/${VERSION}/advance-v1.2/ \;
-        
+        find artifacts -path "*/esp32-8048s070c/*.bin" -exec cp {} firmware/${VERSION}/esp32-8048s070c/ \;
+
         # Copy and update manifests
         cp artifacts/firmware-*/manifest_basic.json firmware/${VERSION}/manifest_basic.json
         cp artifacts/firmware-*/manifest_advance-v1.3.json firmware/${VERSION}/manifest_advance-v1.3.json
         cp artifacts/firmware-*/manifest_advance-v1.2.json firmware/${VERSION}/manifest_advance-v1.2.json
-        
+        cp artifacts/firmware-*/manifest_esp32-8048s070c.json firmware/${VERSION}/manifest_esp32-8048s070c.json
+
         # Update manifest paths to point to version-specific firmware
         sed -i "s|./firmware/basic/|./firmware/${VERSION}/basic/|g" firmware/${VERSION}/manifest_basic.json
         sed -i "s|./firmware/advance-v1.3/|./firmware/${VERSION}/advance-v1.3/|g" firmware/${VERSION}/manifest_advance-v1.3.json
         sed -i "s|./firmware/advance-v1.2/|./firmware/${VERSION}/advance-v1.2/|g" firmware/${VERSION}/manifest_advance-v1.2.json
+        sed -i "s|./firmware/esp32-8048s070c/|./firmware/${VERSION}/esp32-8048s070c/|g" firmware/${VERSION}/manifest_esp32-8048s070c.json
         
     - name: Update versions.json
       run: |
@@ -219,14 +239,14 @@ jobs:
         
         # Load or create versions.json
         if [ ! -f versions.json ]; then
-          echo '{"default_version":null,"default_hardware":"advance-v1.3","versions":[],"hardware_info":{"basic":"Basic","advance-v1.3":"Advance v1.3","advance-v1.2":"Advance v1.2"}}' > versions.json
+          echo '{"default_version":null,"default_hardware":"advance-v1.3","versions":[],"hardware_info":{"basic":"Basic","advance-v1.3":"Advance v1.3","advance-v1.2":"Advance v1.2","esp32-8048s070c":"ESP32-8048S070C ESP32-8048S070"}}' > versions.json
         fi
         
         # Add new version entry
         jq --arg ver "$VERSION" --arg ts "$TIMESTAMP" '
           .versions = ([{
             "id": $ver,
-            "hardware": ["basic", "advance-v1.3", "advance-v1.2"],
+            "hardware": ["basic", "advance-v1.3", "advance-v1.2", "esp32-8048s070c"],
             "is_preview": false
           }] + .versions) |
           .default_version = $ver

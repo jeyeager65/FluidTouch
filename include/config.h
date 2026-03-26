@@ -18,6 +18,12 @@
 #define TOUCH_SCL  16
 #define TOUCH_RST  -1  // Reset handled by STC8H1K28 microcontroller via I2C
 #define TOUCH_INT  -1  // Not used
+#elif defined(HARDWARE_ESP32_8048S070C)
+// ESP32-8048S070C
+#define TOUCH_SDA  19
+#define TOUCH_SCL  20
+#define TOUCH_RST  38  // GT911 reset pin
+#define TOUCH_INT  -1  // INT not used
 #else
 // CrowPanel 7" Basic
 #define TOUCH_SDA  19
@@ -60,7 +66,7 @@
 #define SD_CLK   5
 #define SD_CS    0  // Not actually connected - CS tied to GND in hardware (per Elecrow example)
 #else
-// Basic: SPI mode SD card
+// Basic / ESP32-8048S070C: SPI mode SD card
 #define SD_MOSI  11
 #define SD_MISO  13
 #define SD_CLK   12

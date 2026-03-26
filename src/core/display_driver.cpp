@@ -8,7 +8,48 @@ LGFX::LGFX(void) {
         auto cfg = _bus_instance.config();
         cfg.panel = &_panel_instance;
         
-#ifdef HARDWARE_ADVANCE
+#if defined(HARDWARE_ESP32_8048S070C)
+        // ESP32-8048S070C ESP32-8048S070: 800x480 RGB LCD
+        // Same data bus as Basic; key difference: PCLK on IO42 (via 10Ω series resistor)
+        cfg.pin_d0  = GPIO_NUM_15; // B0
+        cfg.pin_d1  = GPIO_NUM_7;  // B1
+        cfg.pin_d2  = GPIO_NUM_6;  // B2
+        cfg.pin_d3  = GPIO_NUM_5;  // B3
+        cfg.pin_d4  = GPIO_NUM_4;  // B4
+
+        cfg.pin_d5  = GPIO_NUM_9;  // G0
+        cfg.pin_d6  = GPIO_NUM_46; // G1
+        cfg.pin_d7  = GPIO_NUM_3;  // G2
+        cfg.pin_d8  = GPIO_NUM_8;  // G3
+        cfg.pin_d9  = GPIO_NUM_16; // G4
+        cfg.pin_d10 = GPIO_NUM_1;  // G5
+
+        cfg.pin_d11 = GPIO_NUM_14; // R0
+        cfg.pin_d12 = GPIO_NUM_21; // R1
+        cfg.pin_d13 = GPIO_NUM_47; // R2
+        cfg.pin_d14 = GPIO_NUM_48; // R3
+        cfg.pin_d15 = GPIO_NUM_45; // R4
+
+        cfg.pin_henable = GPIO_NUM_41;
+        cfg.pin_vsync   = GPIO_NUM_40;
+        cfg.pin_hsync   = GPIO_NUM_39;
+        cfg.pin_pclk    = GPIO_NUM_42;  // IO42 with 10Ω series resistor to LCD DCLK
+        cfg.freq_write  = 12000000;  // 12MHz - higher speeds cause flickering under CPU load
+
+        cfg.hsync_polarity    = 0;
+        cfg.hsync_front_porch = 8;
+        cfg.hsync_pulse_width = 2;
+        cfg.hsync_back_porch  = 43;
+
+        cfg.vsync_polarity    = 0;
+        cfg.vsync_front_porch = 8;
+        cfg.vsync_pulse_width = 2;
+        cfg.vsync_back_porch  = 12;
+
+        cfg.pclk_active_neg   = 1;
+        cfg.de_idle_high      = 0;
+        cfg.pclk_idle_high    = 1;
+#elif defined(HARDWARE_ADVANCE)
         // Advance: IPS LCD (800x480) - Per Elecrow official example
         cfg.pin_d0  = GPIO_NUM_21; // B0
         cfg.pin_d1  = GPIO_NUM_47; // B1
@@ -104,8 +145,8 @@ LGFX::LGFX(void) {
         _panel_instance.config(cfg);
     }
     
-#ifdef HARDWARE_ADVANCE
-    // Enable PSRAM usage for Advance hardware (per Elecrow example)
+#if defined(HARDWARE_ADVANCE) || defined(HARDWARE_ESP32_8048S070C)
+    // Enable PSRAM usage (both Advance and ESP32-8048S070C have 8MB PSRAM)
     {
         auto cfg = _panel_instance.config_detail();
         cfg.use_psram = 1;
@@ -123,20 +164,30 @@ LGFX::LGFX(void) {
         cfg.x_max      = 799;
         cfg.y_min      = 0;
         cfg.y_max      = 479;
-        cfg.pin_int    = -1;   // Not used
         cfg.bus_shared = true;
         cfg.offset_rotation = 0;
 
 #ifdef HARDWARE_ADVANCE
         // Advance: Touch on different I2C pins
+        cfg.pin_int    = -1;
         cfg.i2c_port   = 0;
         cfg.i2c_addr   = 0x5D;
         cfg.pin_sda    = TOUCH_SDA;  // GPIO 15
         cfg.pin_scl    = TOUCH_SCL;  // GPIO 16
         cfg.pin_rst    = -1;  // Reset handled by STC8H1K28 via I2C
         cfg.freq       = 400000;     // Keep 400kHz - works well on Advance
+#elif defined(HARDWARE_ESP32_8048S070C)
+        // ESP32-8048S070C ESP32-8048S070: GT911 via I2C, INT on IO38
+        cfg.pin_int    = TOUCH_INT;  // -1 (not used)
+        cfg.i2c_port   = 0;
+        cfg.i2c_addr   = 0x5D;
+        cfg.pin_sda    = TOUCH_SDA;  // GPIO 19
+        cfg.pin_scl    = TOUCH_SCL;  // GPIO 20
+        cfg.pin_rst    = TOUCH_RST;  // GPIO 38
+        cfg.freq       = 400000;
 #else
         // Basic: Touch I2C configuration
+        cfg.pin_int    = -1;
         cfg.i2c_port   = 0;
         cfg.i2c_addr   = 0x5D;
         cfg.pin_sda    = TOUCH_SDA;  // GPIO 19
