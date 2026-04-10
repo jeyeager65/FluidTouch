@@ -65,6 +65,7 @@ private:
     static lv_obj_t *lbl_modal_feedrate;
     static lv_obj_t *lbl_modal_spindle;
     static lv_obj_t *lbl_modal_coolant;
+    static int coolant_base_y;
     static lv_obj_t *lbl_modal_tool;
     
     // Cached values for delta checking (prevent unnecessary redraws)

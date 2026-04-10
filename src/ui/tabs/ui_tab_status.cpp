@@ -45,6 +45,7 @@ lv_obj_t *UITabStatus::lbl_modal_motion = nullptr;
 lv_obj_t *UITabStatus::lbl_modal_feedrate = nullptr;
 lv_obj_t *UITabStatus::lbl_modal_spindle = nullptr;
 lv_obj_t *UITabStatus::lbl_modal_coolant = nullptr;
+int UITabStatus::coolant_base_y = 0;
 lv_obj_t *UITabStatus::lbl_modal_tool = nullptr;
 
 // Cached values initialization (for delta checking)
@@ -515,7 +516,8 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_label_set_text(lbl_modal_coolant, "---");
     lv_obj_set_style_text_font(lbl_modal_coolant, &lv_font_montserrat_20, 0);
     lv_obj_set_style_text_color(lbl_modal_coolant, UITheme::UI_INFO, 0);
-    lv_obj_set_pos(lbl_modal_coolant, 735, modalStart + (modalSpacing * modalPosition));
+    coolant_base_y = modalStart + (modalSpacing * modalPosition);
+    lv_obj_set_pos(lbl_modal_coolant, 735, coolant_base_y);
 
     modalPosition++;
 
@@ -891,7 +893,12 @@ void UITabStatus::updateModalStates(const char *wcs, const char *plane, const ch
     }
     
     if (lbl_modal_coolant && strcmp(coolant, last_modal_coolant) != 0) {
+        bool bothActive = (strcmp(coolant, "M7 M8") == 0);
         lv_label_set_text(lbl_modal_coolant, coolant);
+        // Use smaller font and slight y offset when both M7 and M8 are active
+        lv_obj_set_style_text_font(lbl_modal_coolant,
+            bothActive ? &lv_font_montserrat_16 : &lv_font_montserrat_20, 0);
+        lv_obj_set_y(lbl_modal_coolant, coolant_base_y + (bothActive ? 2 : 0));
         strncpy(last_modal_coolant, coolant, sizeof(last_modal_coolant) - 1);
         last_modal_coolant[sizeof(last_modal_coolant) - 1] = '\0';
     }

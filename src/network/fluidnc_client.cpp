@@ -641,9 +641,12 @@ void FluidNCClient::parseGCodeState(const char* message) {
     else if (strstr(ptr, "M4 ")) strcpy(currentStatus.modal_spindle, "M4");
     else if (strstr(ptr, "M5")) strcpy(currentStatus.modal_spindle, "M5");
     
-    // Parse coolant state (M7=mist, M8=flood, M9=off)
-    if (strstr(ptr, "M7 ")) strcpy(currentStatus.modal_coolant, "M7");
-    else if (strstr(ptr, "M8 ")) strcpy(currentStatus.modal_coolant, "M8");
+    // Parse coolant state (M7=mist, M8=flood, M9=off; both M7 and M8 can be active simultaneously)
+    bool hasMist = strstr(ptr, "M7 ") != nullptr;
+    bool hasFlood = strstr(ptr, "M8 ") != nullptr;
+    if (hasMist && hasFlood) strcpy(currentStatus.modal_coolant, "M7 M8");
+    else if (hasMist) strcpy(currentStatus.modal_coolant, "M7");
+    else if (hasFlood) strcpy(currentStatus.modal_coolant, "M8");
     else if (strstr(ptr, "M9")) strcpy(currentStatus.modal_coolant, "M9");
     
     // Parse tool number (T0, T1, etc.)
