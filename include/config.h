@@ -4,7 +4,7 @@
 #include <Arduino.h>
 
 // Version
-#define FLUIDTOUCH_VERSION "1.0.4"
+#define FLUIDTOUCH_VERSION "1.0.5"
 
 // Display settings
 #define SCREEN_WIDTH  800
