@@ -60,6 +60,9 @@ void MachineConfigManager::loadMachines(MachineConfig machines[MAX_MACHINES]) {
             machines[i].probe_max_distance = prefs.getInt((prefix + "p_dist").c_str(), 10);
             machines[i].probe_retract = prefs.getInt((prefix + "p_ret").c_str(), 2);
             machines[i].probe_thickness = prefs.getFloat((prefix + "p_thick").c_str(), 0.0f);
+
+            // Load axis configuration
+            machines[i].enable_a_axis = prefs.getBool((prefix + "a_en").c_str(), false);
         }
     }
     
@@ -112,6 +115,9 @@ void MachineConfigManager::saveMachines(const MachineConfig machines[MAX_MACHINE
             prefs.putInt((prefix + "p_dist").c_str(), machines[i].probe_max_distance);
             prefs.putInt((prefix + "p_ret").c_str(), machines[i].probe_retract);
             prefs.putFloat((prefix + "p_thick").c_str(), machines[i].probe_thickness);
+
+            // Save axis configuration
+            prefs.putBool((prefix + "a_en").c_str(), machines[i].enable_a_axis);
         }
     }
     

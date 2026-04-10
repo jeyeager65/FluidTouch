@@ -75,10 +75,6 @@ void setup()
     Serial.println("Initializing FluidNC client...");
     FluidNCClient::init();
 
-    // Load system preferences once (cached for entire session)
-    Serial.println("Loading system preferences...");
-    UICommon::loadSystemPreferences();
-
     // Check for auto-import (only if no machines configured)
     Serial.println("Checking for settings auto-import...");
     if (SettingsManager::autoImportOnBoot()) {

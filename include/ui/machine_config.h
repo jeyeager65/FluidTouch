@@ -38,6 +38,9 @@ struct MachineConfig {
     int probe_max_distance;  // Default max probe distance (mm)
     int probe_retract;       // Default retract distance (mm)
     float probe_thickness;   // Default probe thickness (mm, 1 decimal place)
+
+    // Axis configuration
+    bool enable_a_axis;      // Enable 4th axis (rotary) support
     
     // Constructor with defaults
     MachineConfig() : connection_type(CONN_WIRELESS), websocket_port(81), is_configured(false),
@@ -45,7 +48,8 @@ struct MachineConfig {
                       jog_xy_feed(3000), jog_z_feed(1000), jog_a_feed(1000),
                       jog_max_xy_feed(3000), jog_max_z_feed(1000), jog_max_a_feed(1000),
                       probe_feed_rate(100), probe_max_distance(10),
-                      probe_retract(2), probe_thickness(0.0f) {
+                      probe_retract(2), probe_thickness(0.0f),
+                      enable_a_axis(false) {
         name[0] = '\0';
         ssid[0] = '\0';
         password[0] = '\0';
