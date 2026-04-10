@@ -11,6 +11,7 @@ public:
 private:
     static lv_obj_t *screenshot_link_label;
     static lv_obj_t *screenshot_qr;
+    static lv_obj_t *lbl_fluidnc_version;  // FluidNC firmware version label
     static bool wifi_url_set;  // Track if we've already set the WiFi URL
 };
 

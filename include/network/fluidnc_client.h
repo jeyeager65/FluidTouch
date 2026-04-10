@@ -64,6 +64,7 @@ struct FluidNCStatus {
     // Connection status
     bool is_connected;
     uint32_t last_update_ms;
+    char fluidnc_version[32];  // FluidNC firmware version, e.g. "3.9.5" (parsed from $Build/Info)
     
     // Constructor
     FluidNCStatus() : state(STATE_DISCONNECTED),
@@ -85,6 +86,7 @@ struct FluidNCStatus {
         strcpy(modal_tool, "T0");
         last_message[0] = '\0';  // Empty message initially
         sd_filename[0] = '\0';   // No file initially
+        fluidnc_version[0] = '\0';  // Unknown until $Build/Info response received
     }
 };
 

@@ -2,11 +2,13 @@
 #include "ui/ui_theme.h"
 #include "config.h"
 #include "network/screenshot_server.h"
+#include "network/fluidnc_client.h"
 #include <WiFi.h>
 
 // Static member initialization
 lv_obj_t *UITabSettingsAbout::screenshot_link_label = nullptr;
 lv_obj_t *UITabSettingsAbout::screenshot_qr = nullptr;
+lv_obj_t *UITabSettingsAbout::lbl_fluidnc_version = nullptr;
 bool UITabSettingsAbout::wifi_url_set = false;
 
 void UITabSettingsAbout::create(lv_obj_t *tab) {
@@ -21,7 +23,7 @@ void UITabSettingsAbout::create(lv_obj_t *tab) {
     lv_obj_set_style_pad_all(container, 20, 0);
     lv_obj_set_flex_flow(container, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(container, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_row(container, 15, 0);
+    lv_obj_set_style_pad_row(container, 5, 0);
     lv_obj_clear_flag(container, LV_OBJ_FLAG_SCROLLABLE);
     
     // Project name (large, colored)
@@ -35,6 +37,12 @@ void UITabSettingsAbout::create(lv_obj_t *tab) {
     lv_label_set_text(version, "Version: " FLUIDTOUCH_VERSION);
     lv_obj_set_style_text_font(version, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(version, UITheme::TEXT_MEDIUM, 0);
+
+    // FluidNC version (shown once received from $Build/Info)
+    lbl_fluidnc_version = lv_label_create(container);
+    lv_label_set_text(lbl_fluidnc_version, "FluidNC: --");
+    lv_obj_set_style_text_font(lbl_fluidnc_version, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(lbl_fluidnc_version, UITheme::TEXT_MEDIUM, 0);
     
     // Horizontal container for both columns
     lv_obj_t *columns_container = lv_obj_create(container);
@@ -45,7 +53,7 @@ void UITabSettingsAbout::create(lv_obj_t *tab) {
     lv_obj_set_flex_flow(columns_container, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(columns_container, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_column(columns_container, 60, 0);
-    lv_obj_set_style_pad_top(columns_container, 20, 0);
+    lv_obj_set_style_pad_top(columns_container, 10, 0);
     
     // Left column: GitHub
     lv_obj_t *github_column = lv_obj_create(columns_container);
@@ -109,8 +117,18 @@ void UITabSettingsAbout::create(lv_obj_t *tab) {
 
 void UITabSettingsAbout::update() {
     if (screenshot_link_label == nullptr || screenshot_qr == nullptr) return;
-    
-    // Only update once when WiFi connects
+
+    // Update FluidNC version if received
+    if (lbl_fluidnc_version != nullptr) {
+        const char* ver = FluidNCClient::getStatus().fluidnc_version;
+        if (ver[0] != '\0') {
+            char buf[48];
+            snprintf(buf, sizeof(buf), "FluidNC Version: %s", ver);
+            lv_label_set_text(lbl_fluidnc_version, buf);
+        }
+    }
+
+    // Only update screenshot URL once when WiFi connects
     if (wifi_url_set) return;
     
     if (WiFi.status() == WL_CONNECTED) {

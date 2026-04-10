@@ -291,6 +291,9 @@ void FluidNCClient::onEventsCallback(WebsocketsEvent event, String data) {
             
             // Attempt to enable automatic status reporting
             attemptEnableAutoReporting();
+            
+            // Request firmware version info
+            webSocket.send("$Build/Info\n");
             break;
             
         case WebsocketsEvent::ConnectionClosed:
@@ -543,6 +546,23 @@ void FluidNCClient::parseRealtimeFeedback(const char* message) {
         }
     }
     
+    // Parse FluidNC firmware version from $Build/Info response
+    // Example: [VER:3.9 FluidNC v3.9.5:]
+    if (strncmp(message, "[VER:", 5) == 0) {
+        const char* v = strstr(message + 5, " v");
+        if (v) {
+            v += 2;  // skip " v"
+            const char* end = strchr(v, ':');
+            if (!end) end = strchr(v, ']');
+            if (!end) end = v + strlen(v);
+            size_t len = (size_t)(end - v);
+            if (len >= sizeof(currentStatus.fluidnc_version)) len = sizeof(currentStatus.fluidnc_version) - 1;
+            strncpy(currentStatus.fluidnc_version, v, len);
+            currentStatus.fluidnc_version[len] = '\0';
+            Serial.printf("[FluidNC] Firmware version: %s\n", currentStatus.fluidnc_version);
+        }
+    }
+
     // Check for auto-report confirmation message
     if (strstr(message, "websocket auto report interval set") != nullptr) {
         Serial.println("[FluidNC] ✓ Auto-report confirmed - automatic reporting enabled");
