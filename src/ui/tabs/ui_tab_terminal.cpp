@@ -16,6 +16,10 @@ bool UITabTerminal::buffer_dirty = false;
 uint32_t UITabTerminal::last_update_ms = 0;
 bool UITabTerminal::in_json_message = false;
 int UITabTerminal::json_brace_count = 0;
+String UITabTerminal::cmd_history[10];
+int UITabTerminal::hist_count = 0;
+int UITabTerminal::hist_index = -1;
+String UITabTerminal::hist_draft = "";
 
 void UITabTerminal::create(lv_obj_t *tab) {
     // Set 5px margins by using padding
@@ -28,10 +32,13 @@ void UITabTerminal::create(lv_obj_t *tab) {
     // Tab content height = SCREEN_HEIGHT (480) - STATUS_BAR_HEIGHT (60) - TAB_BUTTON_HEIGHT (50) = 370px
     const int content_height = SCREEN_HEIGHT - STATUS_BAR_HEIGHT - TAB_BUTTON_HEIGHT;
     const int input_height = 45;
-    const int button_width = 100;
-    const int margin = 10;
-    const int input_width = SCREEN_WIDTH - (margin * 5) - button_width - 120;
-    const int terminal_height = content_height - input_height - (margin * 3);
+    const int btn_small_w = 45;   // Clear / Up / Down buttons
+    const int btn_send_w = 80;    // Send button
+    const int gap = 5;
+    // Effective content width: 800 - 2*15 padding = 770px
+    // Right 120px reserved for auto-scroll; buttons: 3*45 + 80 + 4*5 = 235px; input: 415px
+    const int input_width = 770 - 120 - (3 * btn_small_w) - btn_send_w - (4 * gap);
+    const int terminal_height = content_height - input_height - (gap * 3);
 
     // Input text area
     input_field = lv_textarea_create(tab);
@@ -44,10 +51,45 @@ void UITabTerminal::create(lv_obj_t *tab) {
     lv_obj_set_style_text_color(input_field, lv_color_white(), LV_PART_MAIN);
     lv_obj_add_event_cb(input_field, input_field_event_cb, LV_EVENT_CLICKED, nullptr);
 
-    // Send button (next to input field)
+    int bx = input_width + gap;
+
+    // Clear (X) button
+    lv_obj_t *clear_btn = lv_button_create(tab);
+    lv_obj_set_size(clear_btn, btn_small_w, input_height);
+    lv_obj_set_pos(clear_btn, bx, 0);
+    lv_obj_set_style_bg_color(clear_btn, UITheme::BTN_DISCONNECT, LV_PART_MAIN);
+    lv_obj_add_event_cb(clear_btn, clear_btn_event_cb, LV_EVENT_CLICKED, nullptr);
+    lv_obj_t *clear_lbl = lv_label_create(clear_btn);
+    lv_label_set_text(clear_lbl, LV_SYMBOL_CLOSE);
+    lv_obj_center(clear_lbl);
+    bx += btn_small_w + gap;
+
+    // History up button (older command)
+    lv_obj_t *hist_up = lv_button_create(tab);
+    lv_obj_set_size(hist_up, btn_small_w, input_height);
+    lv_obj_set_pos(hist_up, bx, 0);
+    lv_obj_set_style_bg_color(hist_up, UITheme::ACCENT_SECONDARY, LV_PART_MAIN);
+    lv_obj_add_event_cb(hist_up, hist_up_event_cb, LV_EVENT_CLICKED, nullptr);
+    lv_obj_t *up_lbl = lv_label_create(hist_up);
+    lv_label_set_text(up_lbl, LV_SYMBOL_UP);
+    lv_obj_center(up_lbl);
+    bx += btn_small_w + gap;
+
+    // History down button (newer command)
+    lv_obj_t *hist_down = lv_button_create(tab);
+    lv_obj_set_size(hist_down, btn_small_w, input_height);
+    lv_obj_set_pos(hist_down, bx, 0);
+    lv_obj_set_style_bg_color(hist_down, UITheme::ACCENT_SECONDARY, LV_PART_MAIN);
+    lv_obj_add_event_cb(hist_down, hist_down_event_cb, LV_EVENT_CLICKED, nullptr);
+    lv_obj_t *down_lbl = lv_label_create(hist_down);
+    lv_label_set_text(down_lbl, LV_SYMBOL_DOWN);
+    lv_obj_center(down_lbl);
+    bx += btn_small_w + gap;
+
+    // Send button
     lv_obj_t *send_btn = lv_button_create(tab);
-    lv_obj_set_size(send_btn, button_width - 10, input_height);
-    lv_obj_set_pos(send_btn, input_width + margin, 0);
+    lv_obj_set_size(send_btn, btn_send_w, input_height);
+    lv_obj_set_pos(send_btn, bx, 0);
     lv_obj_set_style_bg_color(send_btn, UITheme::ACCENT_PRIMARY, LV_PART_MAIN);
     lv_obj_add_event_cb(send_btn, send_button_event_cb, LV_EVENT_CLICKED, nullptr);
 
@@ -142,17 +184,29 @@ void UITabTerminal::send_command() {
     const char *cmd = lv_textarea_get_text(input_field);
 
     if (cmd != nullptr && strlen(cmd) > 0) {
+        String cmd_str = String(cmd);
+
+        // Add to history (most recent first, skip duplicate consecutive entry)
+        if (hist_count == 0 || cmd_history[0] != cmd_str) {
+            for (int i = 9; i > 0; i--) {
+                cmd_history[i] = cmd_history[i - 1];
+            }
+            cmd_history[0] = cmd_str;
+            if (hist_count < 10) hist_count++;
+        }
+        hist_index = -1;
+        hist_draft = "";
+
         // Log to serial for debugging
         Serial.print("[Terminal] Sending command: ");
-        Serial.println(cmd);
+        Serial.println(cmd_str.c_str());
 
         // Send command to FluidNC with newline
-        String cmd_with_newline = String(cmd) + "\n";
-        FluidNCClient::sendCommand(cmd_with_newline.c_str());
+        FluidNCClient::sendCommand((cmd_str + "\n").c_str());
 
         // Echo command to terminal
         terminal_buffer += "> ";
-        terminal_buffer += cmd;
+        terminal_buffer += cmd_str;
         terminal_buffer += "\n";
         trimBuffer();
 
@@ -285,5 +339,32 @@ void UITabTerminal::updateDisplay() {
         if (terminal_cont && auto_scroll_enabled) {
             lv_obj_scroll_to_y(terminal_cont, LV_COORD_MAX, LV_ANIM_OFF);
         }
+    }
+}
+
+void UITabTerminal::clear_btn_event_cb(lv_event_t *e) {
+    lv_textarea_set_text(input_field, "");
+    hist_index = -1;
+}
+
+void UITabTerminal::hist_up_event_cb(lv_event_t *e) {
+    if (hist_count == 0) return;
+    if (hist_index == -1) {
+        hist_draft = String(lv_textarea_get_text(input_field));
+        hist_index = 0;
+    } else if (hist_index < hist_count - 1) {
+        hist_index++;
+    }
+    lv_textarea_set_text(input_field, cmd_history[hist_index].c_str());
+}
+
+void UITabTerminal::hist_down_event_cb(lv_event_t *e) {
+    if (hist_index == -1) return;
+    if (hist_index > 0) {
+        hist_index--;
+        lv_textarea_set_text(input_field, cmd_history[hist_index].c_str());
+    } else {
+        hist_index = -1;
+        lv_textarea_set_text(input_field, hist_draft.c_str());
     }
 }

@@ -25,10 +25,19 @@ private:
     static bool in_json_message;  // Track if we're inside a multi-line JSON message
     static int json_brace_count;  // Track brace depth in JSON messages
 
+    // Command history (up to 10 entries, index 0 = most recently sent)
+    static String cmd_history[10];
+    static int hist_count;
+    static int hist_index;   // -1 = current input, 0..hist_count-1 = history
+    static String hist_draft; // Saved draft when browsing history
+
     static void send_button_event_cb(lv_event_t *e);
     static void input_field_event_cb(lv_event_t *e);
     static void keyboard_event_cb(lv_event_t *e);
     static void auto_scroll_event_cb(lv_event_t *e);
+    static void clear_btn_event_cb(lv_event_t *e);
+    static void hist_up_event_cb(lv_event_t *e);
+    static void hist_down_event_cb(lv_event_t *e);
     static void send_command();
     static void trimBuffer();  // Remove old lines if buffer is too large
     static void updateDisplay();  // Update the UI from buffer
