@@ -22,6 +22,11 @@ lv_obj_t *UITabStatus::lbl_wpos_x = nullptr;
 lv_obj_t *UITabStatus::lbl_wpos_y = nullptr;
 lv_obj_t *UITabStatus::lbl_wpos_z = nullptr;
 lv_obj_t *UITabStatus::lbl_wpos_a = nullptr;
+lv_obj_t *UITabStatus::ind_limit_x = nullptr;
+lv_obj_t *UITabStatus::ind_limit_y = nullptr;
+lv_obj_t *UITabStatus::ind_limit_z = nullptr;
+lv_obj_t *UITabStatus::ind_limit_a = nullptr;
+lv_obj_t *UITabStatus::ind_probe = nullptr;
 lv_obj_t *UITabStatus::lbl_mpos_x = nullptr;
 lv_obj_t *UITabStatus::lbl_mpos_y = nullptr;
 lv_obj_t *UITabStatus::lbl_mpos_z = nullptr;
@@ -167,26 +172,51 @@ void UITabStatus::create(lv_obj_t *tab) {
     
     lv_obj_add_event_cb(btn_modal_wcs, onWCSButtonClicked, LV_EVENT_CLICKED, nullptr);
 
+    // PRB label + probe indicator (shares the header row with position column headers)
+    lv_obj_t *prb_label = lv_label_create(tab);
+    lv_label_set_text(prb_label, "PRB");
+    lv_obj_set_style_text_font(prb_label, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_color(prb_label, UITheme::ACCENT_SECONDARY, 0);
+    lv_obj_set_pos(prb_label, 22, 70);
+
+    ind_probe = lv_obj_create(tab);
+    lv_obj_set_size(ind_probe, 14, 14);
+    lv_obj_set_pos(ind_probe, 0, 72);
+    lv_obj_set_style_radius(ind_probe, 7, 0);
+    lv_obj_set_style_bg_color(ind_probe, UITheme::BG_BUTTON, 0);
+    lv_obj_set_style_border_width(ind_probe, 1, 0);
+    lv_obj_set_style_border_color(ind_probe, UITheme::BORDER_MEDIUM, 0);
+    lv_obj_clear_flag(ind_probe, LV_OBJ_FLAG_SCROLLABLE);
+
     // WORK POSITION - Left column
     lv_obj_t *wpos_header = lv_label_create(tab);
     lv_label_set_text(wpos_header, "WORK POSITION");
     lv_obj_set_style_text_font(wpos_header, &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_color(wpos_header, UITheme::TEXT_DISABLED, 0);
-    lv_obj_set_pos(wpos_header, 0, 70);
+    lv_obj_set_pos(wpos_header, 70, 70);
 
     // Work Position - Editable text areas with axis labels
     lv_obj_t *wpos_x_label = lv_label_create(tab);
     lv_label_set_text(wpos_x_label, "X");
     lv_obj_set_style_text_font(wpos_x_label, &lv_font_montserrat_32, 0);
     lv_obj_set_style_text_color(wpos_x_label, UITheme::AXIS_X, 0);
-    lv_obj_set_pos(wpos_x_label, 0, 95);
+    lv_obj_set_pos(wpos_x_label, 22, 96);
+
+    ind_limit_x = lv_obj_create(tab);
+    lv_obj_set_size(ind_limit_x, 14, 14);
+    lv_obj_set_pos(ind_limit_x, 0, 108);
+    lv_obj_set_style_radius(ind_limit_x, 7, 0);
+    lv_obj_set_style_bg_color(ind_limit_x, UITheme::BG_BUTTON, 0);
+    lv_obj_set_style_border_width(ind_limit_x, 1, 0);
+    lv_obj_set_style_border_color(ind_limit_x, UITheme::BORDER_MEDIUM, 0);
+    lv_obj_clear_flag(ind_limit_x, LV_OBJ_FLAG_SCROLLABLE);
 
     lbl_wpos_x = lv_textarea_create(tab);
     lv_textarea_set_text(lbl_wpos_x, "----.---");
     lv_textarea_set_one_line(lbl_wpos_x, true);
     lv_textarea_set_max_length(lbl_wpos_x, 10);
     lv_obj_set_size(lbl_wpos_x, 180, 40);
-    lv_obj_set_pos(lbl_wpos_x, 35, 95);
+    lv_obj_set_pos(lbl_wpos_x, 70, 95);
     lv_obj_clear_flag(lbl_wpos_x, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_text_font(lbl_wpos_x, &lv_font_montserrat_32, 0);
     lv_obj_set_style_pad_top(lbl_wpos_x, 2, 0);
@@ -206,14 +236,23 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_label_set_text(wpos_y_label, "Y");
     lv_obj_set_style_text_font(wpos_y_label, &lv_font_montserrat_32, 0);
     lv_obj_set_style_text_color(wpos_y_label, UITheme::AXIS_Y, 0);
-    lv_obj_set_pos(wpos_y_label, 0, 140);
+    lv_obj_set_pos(wpos_y_label, 22, 141);
+
+    ind_limit_y = lv_obj_create(tab);
+    lv_obj_set_size(ind_limit_y, 14, 14);
+    lv_obj_set_pos(ind_limit_y, 0, 153);
+    lv_obj_set_style_radius(ind_limit_y, 7, 0);
+    lv_obj_set_style_bg_color(ind_limit_y, UITheme::BG_BUTTON, 0);
+    lv_obj_set_style_border_width(ind_limit_y, 1, 0);
+    lv_obj_set_style_border_color(ind_limit_y, UITheme::BORDER_MEDIUM, 0);
+    lv_obj_clear_flag(ind_limit_y, LV_OBJ_FLAG_SCROLLABLE);
 
     lbl_wpos_y = lv_textarea_create(tab);
     lv_textarea_set_text(lbl_wpos_y, "----.---");
     lv_textarea_set_one_line(lbl_wpos_y, true);
     lv_textarea_set_max_length(lbl_wpos_y, 10);
     lv_obj_set_size(lbl_wpos_y, 180, 40);
-    lv_obj_set_pos(lbl_wpos_y, 35, 140);
+    lv_obj_set_pos(lbl_wpos_y, 70, 140);
     lv_obj_clear_flag(lbl_wpos_y, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_text_font(lbl_wpos_y, &lv_font_montserrat_32, 0);
     lv_obj_set_style_pad_top(lbl_wpos_y, 2, 0);
@@ -233,14 +272,23 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_label_set_text(wpos_z_label, "Z");
     lv_obj_set_style_text_font(wpos_z_label, &lv_font_montserrat_32, 0);
     lv_obj_set_style_text_color(wpos_z_label, UITheme::AXIS_Z, 0);
-    lv_obj_set_pos(wpos_z_label, 0, 185);
+    lv_obj_set_pos(wpos_z_label, 22, 186);
+
+    ind_limit_z = lv_obj_create(tab);
+    lv_obj_set_size(ind_limit_z, 14, 14);
+    lv_obj_set_pos(ind_limit_z, 0, 198);
+    lv_obj_set_style_radius(ind_limit_z, 7, 0);
+    lv_obj_set_style_bg_color(ind_limit_z, UITheme::BG_BUTTON, 0);
+    lv_obj_set_style_border_width(ind_limit_z, 1, 0);
+    lv_obj_set_style_border_color(ind_limit_z, UITheme::BORDER_MEDIUM, 0);
+    lv_obj_clear_flag(ind_limit_z, LV_OBJ_FLAG_SCROLLABLE);
 
     lbl_wpos_z = lv_textarea_create(tab);
     lv_textarea_set_text(lbl_wpos_z, "----.---");
     lv_textarea_set_one_line(lbl_wpos_z, true);
     lv_textarea_set_max_length(lbl_wpos_z, 10);
     lv_obj_set_size(lbl_wpos_z, 180, 40);
-    lv_obj_set_pos(lbl_wpos_z, 35, 185);
+    lv_obj_set_pos(lbl_wpos_z, 70, 185);
     lv_obj_clear_flag(lbl_wpos_z, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_text_font(lbl_wpos_z, &lv_font_montserrat_32, 0);
     lv_obj_set_style_pad_top(lbl_wpos_z, 2, 0);
@@ -256,20 +304,14 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_obj_add_event_cb(lbl_wpos_z, position_field_event_handler, LV_EVENT_FOCUSED, NULL);
     lv_obj_add_event_cb(lbl_wpos_z, position_field_event_handler, LV_EVENT_DEFOCUSED, NULL);
 
-    // MACHINE POSITION - Center column (moved right for wider values)
+    // MACHINE POSITION - Center column
     lv_obj_t *mpos_header = lv_label_create(tab);
     lv_label_set_text(mpos_header, "MACHINE POSITION");
     lv_obj_set_style_text_font(mpos_header, &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_color(mpos_header, UITheme::TEXT_DISABLED, 0);
-    lv_obj_set_pos(mpos_header, 225, 70);
+    lv_obj_set_pos(mpos_header, 260, 70);
 
-    // Machine Position - Editable text areas with axis labels
-    lv_obj_t *mpos_x_label = lv_label_create(tab);
-    lv_label_set_text(mpos_x_label, "X");
-    lv_obj_set_style_text_font(mpos_x_label, &lv_font_montserrat_32, 0);
-    lv_obj_set_style_text_color(mpos_x_label, UITheme::AXIS_X, 0);
-    lv_obj_set_pos(mpos_x_label, 225, 95);
-
+    // Machine Position - Editable text areas (no axis labels, shared with work position column)
     lbl_mpos_x = lv_textarea_create(tab);
     lv_textarea_set_text(lbl_mpos_x, "----.---");
     lv_textarea_set_one_line(lbl_mpos_x, true);
@@ -291,12 +333,6 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_obj_add_event_cb(lbl_mpos_x, position_field_event_handler, LV_EVENT_FOCUSED, NULL);
     lv_obj_add_event_cb(lbl_mpos_x, position_field_event_handler, LV_EVENT_DEFOCUSED, NULL);
     
-    lv_obj_t *mpos_y_label = lv_label_create(tab);
-    lv_label_set_text(mpos_y_label, "Y");
-    lv_obj_set_style_text_font(mpos_y_label, &lv_font_montserrat_32, 0);
-    lv_obj_set_style_text_color(mpos_y_label, UITheme::AXIS_Y, 0);
-    lv_obj_set_pos(mpos_y_label, 225, 140);
-
     lbl_mpos_y = lv_textarea_create(tab);
     lv_textarea_set_text(lbl_mpos_y, "----.---");
     lv_textarea_set_one_line(lbl_mpos_y, true);
@@ -318,12 +354,6 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_obj_add_event_cb(lbl_mpos_y, position_field_event_handler, LV_EVENT_FOCUSED, NULL);
     lv_obj_add_event_cb(lbl_mpos_y, position_field_event_handler, LV_EVENT_DEFOCUSED, NULL);
     
-    lv_obj_t *mpos_z_label = lv_label_create(tab);
-    lv_label_set_text(mpos_z_label, "Z");
-    lv_obj_set_style_text_font(mpos_z_label, &lv_font_montserrat_32, 0);
-    lv_obj_set_style_text_color(mpos_z_label, UITheme::AXIS_Z, 0);
-    lv_obj_set_pos(mpos_z_label, 225, 185);
-
     lbl_mpos_z = lv_textarea_create(tab);
     lv_textarea_set_text(lbl_mpos_z, "----.---");
     lv_textarea_set_one_line(lbl_mpos_z, true);
@@ -352,14 +382,23 @@ void UITabStatus::create(lv_obj_t *tab) {
         lv_label_set_text(wpos_a_label, "A");
         lv_obj_set_style_text_font(wpos_a_label, &lv_font_montserrat_32, 0);
         lv_obj_set_style_text_color(wpos_a_label, UITheme::AXIS_A, 0);
-        lv_obj_set_pos(wpos_a_label, 0, 230);
+        lv_obj_set_pos(wpos_a_label, 22, 231);
+
+        ind_limit_a = lv_obj_create(tab);
+        lv_obj_set_size(ind_limit_a, 14, 14);
+        lv_obj_set_pos(ind_limit_a, 0, 243);
+        lv_obj_set_style_radius(ind_limit_a, 7, 0);
+        lv_obj_set_style_bg_color(ind_limit_a, UITheme::BG_BUTTON, 0);
+        lv_obj_set_style_border_width(ind_limit_a, 1, 0);
+        lv_obj_set_style_border_color(ind_limit_a, UITheme::BORDER_MEDIUM, 0);
+        lv_obj_clear_flag(ind_limit_a, LV_OBJ_FLAG_SCROLLABLE);
 
         lbl_wpos_a = lv_textarea_create(tab);
         lv_textarea_set_text(lbl_wpos_a, "----.---");
         lv_textarea_set_one_line(lbl_wpos_a, true);
         lv_textarea_set_max_length(lbl_wpos_a, 10);
         lv_obj_set_size(lbl_wpos_a, 180, 40);
-        lv_obj_set_pos(lbl_wpos_a, 35, 230);
+        lv_obj_set_pos(lbl_wpos_a, 70, 230);
         lv_obj_clear_flag(lbl_wpos_a, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_set_style_text_font(lbl_wpos_a, &lv_font_montserrat_32, 0);
         lv_obj_set_style_pad_top(lbl_wpos_a, 2, 0);
@@ -376,12 +415,6 @@ void UITabStatus::create(lv_obj_t *tab) {
         lv_obj_add_event_cb(lbl_wpos_a, position_field_event_handler, LV_EVENT_DEFOCUSED, NULL);
 
         // Machine Position A
-        lv_obj_t *mpos_a_label = lv_label_create(tab);
-        lv_label_set_text(mpos_a_label, "A");
-        lv_obj_set_style_text_font(mpos_a_label, &lv_font_montserrat_32, 0);
-        lv_obj_set_style_text_color(mpos_a_label, UITheme::AXIS_A, 0);
-        lv_obj_set_pos(mpos_a_label, 225, 230);
-
         lbl_mpos_a = lv_textarea_create(tab);
         lv_textarea_set_text(lbl_mpos_a, "----.---");
         lv_textarea_set_one_line(lbl_mpos_a, true);
@@ -946,6 +979,22 @@ void UITabStatus::updateControlButtons(int machine_state) {
         lv_obj_add_flag(btn_stop, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(btn_cancel_jog, LV_OBJ_FLAG_HIDDEN);
     }
+}
+
+void UITabStatus::updateLimitSwitches(bool x, bool y, bool z, bool a) {
+    auto setIndicator = [](lv_obj_t *ind, bool triggered) {
+        if (!ind) return;
+        lv_obj_set_style_bg_color(ind, triggered ? UITheme::BTN_PLAY : UITheme::BG_BUTTON, 0);
+    };
+    setIndicator(ind_limit_x, x);
+    setIndicator(ind_limit_y, y);
+    setIndicator(ind_limit_z, z);
+    setIndicator(ind_limit_a, a);
+}
+
+void UITabStatus::updateProbe(bool triggered) {
+    if (!ind_probe) return;
+    lv_obj_set_style_bg_color(ind_probe, triggered ? UITheme::BTN_PLAY : UITheme::BG_BUTTON, 0);
 }
 
 void UITabStatus::onPauseResumeClicked(lv_event_t *e) {

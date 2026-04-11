@@ -472,6 +472,27 @@ void FluidNCClient::parseStatusReport(const char* message) {
         Serial.printf("[FluidNC] Parsed Ov: feed=%.0f%%, rapid=%.0f%%, spindle=%.0f%%\n", 
                       currentStatus.feed_override, currentStatus.rapid_override, currentStatus.spindle_override);
     }
+
+    // Parse pin states (Pn:XYZA P) - field only present when pins are active
+    currentStatus.pin_limit_x = false;
+    currentStatus.pin_limit_y = false;
+    currentStatus.pin_limit_z = false;
+    currentStatus.pin_limit_a = false;
+    currentStatus.pin_probe   = false;
+    const char* pn = strstr(message, "Pn:");
+    if (pn) {
+        const char* p = pn + 3;
+        while (*p && *p != '|' && *p != '>') {
+            switch (*p) {
+                case 'X': currentStatus.pin_limit_x = true; break;
+                case 'Y': currentStatus.pin_limit_y = true; break;
+                case 'Z': currentStatus.pin_limit_z = true; break;
+                case 'A': currentStatus.pin_limit_a = true; break;
+                case 'P': currentStatus.pin_probe   = true; break;
+            }
+            p++;
+        }
+    }
     
     // Parse SD card file progress (SD:percent,filename)
     const char* sd = strstr(message, "SD:");

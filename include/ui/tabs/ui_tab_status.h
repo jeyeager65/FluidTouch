@@ -19,6 +19,8 @@ public:
                                   const char *units, const char *motion, const char *feedrate,
                                   const char *spindle, const char *coolant, const char *tool);
     static void updateControlButtons(int machine_state);
+    static void updateLimitSwitches(bool x, bool y, bool z, bool a = false);
+    static void updateProbe(bool triggered);
     
 private:
     static lv_obj_t *lbl_message;
@@ -33,6 +35,13 @@ private:
     static lv_obj_t *lbl_wpos_y;
     static lv_obj_t *lbl_wpos_z;
     static lv_obj_t *lbl_wpos_a;
+    
+    // Limit switch indicators
+    static lv_obj_t *ind_limit_x;
+    static lv_obj_t *ind_limit_y;
+    static lv_obj_t *ind_limit_z;
+    static lv_obj_t *ind_limit_a;
+    static lv_obj_t *ind_probe;
     static lv_obj_t *lbl_mpos_x;
     static lv_obj_t *lbl_mpos_y;
     static lv_obj_t *lbl_mpos_z;

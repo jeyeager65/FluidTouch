@@ -216,6 +216,8 @@ void loop()
                                         status.modal_units, status.modal_motion, status.modal_feedrate,
                                         status.modal_spindle, status.modal_coolant, status.modal_tool);
             UITabStatus::updateMessage(status.last_message);
+            UITabStatus::updateLimitSwitches(status.pin_limit_x, status.pin_limit_y, status.pin_limit_z, status.pin_limit_a);
+            UITabStatus::updateProbe(status.pin_probe);
             
             // Update file progress in status bar (UICommon) instead of status tab
             UICommon::updateFileProgress(status.is_sd_printing, status.sd_percent,
