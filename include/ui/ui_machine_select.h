@@ -8,7 +8,10 @@ class UIMachineSelect {
 public:
     static void show(lv_display_t *disp);
     static void hide();
-    
+
+    // Battery indicator update (called from main loop)
+    static void updateBattery(uint8_t percentage, int state);
+
 private:
     static lv_obj_t *screen;
     static lv_display_t *display;
@@ -58,6 +61,15 @@ private:
     static void onConnectionTypeChanged(lv_event_t *e);
     static void onTextareaFocused(lv_event_t *e);
     
+    // Battery indicator (compact graphical widget)
+    static lv_obj_t *battery_body;
+    static lv_obj_t *battery_fill;
+    static lv_obj_t *battery_nub;
+    static lv_obj_t *lbl_battery_charge;
+    static lv_obj_t *lbl_battery_percent;
+    static uint8_t last_battery_pct;
+    static int last_battery_state;
+
     // Helper functions
     static void refreshMachineList();
     static void showConfigDialog(int index);

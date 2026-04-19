@@ -6,6 +6,7 @@
 #include "network/fluidnc_client.h"
 #include "core/display_driver.h"
 #include "core/power_manager.h"
+#include "core/battery_monitor.h"
 #include "network/screenshot_server.h"
 #include "config.h"
 #include <Preferences.h>
@@ -69,6 +70,15 @@ float UICommon::last_wpos_a = -9999.0f;
 float UICommon::last_mpos_x = -9999.0f;
 float UICommon::last_mpos_y = -9999.0f;
 float UICommon::last_mpos_z = -9999.0f;
+
+// Battery indicator (compact graphical widget)
+lv_obj_t *UICommon::battery_body = nullptr;
+lv_obj_t *UICommon::battery_fill = nullptr;
+lv_obj_t *UICommon::battery_nub = nullptr;
+lv_obj_t *UICommon::lbl_battery_charge = nullptr;
+lv_obj_t *UICommon::lbl_battery_percent = nullptr;
+uint8_t UICommon::last_battery_pct = 255;  // Force first update
+int UICommon::last_battery_state = -1;
 
 // Cached system preferences (loaded once at startup)
 bool UICommon::enable_a_axis = false;
@@ -562,20 +572,25 @@ void UICommon::createStatusBar() {
     
     if (MachineConfigManager::getSelectedMachine(selected_machine)) {
         const char *symbol = (selected_machine.connection_type == CONN_WIRELESS) ? LV_SYMBOL_WIFI : LV_SYMBOL_USB;
-        
+
         // Symbol (will be colored based on connection status)
         lbl_machine_symbol = lv_label_create(status_bar);
         lv_label_set_text(lbl_machine_symbol, symbol);
         lv_obj_set_style_text_font(lbl_machine_symbol, &lv_font_montserrat_18, 0);
         lv_obj_set_style_text_color(lbl_machine_symbol, UITheme::STATE_ALARM, 0);  // Start red
         lv_obj_align(lbl_machine_symbol, LV_ALIGN_TOP_RIGHT, -5, 3);
-        
-        // Machine name
+
+        // Machine name - fixed width, right-aligned (mirrors wifi_name layout for consistency)
+        // Width kept compact so the battery widget has room between WPos Z and the machine name.
+        // Names longer than this width are truncated with an ellipsis.
         lbl_machine_name = lv_label_create(status_bar);
         lv_label_set_text(lbl_machine_name, selected_machine.name);
         lv_obj_set_style_text_font(lbl_machine_name, &lv_font_montserrat_18, 0);
         lv_obj_set_style_text_color(lbl_machine_name, UITheme::ACCENT_PRIMARY, 0);
-        lv_obj_align_to(lbl_machine_name, lbl_machine_symbol, LV_ALIGN_OUT_LEFT_MID, -5, 0);
+        lv_obj_set_style_text_align(lbl_machine_name, LV_TEXT_ALIGN_RIGHT, 0);
+        lv_label_set_long_mode(lbl_machine_name, LV_LABEL_LONG_DOT);
+        lv_obj_set_width(lbl_machine_name, 80);  // Compact width to leave room for battery
+        lv_obj_align(lbl_machine_name, LV_ALIGN_TOP_RIGHT, -32, 3);
     } else {
         lbl_modal_states = lv_label_create(status_bar);
         lv_label_set_text(lbl_modal_states, "No Machine");
@@ -614,6 +629,68 @@ void UICommon::createStatusBar() {
     lv_obj_set_style_text_font(lbl_wifi_symbol, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_wifi_symbol, WiFi.isConnected() ? UITheme::STATE_IDLE : UITheme::STATE_ALARM, 0);
     lv_obj_align(lbl_wifi_symbol, LV_ALIGN_BOTTOM_RIGHT, -5, -3);
+
+    // Battery indicator (only shown when battery monitor is enabled)
+    // Compact graphical battery: outline + fill bar + nub, with percentage text.
+    // Positioned on the top line, left of the fixed-width machine_name/symbol area.
+    // Total footprint is ~72px (percent text: ~36px + gap + battery graphic: ~32px).
+    if (BatteryMonitor::isEnabled()) {
+        // Percentage text - placed first so battery can align to its left
+        lbl_battery_percent = lv_label_create(status_bar);
+        lv_label_set_text(lbl_battery_percent, "100%");
+        lv_obj_set_style_text_font(lbl_battery_percent, &lv_font_montserrat_14, 0);
+        lv_obj_set_style_text_color(lbl_battery_percent, UITheme::BATTERY_FULL, 0);
+        lv_obj_set_style_text_align(lbl_battery_percent, LV_TEXT_ALIGN_RIGHT, 0);
+        lv_obj_set_width(lbl_battery_percent, 36);
+        // Anchor to left of machine_name (if exists) with 8px gap for breathing room
+        lv_obj_t *anchor = lbl_machine_name ? lbl_machine_name : lbl_machine_symbol;
+        if (anchor) {
+            lv_obj_align_to(lbl_battery_percent, anchor, LV_ALIGN_OUT_LEFT_MID, -8, 0);
+        } else {
+            lv_obj_align(lbl_battery_percent, LV_ALIGN_TOP_RIGHT, -45, 8);
+        }
+
+        // Battery nub (tiny rectangle on the right side of the battery body)
+        battery_nub = lv_obj_create(status_bar);
+        lv_obj_set_size(battery_nub, 2, 6);
+        lv_obj_set_style_bg_color(battery_nub, UITheme::BATTERY_FULL, 0);
+        lv_obj_set_style_border_width(battery_nub, 0, 0);
+        lv_obj_set_style_radius(battery_nub, 0, 0);
+        lv_obj_set_style_pad_all(battery_nub, 0, 0);
+        lv_obj_clear_flag(battery_nub, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_align_to(battery_nub, lbl_battery_percent, LV_ALIGN_OUT_LEFT_MID, -4, 0);
+
+        // Battery body (outline rectangle with colored border, hollow inside)
+        battery_body = lv_obj_create(status_bar);
+        lv_obj_set_size(battery_body, 28, 14);
+        lv_obj_set_style_bg_color(battery_body, UITheme::BG_DARK, 0);
+        lv_obj_set_style_border_color(battery_body, UITheme::BATTERY_FULL, 0);
+        lv_obj_set_style_border_width(battery_body, 1, 0);
+        lv_obj_set_style_radius(battery_body, 2, 0);
+        lv_obj_set_style_pad_all(battery_body, 1, 0);
+        lv_obj_clear_flag(battery_body, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_align_to(battery_body, battery_nub, LV_ALIGN_OUT_LEFT_MID, 0, 0);
+
+        // Inner fill bar (shows percentage visually)
+        battery_fill = lv_bar_create(battery_body);
+        lv_obj_set_size(battery_fill, LV_PCT(100), LV_PCT(100));
+        lv_obj_center(battery_fill);
+        lv_bar_set_range(battery_fill, 0, 100);
+        lv_bar_set_value(battery_fill, 100, LV_ANIM_OFF);
+        lv_obj_set_style_bg_opa(battery_fill, LV_OPA_TRANSP, 0);
+        lv_obj_set_style_border_width(battery_fill, 0, 0);
+        lv_obj_set_style_radius(battery_fill, 0, 0);
+        lv_obj_set_style_bg_color(battery_fill, UITheme::BATTERY_FULL, LV_PART_INDICATOR);
+        lv_obj_set_style_radius(battery_fill, 0, LV_PART_INDICATOR);
+
+        // Lightning bolt overlay for charging state (hidden by default)
+        lbl_battery_charge = lv_label_create(status_bar);
+        lv_label_set_text(lbl_battery_charge, LV_SYMBOL_CHARGE);
+        lv_obj_set_style_text_font(lbl_battery_charge, &lv_font_montserrat_14, 0);
+        lv_obj_set_style_text_color(lbl_battery_charge, UITheme::BATTERY_CHARGING, 0);
+        lv_obj_align_to(lbl_battery_charge, battery_body, LV_ALIGN_CENTER, 0, 0);
+        lv_obj_add_flag(lbl_battery_charge, LV_OBJ_FLAG_HIDDEN);
+    }
 }
 
 void UICommon::updateModalStates(const char *text) {
@@ -761,6 +838,54 @@ void UICommon::updateConnectionStatus(bool machine_connected, bool wifi_connecte
             wifi_connected ? UITheme::STATE_IDLE : UITheme::STATE_ALARM, 0);
         last_wifi_connected = wifi_connected;
     }
+}
+
+void UICommon::updateBattery(uint8_t percentage, int state) {
+    if (!battery_body || !battery_fill || !battery_nub || !lbl_battery_percent) return;
+
+    // Only update when values actually change
+    if (percentage == last_battery_pct && state == last_battery_state) return;
+
+    // Determine color based on state and percentage
+    lv_color_t color;
+    if (state == 1) {  // BATTERY_CHARGING
+        color = UITheme::BATTERY_CHARGING;
+    } else if (state == 2) {  // BATTERY_CHARGED
+        color = UITheme::BATTERY_FULL;
+    } else if (percentage < 20) {
+        color = UITheme::BATTERY_LOW;
+    } else if (percentage < 55) {
+        color = UITheme::BATTERY_MID;
+    } else {
+        color = UITheme::BATTERY_FULL;
+    }
+
+    // Update fill bar value (use at least 5% so some color is visible even near empty)
+    uint8_t display_value = (percentage < 5 && percentage > 0) ? 5 : percentage;
+    lv_bar_set_value(battery_fill, display_value, LV_ANIM_OFF);
+
+    // Update colors: outline, fill, nub, and text
+    lv_obj_set_style_border_color(battery_body, color, 0);
+    lv_obj_set_style_bg_color(battery_fill, color, LV_PART_INDICATOR);
+    lv_obj_set_style_bg_color(battery_nub, color, 0);
+    lv_obj_set_style_text_color(lbl_battery_percent, color, 0);
+
+    // Show/hide charging bolt overlay
+    if (lbl_battery_charge) {
+        if (state == 1) {  // Charging
+            lv_obj_clear_flag(lbl_battery_charge, LV_OBJ_FLAG_HIDDEN);
+        } else {
+            lv_obj_add_flag(lbl_battery_charge, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+
+    // Update percentage text
+    char buf[8];
+    snprintf(buf, sizeof(buf), "%d%%", percentage);
+    lv_label_set_text(lbl_battery_percent, buf);
+
+    last_battery_pct = percentage;
+    last_battery_state = state;
 }
 
 void UICommon::showMachineSelectConfirmDialog() {

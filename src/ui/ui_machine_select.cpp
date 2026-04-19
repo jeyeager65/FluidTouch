@@ -3,6 +3,7 @@
 #include "ui/ui_tabs.h"
 #include "ui/ui_theme.h"
 #include "core/power_manager.h"
+#include "core/battery_monitor.h"
 #include "config.h"
 #include <Preferences.h>
 
@@ -32,6 +33,15 @@ lv_obj_t *UIMachineSelect::dd_connection_type = nullptr;
 lv_obj_t *UIMachineSelect::delete_dialog = nullptr;
 int UIMachineSelect::deleting_index = -1;
 
+// Battery indicator (compact graphical widget)
+lv_obj_t *UIMachineSelect::battery_body = nullptr;
+lv_obj_t *UIMachineSelect::battery_fill = nullptr;
+lv_obj_t *UIMachineSelect::battery_nub = nullptr;
+lv_obj_t *UIMachineSelect::lbl_battery_charge = nullptr;
+lv_obj_t *UIMachineSelect::lbl_battery_percent = nullptr;
+uint8_t UIMachineSelect::last_battery_pct = 255;  // Force first update
+int UIMachineSelect::last_battery_state = -1;
+
 void UIMachineSelect::show(lv_display_t *disp) {
     display = disp;
     Serial.println("UIMachineSelect: Creating machine selection screen");
@@ -52,7 +62,68 @@ void UIMachineSelect::show(lv_display_t *disp) {
     lv_obj_set_style_text_font(title, &lv_font_montserrat_32, 0);  // Larger font
     lv_obj_set_style_text_color(title, UITheme::TEXT_LIGHT, 0);
     lv_obj_align(title, LV_ALIGN_TOP_LEFT, 20, 15);
-    
+
+    // Battery indicator (compact graphical widget, placed after title)
+    if (BatteryMonitor::isEnabled()) {
+        last_battery_pct = 255;   // Force first update
+        last_battery_state = -1;
+
+        // Battery body (outline rectangle)
+        battery_body = lv_obj_create(screen);
+        lv_obj_set_size(battery_body, 28, 14);
+        lv_obj_set_style_bg_color(battery_body, UITheme::BG_DARK, 0);
+        lv_obj_set_style_border_color(battery_body, UITheme::BATTERY_FULL, 0);
+        lv_obj_set_style_border_width(battery_body, 1, 0);
+        lv_obj_set_style_radius(battery_body, 2, 0);
+        lv_obj_set_style_pad_all(battery_body, 1, 0);
+        lv_obj_clear_flag(battery_body, LV_OBJ_FLAG_SCROLLABLE);
+        // Bottom-align to the title baseline with 20px gap
+        lv_obj_align_to(battery_body, title, LV_ALIGN_OUT_RIGHT_BOTTOM, 20, -6);
+
+        // Nub on right side of battery
+        battery_nub = lv_obj_create(screen);
+        lv_obj_set_size(battery_nub, 2, 6);
+        lv_obj_set_style_bg_color(battery_nub, UITheme::BATTERY_FULL, 0);
+        lv_obj_set_style_border_width(battery_nub, 0, 0);
+        lv_obj_set_style_radius(battery_nub, 0, 0);
+        lv_obj_set_style_pad_all(battery_nub, 0, 0);
+        lv_obj_clear_flag(battery_nub, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_align_to(battery_nub, battery_body, LV_ALIGN_OUT_RIGHT_MID, 0, 0);
+
+        // Inner fill bar
+        battery_fill = lv_bar_create(battery_body);
+        lv_obj_set_size(battery_fill, LV_PCT(100), LV_PCT(100));
+        lv_obj_center(battery_fill);
+        lv_bar_set_range(battery_fill, 0, 100);
+        lv_bar_set_value(battery_fill, 100, LV_ANIM_OFF);
+        lv_obj_set_style_bg_opa(battery_fill, LV_OPA_TRANSP, 0);
+        lv_obj_set_style_border_width(battery_fill, 0, 0);
+        lv_obj_set_style_radius(battery_fill, 0, 0);
+        lv_obj_set_style_bg_color(battery_fill, UITheme::BATTERY_FULL, LV_PART_INDICATOR);
+        lv_obj_set_style_radius(battery_fill, 0, LV_PART_INDICATOR);
+
+        // Lightning bolt overlay for charging (hidden by default)
+        lbl_battery_charge = lv_label_create(screen);
+        lv_label_set_text(lbl_battery_charge, LV_SYMBOL_CHARGE);
+        lv_obj_set_style_text_font(lbl_battery_charge, &lv_font_montserrat_14, 0);
+        lv_obj_set_style_text_color(lbl_battery_charge, UITheme::BATTERY_CHARGING, 0);
+        lv_obj_align_to(lbl_battery_charge, battery_body, LV_ALIGN_CENTER, 0, 0);
+        lv_obj_add_flag(lbl_battery_charge, LV_OBJ_FLAG_HIDDEN);
+
+        // Percentage label - right of the battery graphic
+        lbl_battery_percent = lv_label_create(screen);
+        lv_label_set_text(lbl_battery_percent, "100%");
+        lv_obj_set_style_text_font(lbl_battery_percent, &lv_font_montserrat_16, 0);
+        lv_obj_set_style_text_color(lbl_battery_percent, UITheme::BATTERY_FULL, 0);
+        lv_obj_align_to(lbl_battery_percent, battery_nub, LV_ALIGN_OUT_RIGHT_MID, 4, 0);
+    } else {
+        battery_body = nullptr;
+        battery_fill = nullptr;
+        battery_nub = nullptr;
+        lbl_battery_charge = nullptr;
+        lbl_battery_percent = nullptr;
+    }
+
     // Button container for right-aligned buttons
     lv_obj_t *btn_container = lv_obj_create(screen);
     lv_obj_set_size(btn_container, LV_SIZE_CONTENT, 45);
@@ -114,7 +185,7 @@ void UIMachineSelect::show(lv_display_t *disp) {
     lv_obj_clear_flag(list_container, LV_OBJ_FLAG_SCROLLABLE);
     
     refreshMachineList();
-    
+
     // Load screen
     lv_scr_load(screen);
     
@@ -137,6 +208,59 @@ void UIMachineSelect::hide() {
         lv_obj_del(screen);
         screen = nullptr;
     }
+    battery_body = nullptr;
+    battery_fill = nullptr;
+    battery_nub = nullptr;
+    lbl_battery_charge = nullptr;
+    lbl_battery_percent = nullptr;
+}
+
+void UIMachineSelect::updateBattery(uint8_t percentage, int state) {
+    if (!battery_body || !battery_fill || !battery_nub || !lbl_battery_percent) return;
+
+    // Only update when values actually change
+    if (percentage == last_battery_pct && state == last_battery_state) return;
+
+    // Determine color based on state and percentage
+    lv_color_t color;
+    if (state == 1) {  // BATTERY_CHARGING
+        color = UITheme::BATTERY_CHARGING;
+    } else if (state == 2) {  // BATTERY_CHARGED
+        color = UITheme::BATTERY_FULL;
+    } else if (percentage < 20) {
+        color = UITheme::BATTERY_LOW;
+    } else if (percentage < 55) {
+        color = UITheme::BATTERY_MID;
+    } else {
+        color = UITheme::BATTERY_FULL;
+    }
+
+    // Update fill bar value (clamp low so some color is visible near empty)
+    uint8_t display_value = (percentage < 5 && percentage > 0) ? 5 : percentage;
+    lv_bar_set_value(battery_fill, display_value, LV_ANIM_OFF);
+
+    // Update colors: outline, fill, nub, text
+    lv_obj_set_style_border_color(battery_body, color, 0);
+    lv_obj_set_style_bg_color(battery_fill, color, LV_PART_INDICATOR);
+    lv_obj_set_style_bg_color(battery_nub, color, 0);
+    lv_obj_set_style_text_color(lbl_battery_percent, color, 0);
+
+    // Show/hide charging bolt overlay
+    if (lbl_battery_charge) {
+        if (state == 1) {  // Charging
+            lv_obj_clear_flag(lbl_battery_charge, LV_OBJ_FLAG_HIDDEN);
+        } else {
+            lv_obj_add_flag(lbl_battery_charge, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+
+    // Update percentage text
+    char buf[8];
+    snprintf(buf, sizeof(buf), "%d%%", percentage);
+    lv_label_set_text(lbl_battery_percent, buf);
+
+    last_battery_pct = percentage;
+    last_battery_state = state;
 }
 
 void UIMachineSelect::refreshMachineList() {
