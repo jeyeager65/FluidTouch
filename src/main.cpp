@@ -5,6 +5,7 @@
 #include "core/display_driver.h"     // Display driver module
 #include "core/touch_driver.h"       // Touch driver module
 #include "core/power_manager.h"      // Power management module
+#include "core/battery_monitor.h"    // Battery monitoring module
 #include "network/screenshot_server.h"  // Screenshot web server
 #include "network/fluidnc_client.h"     // FluidNC WebSocket client
 #include "ui/ui_theme.h"        // UI theme colors
@@ -64,6 +65,10 @@ void setup()
     Serial.println("Initializing power manager...");
     PowerManager::init(&displayDriver);
     Serial.println("Power manager initialized successfully");
+
+    // Initialize Battery Monitor
+    Serial.println("Initializing battery monitor...");
+    BatteryMonitor::init();
 
     // Store display driver reference for later use (screenshot server after WiFi connects)
     UICommon::setDisplayDriver(&displayDriver);
@@ -176,6 +181,15 @@ void loop()
         
         // Update connection status symbols (always update, even if not connected)
         UICommon::updateConnectionStatus(machine_connected, wifi_connected);
+
+        // Update battery monitor (read MAX17048 I2C fuel gauge and update UI)
+        if (BatteryMonitor::isEnabled()) {
+            BatteryMonitor::update();
+            uint8_t batt_pct = BatteryMonitor::getPercentage();
+            int batt_state = (int)BatteryMonitor::getState();
+            UICommon::updateBattery(batt_pct, batt_state);
+            UIMachineSelect::updateBattery(batt_pct, batt_state);
+        }
         
         // Update About tab screenshot server URL (in case WiFi status changed)
         UITabSettingsAbout::update();

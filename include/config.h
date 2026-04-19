@@ -70,4 +70,14 @@
 // Upload Configuration
 #define FLUIDNC_UPLOAD_PATH "/fluidtouch/uploads/"  // Automatically created if missing
 
+// Battery Monitor Configuration (MAX17048 I2C Fuel Gauge)
+// The MAX17048 connects to the I2C bus (shared with touch controller).
+// It auto-detects on init - if not found, battery monitoring is disabled gracefully.
+// Comment out BATTERY_ENABLED to disable battery monitoring entirely.
+#define BATTERY_ENABLED
+#define MAX17048_ADDR           0x36      // MAX17048 I2C address (fixed)
+#define BATTERY_VOLTAGE_MAX     4.2f      // Fully charged voltage (Li-ion/LiPo)
+#define BATTERY_VOLTAGE_MIN     3.0f      // Empty voltage (Li-ion cutoff)
+#define BATTERY_CHARGE_RATE_THRESHOLD 0.5f // %/hour above which we consider "charging"
+
 #endif // CONFIG_H

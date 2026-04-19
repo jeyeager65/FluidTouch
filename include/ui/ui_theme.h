@@ -69,6 +69,12 @@ namespace UITheme {
     // LED/Indicator Colors
     static constexpr lv_color_t LED_OFF = LV_COLOR_MAKE(0x66, 0x66, 0x66);      // LED inactive
     
+    // Battery Indicator Colors
+    static constexpr lv_color_t BATTERY_FULL = LV_COLOR_MAKE(0x4C, 0xAF, 0x50);      // Green (>55%)
+    static constexpr lv_color_t BATTERY_MID = LV_COLOR_MAKE(0xFF, 0xB7, 0x4D);       // Amber (20-55%)
+    static constexpr lv_color_t BATTERY_LOW = LV_COLOR_MAKE(0xFF, 0x00, 0x00);       // Red (<20%)
+    static constexpr lv_color_t BATTERY_CHARGING = LV_COLOR_MAKE(0x00, 0xBF, 0xFF);  // Cyan (charging)
+
     // Joystick/Control Colors
     static constexpr lv_color_t JOYSTICK_BG = LV_COLOR_MAKE(0x30, 0x30, 0x30);  // Joystick background
     static constexpr lv_color_t JOYSTICK_LINE = LV_COLOR_MAKE(0x60, 0x60, 0x60); // Joystick crosshairs

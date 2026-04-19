@@ -21,6 +21,7 @@ public:
     static void updateWorkPosition(float x, float y, float z, float a = -9999.0f);
     static void updateMachineState(const char *state);
     static void updateConnectionStatus(bool machine_connected, bool wifi_connected);
+    static void updateBattery(uint8_t percentage, int state);  // state: 0=discharging, 1=charging, 2=charged
     static void updateFileProgress(bool is_printing, float percent, const char *filename, uint32_t elapsed_ms);
     
     // Dialog functions
@@ -104,6 +105,15 @@ private:
     // Cached values for delta checking (prevent unnecessary redraws)
     static float last_wpos_x, last_wpos_y, last_wpos_z, last_wpos_a;
     static float last_mpos_x, last_mpos_y, last_mpos_z;
+
+    // Battery indicator (compact graphical widget: outline + fill bar + nub + % label)
+    static lv_obj_t *battery_body;        // Battery outline rectangle
+    static lv_obj_t *battery_fill;        // Inner fill bar (lv_bar)
+    static lv_obj_t *battery_nub;         // Small nub on the right side
+    static lv_obj_t *lbl_battery_charge;  // Lightning bolt overlay when charging
+    static lv_obj_t *lbl_battery_percent; // Percentage text next to battery
+    static uint8_t last_battery_pct;
+    static int last_battery_state;
 
     // Cached system preferences (loaded once at startup)
     static bool enable_a_axis;

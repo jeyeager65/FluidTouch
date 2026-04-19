@@ -5,6 +5,16 @@ All notable changes to FluidTouch will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Battery Meter** - Live battery indicator for Advance hardware with a MAX17048 I2C fuel gauge
+  - Compact graphical battery icon with colored fill bar (green/amber/red) plus percentage text
+  - Charging state displayed with a lightning bolt overlay and cyan color
+  - Visible in both the main UI status bar and the machine selection screen
+  - MAX17048 is auto-detected on the I2C bus at startup - battery monitoring is silently disabled if the chip is not present, so the feature is opt-in via hardware
+
 ## [1.0.4] - 2026-03-23
 
 ### Added
