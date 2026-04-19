@@ -683,11 +683,13 @@ void UICommon::createStatusBar() {
         lv_obj_set_style_bg_color(battery_fill, UITheme::BATTERY_FULL, LV_PART_INDICATOR);
         lv_obj_set_style_radius(battery_fill, 0, LV_PART_INDICATOR);
 
-        // Lightning bolt overlay for charging state (hidden by default)
+        // Lightning bolt overlay for charging state (hidden by default).
+        // Uses a high-contrast light color so it stands out against the cyan
+        // charging fill behind it.
         lbl_battery_charge = lv_label_create(status_bar);
         lv_label_set_text(lbl_battery_charge, LV_SYMBOL_CHARGE);
         lv_obj_set_style_text_font(lbl_battery_charge, &lv_font_montserrat_14, 0);
-        lv_obj_set_style_text_color(lbl_battery_charge, UITheme::BATTERY_CHARGING, 0);
+        lv_obj_set_style_text_color(lbl_battery_charge, UITheme::TEXT_LIGHT, 0);
         lv_obj_align_to(lbl_battery_charge, battery_body, LV_ALIGN_CENTER, 0, 0);
         lv_obj_add_flag(lbl_battery_charge, LV_OBJ_FLAG_HIDDEN);
     }
