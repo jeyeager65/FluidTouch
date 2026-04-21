@@ -3,6 +3,10 @@
 #include "ui/tabs/control/ui_tab_control_probe.h"
 #include <WiFi.h>
 #include <ESPmDNS.h>
+#ifdef HARDWARE_ADVANCE
+#include <HardwareSerial.h>
+static HardwareSerial wiredSerial(2);  // UART2: TX=GPIO43, RX=GPIO44
+#endif
 
 using namespace websockets;
 
@@ -21,6 +25,10 @@ uint32_t FluidNCClient::lastGCodePollMs = 0;
 uint32_t FluidNCClient::lastAutoReportAttemptMs = 0;
 bool FluidNCClient::everConnectedSuccessfully = false;
 bool FluidNCClient::isHandlingDisconnect = false;
+bool FluidNCClient::isWiredConnection = false;
+char FluidNCClient::uartRxBuffer[512] = {};
+uint16_t FluidNCClient::uartRxPos = 0;
+uint32_t FluidNCClient::uartBytesReceived = 0;
 
 void FluidNCClient::init() {
     if (initialized) return;
@@ -38,6 +46,44 @@ bool FluidNCClient::connect(const MachineConfig &config) {
     // Store config
     currentConfig = config;
     
+#ifdef HARDWARE_ADVANCE
+    if (config.connection_type == CONN_WIRED) {
+        Serial.printf("[FluidNC] Connecting via UART2 (TX=43, RX=44) at %d baud\n", config.uart_baud_rate);
+        isWiredConnection = true;
+        uartRxPos = 0;
+        autoReportingEnabled = false;
+        autoReportingAttempted = false;
+        everConnectedSuccessfully = false;
+        
+        // UART0 (Serial) uses GPIO43/44 by default. Release it before UART2 claims the same pins.
+        Serial.flush();
+        Serial.end();
+        // Explicitly float the pins so the GPIO mux fully releases before UART2 claims them.
+        // Without this delay + pinMode reset, USB connect/disconnect was required to unstick the pins.
+        delay(20);
+        pinMode(43, INPUT);
+        pinMode(44, INPUT);
+        delay(20);
+
+        uartBytesReceived = 0;
+        wiredSerial.begin(config.uart_baud_rate, SERIAL_8N1, 44, 43);  // RX=44, TX=43
+        // Request firmware version and enable auto-reporting
+        wiredSerial.print("$Build/Info\n");
+        wiredSerial.print("$Report/Interval=250\n");
+        autoReportingAttempted = true;
+        autoReportingEnabled = false;
+        lastAutoReportAttemptMs = millis();
+        lastPollingMs = millis() - 1000;
+        lastGCodePollMs = millis() - 10000;
+        currentStatus.is_connected = false;  // Set true on first status report
+        Serial.println("[FluidNC] UART2 opened, waiting for status reports...");
+        return true;
+    }
+#endif
+
+    // Reset wired flag for WebSocket connections
+    isWiredConnection = false;
+
     // Check WiFi connection first
     if (WiFi.status() != WL_CONNECTED) {
         Serial.println("[FluidNC] Error: WiFi not connected");
@@ -113,11 +159,20 @@ bool FluidNCClient::connect(const MachineConfig &config) {
 
 void FluidNCClient::disconnect() {
     Serial.println("[FluidNC] Disconnecting");
+#ifdef HARDWARE_ADVANCE
+    if (isWiredConnection) {
+        wiredSerial.end();
+        isWiredConnection = false;
+        uartRxPos = 0;
+    } else
+#endif
     if (webSocket.available()) {
         webSocket.close();
     }
     currentStatus.is_connected = false;
     currentStatus.state = STATE_DISCONNECTED;
+    autoReportingEnabled = false;
+    autoReportingAttempted = false;
 }
 
 void FluidNCClient::stopReconnectionAttempts() {
@@ -132,6 +187,11 @@ void FluidNCClient::stopReconnectionAttempts() {
 }
 
 bool FluidNCClient::isConnected() {
+#ifdef HARDWARE_ADVANCE
+    if (isWiredConnection) {
+        return currentStatus.is_connected;
+    }
+#endif
     return currentStatus.is_connected && webSocket.available();
 }
 
@@ -139,8 +199,62 @@ bool FluidNCClient::isAutoReporting() {
     return autoReportingEnabled;
 }
 
+bool FluidNCClient::isWiredMode() {
+#ifdef HARDWARE_ADVANCE
+    return isWiredConnection;
+#else
+    return false;
+#endif
+}
+
+uint32_t FluidNCClient::getUartBytesReceived() {
+    return uartBytesReceived;
+}
+
 void FluidNCClient::loop() {
     if (!initialized) return;
+
+#ifdef HARDWARE_ADVANCE
+    if (isWiredConnection) {
+        // Drain UART receive buffer, process complete lines
+        while (wiredSerial.available()) {
+            char c = (char)wiredSerial.read();
+            uartBytesReceived++;
+            if (c == '\n') {
+                uartRxBuffer[uartRxPos] = '\0';
+                if (uartRxPos > 0) {
+                    processUartLine(uartRxBuffer);
+                }
+                uartRxPos = 0;
+            } else if (c != '\r') {
+                if (uartRxPos < sizeof(uartRxBuffer) - 1) {
+                    uartRxBuffer[uartRxPos++] = c;
+                }
+            }
+        }
+
+        // Auto-report timeout check (same logic as WebSocket path)
+        if (autoReportingAttempted && !autoReportingEnabled) {
+            uint32_t now = millis();
+            if (now - lastAutoReportAttemptMs >= 2000) {
+                autoReportingAttempted = false;  // Switch to fallback polling
+            }
+        }
+        // Fallback polling over UART
+        if (!autoReportingAttempted && !autoReportingEnabled) {
+            uint32_t now = millis();
+            if (now - lastPollingMs >= 1000) {
+                wiredSerial.print("?");
+                lastPollingMs = now;
+            }
+            if (now - lastGCodePollMs >= 10000) {
+                wiredSerial.print("$G\n");
+                lastGCodePollMs = now;
+            }
+        }
+        return;
+    }
+#endif
     
     // Handle WebSocket events - ArduinoWebsockets handles polling internally
     webSocket.poll();
@@ -183,12 +297,24 @@ void FluidNCClient::sendCommand(const char* command) {
     }
     
     Serial.printf("[FluidNC] Sending command: %s\n", command);
+#ifdef HARDWARE_ADVANCE
+    if (isWiredConnection) {
+        wiredSerial.print(command);
+        return;
+    }
+#endif
     webSocket.send(command);
 }
 
 void FluidNCClient::requestStatusReport() {
     if (!currentStatus.is_connected) return;
     
+#ifdef HARDWARE_ADVANCE
+    if (isWiredConnection) {
+        wiredSerial.print("?");
+        return;
+    }
+#endif
     // Send status query command (realtime command)
     webSocket.send("?");
 }
@@ -756,9 +882,44 @@ void FluidNCClient::extractString(const char* str, const char* key, char* dest, 
     dest[len] = '\0';
 }
 
+#ifdef HARDWARE_ADVANCE
+void FluidNCClient::processUartLine(char* line) {
+    const char* payload = line;
+
+    // Fire callbacks
+    if (messageCallback) {
+        messageCallback(payload);
+    }
+    if (terminalCallback) {
+        terminalCallback(payload);
+    }
+
+    // Route to same parsers as WebSocket path
+    if (payload[0] == '<') {
+        parseStatusReport(payload);
+    } else if (strncmp(payload, "[GC:", 4) == 0) {
+        parseGCodeState(payload);
+    } else if (payload[0] == '[') {
+        parseRealtimeFeedback(payload);
+    } else if (strncmp(payload, "error:", 6) == 0 || strncmp(payload, "ALARM:", 6) == 0) {
+        strncpy(currentStatus.last_message, payload, sizeof(currentStatus.last_message) - 1);
+        currentStatus.last_message[sizeof(currentStatus.last_message) - 1] = '\0';
+    }
+}
+#else
+void FluidNCClient::processUartLine(char* line) { (void)line; }
+#endif
+
 void FluidNCClient::attemptEnableAutoReporting() {
     Serial.println("[FluidNC] Attempting to enable automatic reporting (250ms)");
-    webSocket.send("$Report/Interval=250\n");
+#ifdef HARDWARE_ADVANCE
+    if (isWiredConnection) {
+        wiredSerial.print("$Report/Interval=250\n");
+    } else
+#endif
+    {
+        webSocket.send("$Report/Interval=250\n");
+    }
     
     autoReportingAttempted = true;
     autoReportingEnabled = false;  // Will be set true when we receive status

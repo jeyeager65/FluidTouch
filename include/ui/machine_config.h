@@ -17,6 +17,7 @@ struct MachineConfig {
     char password[64];       // WiFi password (max 63 chars + null)
     char fluidnc_url[128];   // FluidNC URL (e.g., "192.168.1.100" or "fluidnc.local")
     uint16_t websocket_port; // WebSocket port (default 81)
+    uint32_t uart_baud_rate; // UART baud rate for wired connection (default 115200)
     bool is_configured;      // Whether this slot has a valid machine
     
     // Jog control defaults
@@ -43,7 +44,7 @@ struct MachineConfig {
     bool enable_a_axis;      // Enable 4th axis (rotary) support
     
     // Constructor with defaults
-    MachineConfig() : connection_type(CONN_WIRELESS), websocket_port(81), is_configured(false),
+    MachineConfig() : connection_type(CONN_WIRELESS), websocket_port(81), uart_baud_rate(115200), is_configured(false),
                       jog_xy_step(10.0f), jog_z_step(1.0f), jog_a_step(1.0f),
                       jog_xy_feed(3000), jog_z_feed(1000), jog_a_feed(1000),
                       jog_max_xy_feed(3000), jog_max_z_feed(1000), jog_max_a_feed(1000),

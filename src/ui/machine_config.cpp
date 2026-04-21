@@ -34,6 +34,7 @@ void MachineConfigManager::loadMachines(MachineConfig machines[MAX_MACHINES]) {
             prefs.getString((prefix + "pwd").c_str(), machines[i].password, sizeof(machines[i].password));
             prefs.getString((prefix + "url").c_str(), machines[i].fluidnc_url, sizeof(machines[i].fluidnc_url));
             machines[i].websocket_port = prefs.getUShort((prefix + "port").c_str(), 81);
+            machines[i].uart_baud_rate = prefs.getUInt((prefix + "baud").c_str(), 115200);
             
             Serial.printf("    Name: %s, URL: %s:%d\n", machines[i].name, machines[i].fluidnc_url, machines[i].websocket_port);
             
@@ -95,6 +96,7 @@ void MachineConfigManager::saveMachines(const MachineConfig machines[MAX_MACHINE
             prefs.putString((prefix + "pwd").c_str(), machines[i].password);
             prefs.putString((prefix + "url").c_str(), machines[i].fluidnc_url);
             prefs.putUShort((prefix + "port").c_str(), machines[i].websocket_port);
+            prefs.putUInt((prefix + "baud").c_str(), machines[i].uart_baud_rate);
             
             // Save jog settings
             prefs.putFloat((prefix + "jxy_st").c_str(), machines[i].jog_xy_step);

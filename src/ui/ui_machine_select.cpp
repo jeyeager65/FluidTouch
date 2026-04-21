@@ -29,6 +29,8 @@ lv_obj_t *UIMachineSelect::ta_password = nullptr;
 lv_obj_t *UIMachineSelect::ta_url = nullptr;
 lv_obj_t *UIMachineSelect::ta_port = nullptr;
 lv_obj_t *UIMachineSelect::dd_connection_type = nullptr;
+lv_obj_t *UIMachineSelect::ta_baud_rate = nullptr;
+lv_obj_t *UIMachineSelect::baud_rate_container = nullptr;
 lv_obj_t *UIMachineSelect::delete_dialog = nullptr;
 int UIMachineSelect::deleting_index = -1;
 
@@ -567,12 +569,18 @@ void UIMachineSelect::onConfigSave(lv_event_t *e) {
     // Create config
     MachineConfig config;
     strncpy(config.name, name, sizeof(config.name) - 1);
+    // Dropdown order: 0=Wireless, 1=Wired (note: enum CONN_WIRED=0, CONN_WIRELESS=1 differs from display order)
     config.connection_type = (sel == 0) ? CONN_WIRELESS : CONN_WIRED;
     strncpy(config.ssid, ssid, sizeof(config.ssid) - 1);
     strncpy(config.password, password, sizeof(config.password) - 1);
     strncpy(config.fluidnc_url, url, sizeof(config.fluidnc_url) - 1);
     config.websocket_port = atoi(port_str);
     if (config.websocket_port == 0) config.websocket_port = 81;
+    // Baud rate from text field (only used for wired connections)
+    if (ta_baud_rate) {
+        uint32_t baud = (uint32_t)atol(lv_textarea_get_text(ta_baud_rate));
+        config.uart_baud_rate = (baud > 0) ? baud : 1000000;
+    }
     config.is_configured = true;
     
     // Save
@@ -594,15 +602,22 @@ void UIMachineSelect::onConnectionTypeChanged(lv_event_t *e) {
 
 void UIMachineSelect::updateConnectionFields() {
     uint16_t sel = lv_dropdown_get_selected(dd_connection_type);
+    // Dropdown order: 0=Wireless, 1=Wired
     bool is_wireless = (sel == 0);
     
     // Enable/disable wireless-specific fields
     if (is_wireless) {
         lv_obj_clear_state(ta_ssid, LV_STATE_DISABLED);
         lv_obj_clear_state(ta_password, LV_STATE_DISABLED);
+        lv_obj_clear_state(ta_url, LV_STATE_DISABLED);
+        lv_obj_clear_state(ta_port, LV_STATE_DISABLED);
+        if (baud_rate_container) lv_obj_add_flag(baud_rate_container, (lv_obj_flag_t)(LV_OBJ_FLAG_HIDDEN | LV_OBJ_FLAG_FLOATING));
     } else {
         lv_obj_add_state(ta_ssid, LV_STATE_DISABLED);
         lv_obj_add_state(ta_password, LV_STATE_DISABLED);
+        lv_obj_add_state(ta_url, LV_STATE_DISABLED);
+        lv_obj_add_state(ta_port, LV_STATE_DISABLED);
+        if (baud_rate_container) lv_obj_clear_flag(baud_rate_container, (lv_obj_flag_t)(LV_OBJ_FLAG_HIDDEN | LV_OBJ_FLAG_FLOATING));
     }
 }
 
@@ -722,11 +737,47 @@ void UIMachineSelect::showConfigDialog(int index) {
     lv_obj_set_width(dd_connection_type, LV_PCT(100));
     lv_obj_set_height(dd_connection_type, 48);
     lv_obj_set_style_text_font(dd_connection_type, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_pad_top(dd_connection_type, 12, LV_PART_MAIN);  // Adjust top padding to vertically center text
-    lv_dropdown_set_options(dd_connection_type, "Wireless");  // Wired option hidden for now, reserved for future
-    if (!is_new) lv_dropdown_set_selected(dd_connection_type, machines[index].connection_type);
+    lv_obj_set_style_pad_top(dd_connection_type, 12, LV_PART_MAIN);
+#ifdef HARDWARE_ADVANCE
+    lv_dropdown_set_options(dd_connection_type, "Wireless\nWired");
+#else
+    lv_dropdown_set_options(dd_connection_type, "Wireless");
+#endif
+    // Dropdown order: 0=Wireless, 1=Wired (enum CONN_WIRED=0/CONN_WIRELESS=1 differs from display order)
+    if (!is_new) lv_dropdown_set_selected(dd_connection_type, (machines[index].connection_type == CONN_WIRELESS) ? 0 : 1);
     lv_obj_add_event_cb(dd_connection_type, onConnectionTypeChanged, LV_EVENT_VALUE_CHANGED, nullptr);
-    
+
+    // Baud Rate container (wired only - Advance hardware): holds label + dropdown together for hide/show
+    baud_rate_container = lv_obj_create(right_col);
+    lv_obj_set_width(baud_rate_container, LV_PCT(100));
+    lv_obj_set_height(baud_rate_container, LV_SIZE_CONTENT);
+    lv_obj_set_flex_flow(baud_rate_container, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(baud_rate_container, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+    lv_obj_set_style_pad_all(baud_rate_container, 0, 0);
+    lv_obj_set_style_pad_gap(baud_rate_container, 10, 0);
+    lv_obj_set_style_border_width(baud_rate_container, 0, 0);
+    lv_obj_set_style_bg_opa(baud_rate_container, LV_OPA_TRANSP, 0);
+    // Initially hidden (floating so it doesn't affect flex layout when hidden)
+    lv_obj_add_flag(baud_rate_container, (lv_obj_flag_t)(LV_OBJ_FLAG_HIDDEN | LV_OBJ_FLAG_FLOATING));
+
+    lv_obj_t *lbl_baud = lv_label_create(baud_rate_container);
+    lv_label_set_text(lbl_baud, "Baud Rate:");
+    lv_obj_set_style_text_font(lbl_baud, &lv_font_montserrat_18, 0);
+
+    ta_baud_rate = lv_textarea_create(baud_rate_container);
+    lv_obj_set_width(ta_baud_rate, LV_PCT(100));
+    lv_obj_set_height(ta_baud_rate, 40);
+    lv_textarea_set_one_line(ta_baud_rate, true);
+    lv_textarea_set_max_length(ta_baud_rate, 10);
+    lv_obj_set_style_text_font(ta_baud_rate, &lv_font_montserrat_18, 0);
+    {
+        char baud_str[12];
+        uint32_t baud = (!is_new && machines[index].uart_baud_rate > 0) ? machines[index].uart_baud_rate : 1000000;
+        snprintf(baud_str, sizeof(baud_str), "%lu", (unsigned long)baud);
+        lv_textarea_set_text(ta_baud_rate, baud_str);
+    }
+    lv_obj_add_event_cb(ta_baud_rate, onTextareaFocused, LV_EVENT_FOCUSED, nullptr);
+
     // Password field
     lv_obj_t *lbl_pwd = lv_label_create(right_col);
     lv_label_set_text(lbl_pwd, "Password:");

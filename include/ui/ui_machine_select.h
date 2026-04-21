@@ -38,6 +38,8 @@ private:
     static lv_obj_t *ta_url;
     static lv_obj_t *ta_port;
     static lv_obj_t *dd_connection_type;
+    static lv_obj_t *ta_baud_rate;
+    static lv_obj_t *baud_rate_container;  // Wraps baud label + textarea for show/hide as unit
     
     // Delete confirmation dialog
     static lv_obj_t *delete_dialog;

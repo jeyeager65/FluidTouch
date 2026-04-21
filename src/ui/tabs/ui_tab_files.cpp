@@ -1081,7 +1081,42 @@ void UITabFiles::listDisplaySDFiles(const std::string &path) {
 // Upload button event callback
 void UITabFiles::upload_button_event_cb(lv_event_t *e) {
     const char* fullPath = (const char*)lv_event_get_user_data(e);
-    
+
+    // Upload requires a network connection to FluidNC
+    if (FluidNCClient::isWiredMode()) {
+        lv_obj_t *dialog = lv_obj_create(lv_scr_act());
+        lv_obj_set_size(dialog, LV_PCT(100), LV_PCT(100));
+        lv_obj_set_style_bg_color(dialog, lv_color_make(0, 0, 0), 0);
+        lv_obj_set_style_bg_opa(dialog, LV_OPA_70, 0);
+        lv_obj_set_style_border_width(dialog, 0, 0);
+        lv_obj_clear_flag(dialog, LV_OBJ_FLAG_SCROLLABLE);
+
+        lv_obj_t *content = lv_obj_create(dialog);
+        lv_obj_set_size(content, 500, 200);
+        lv_obj_center(content);
+        lv_obj_set_style_bg_color(content, UITheme::BG_MEDIUM, 0);
+        lv_obj_set_style_border_color(content, UITheme::UI_WARNING, 0);
+        lv_obj_set_style_border_width(content, 3, 0);
+
+        lv_obj_t *label = lv_label_create(content);
+        lv_label_set_text(label, "Upload not available in wired mode.\nCopy files directly to FluidNC SD card.");
+        lv_obj_set_style_text_font(label, &lv_font_montserrat_18, 0);
+        lv_obj_align(label, LV_ALIGN_CENTER, 0, -20);
+
+        lv_obj_t *btn = lv_btn_create(content);
+        lv_obj_set_size(btn, 120, 45);
+        lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, -10);
+        lv_obj_add_event_cb(btn, [](lv_event_t *e) {
+            lv_obj_delete((lv_obj_t*)lv_event_get_user_data(e));
+        }, LV_EVENT_CLICKED, dialog);
+
+        lv_obj_t *btn_label = lv_label_create(btn);
+        lv_label_set_text(btn_label, "OK");
+        lv_obj_set_style_text_font(btn_label, &lv_font_montserrat_18, 0);
+        lv_obj_center(btn_label);
+        return;
+    }
+
     // Check if SD card is still available
     if (!isDisplaySDAvailable()) {
         Serial.println("[Files] SD card not available for upload");

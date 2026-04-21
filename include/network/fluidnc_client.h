@@ -118,6 +118,12 @@ public:
     
     // Check if using auto-reporting (true) or fallback polling (false)
     static bool isAutoReporting();
+
+    // Check if using wired (UART) connection
+    static bool isWiredMode();
+    
+    // Get count of bytes received over UART (for debugging wired connection)
+    static uint32_t getUartBytesReceived();
     
     // Main loop - call regularly to handle WebSocket events
     static void loop();
@@ -168,6 +174,12 @@ private:
     // Connection tracking
     static bool everConnectedSuccessfully; // True once first status report received, never reset
     static bool isHandlingDisconnect;     // Guard to prevent re-entrant close() calls
+
+    // Wired (UART) connection support - Advance hardware only
+    static bool isWiredConnection;
+    static char uartRxBuffer[512];
+    static uint16_t uartRxPos;
+    static uint32_t uartBytesReceived;  // Total bytes received over UART (debug counter)
     
     // WebSocket event handlers
     static void onMessageCallback(websockets::WebsocketsMessage message);
@@ -185,6 +197,9 @@ private:
     // Auto-reporting and polling helpers
     static void attemptEnableAutoReporting();
     static void performFallbackPolling();
+
+    // Process a complete line received over UART (wired mode)
+    static void processUartLine(char* line);
     
     // Helper to extract float value from status report
     static float extractFloat(const char* str, const char* key);

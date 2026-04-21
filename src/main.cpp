@@ -132,20 +132,23 @@ void setup()
 void loop()
 {
     // Forward any Serial input to FluidNC (for debugging via Serial Monitor)
-    static char serial_buf[128];
-    static uint8_t serial_buf_pos = 0;
-    while (Serial.available()) {
-        char c = Serial.read();
-        if (c == '\n' || c == '\r') {
-            if (serial_buf_pos > 0) {
-                serial_buf[serial_buf_pos++] = '\n';
-                serial_buf[serial_buf_pos] = '\0';
-                Serial.printf("[Serial->FluidNC] %s", serial_buf);
-                FluidNCClient::sendCommand(serial_buf);
-                serial_buf_pos = 0;
+    // Skip in wired mode: Serial (USB CDC) is unrelated to FluidNC UART2 in that case
+    if (!FluidNCClient::isWiredMode()) {
+        static char serial_buf[128];
+        static uint8_t serial_buf_pos = 0;
+        while (Serial.available()) {
+            char c = Serial.read();
+            if (c == '\n' || c == '\r') {
+                if (serial_buf_pos > 0) {
+                    serial_buf[serial_buf_pos++] = '\n';
+                    serial_buf[serial_buf_pos] = '\0';
+                    Serial.printf("[Serial->FluidNC] %s", serial_buf);
+                    FluidNCClient::sendCommand(serial_buf);
+                    serial_buf_pos = 0;
+                }
+            } else if (serial_buf_pos < sizeof(serial_buf) - 2) {
+                serial_buf[serial_buf_pos++] = c;
             }
-        } else if (serial_buf_pos < sizeof(serial_buf) - 2) {
-            serial_buf[serial_buf_pos++] = c;
         }
     }
 

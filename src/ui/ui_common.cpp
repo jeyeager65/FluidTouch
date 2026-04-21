@@ -587,17 +587,19 @@ void UICommon::createStatusBar() {
         lv_obj_align(lbl_modal_states, LV_ALIGN_TOP_RIGHT, -5, 3);
     }
 
-    // Right side Line 2: WiFi network
-    // WiFi network name (right-aligned, positioned first)
-    // If WiFi connected, show actual SSID. Otherwise, show configured SSID from machine settings
+    // Right side Line 2: WiFi network (or "Wired" label for wired connections)
+    MachineConfig wifi_config;
+    bool has_config = MachineConfigManager::getSelectedMachine(wifi_config);
+    bool is_wired = has_config && (wifi_config.connection_type == CONN_WIRED);
+
     String wifi_ssid;
-    if (WiFi.isConnected()) {
+    if (is_wired) {
+        wifi_ssid = "Wired";
+    } else if (WiFi.isConnected()) {
         wifi_ssid = WiFi.SSID();
     } else {
-        // Get configured SSID from machine settings
-        MachineConfig config;
-        if (MachineConfigManager::getSelectedMachine(config) && config.ssid[0] != '\0') {
-            wifi_ssid = String(config.ssid);
+        if (has_config && wifi_config.ssid[0] != '\0') {
+            wifi_ssid = String(wifi_config.ssid);
         } else {
             wifi_ssid = "Not Connected";
         }
@@ -608,14 +610,17 @@ void UICommon::createStatusBar() {
     lv_obj_set_style_text_font(lbl_wifi_name, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_wifi_name, UITheme::UI_INFO, 0);
     lv_obj_set_style_text_align(lbl_wifi_name, LV_TEXT_ALIGN_RIGHT, 0);
-    lv_obj_set_width(lbl_wifi_name, 180);  // Set fixed width for right alignment
-    lv_obj_align(lbl_wifi_name, LV_ALIGN_BOTTOM_RIGHT, -32, -3);  // 32px from right for symbol (2px spacing)
+    lv_obj_set_width(lbl_wifi_name, 180);
+    lv_obj_align(lbl_wifi_name, LV_ALIGN_BOTTOM_RIGHT, -32, -3);
     
-    // WiFi symbol (will be colored based on connection status)
+    // WiFi/Wired symbol
     lbl_wifi_symbol = lv_label_create(status_bar);
-    lv_label_set_text(lbl_wifi_symbol, LV_SYMBOL_WIFI);
+    lv_label_set_text(lbl_wifi_symbol, is_wired ? LV_SYMBOL_USB : LV_SYMBOL_WIFI);
     lv_obj_set_style_text_font(lbl_wifi_symbol, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_text_color(lbl_wifi_symbol, WiFi.isConnected() ? UITheme::STATE_IDLE : UITheme::STATE_ALARM, 0);
+    // Wired: always green (connection is physical, not network-dependent)
+    // Wireless: green if connected, red if not
+    lv_obj_set_style_text_color(lbl_wifi_symbol,
+        (is_wired || WiFi.isConnected()) ? UITheme::STATE_IDLE : UITheme::STATE_ALARM, 0);
     lv_obj_align(lbl_wifi_symbol, LV_ALIGN_BOTTOM_RIGHT, -5, -3);
 }
 
@@ -758,8 +763,8 @@ void UICommon::updateConnectionStatus(bool machine_connected, bool wifi_connecte
         last_auto_reporting = auto_reporting;
     }
     
-    // Update WiFi symbol color
-    if (lbl_wifi_symbol && wifi_connected != last_wifi_connected) {
+    // Update WiFi symbol color (skip for wired connections - symbol is always green)
+    if (lbl_wifi_symbol && wifi_connected != last_wifi_connected && !FluidNCClient::isWiredMode()) {
         lv_obj_set_style_text_color(lbl_wifi_symbol, 
             wifi_connected ? UITheme::STATE_IDLE : UITheme::STATE_ALARM, 0);
         last_wifi_connected = wifi_connected;
@@ -994,7 +999,7 @@ static void on_connection_error_close(lv_event_t *e) {
 }
 
 static void on_connection_error_connect(lv_event_t *e) {
-    Serial.println("UICommon: Reconnecting WiFi and WebSocket...");
+    Serial.println("UICommon: Reconnecting...");
     UICommon::hideConnectionErrorDialog();
     
     // Get machine config
@@ -1005,59 +1010,66 @@ static void on_connection_error_connect(lv_event_t *e) {
     }
     
     // Show connecting popup
-    UICommon::showConnectingPopup(config.name, config.ssid);
+    UICommon::showConnectingPopup(config.name, config.connection_type == CONN_WIRELESS ? config.ssid : nullptr);
     lv_refr_now(nullptr);  // Force immediate display update
     
     // Disconnect existing connections
-    WiFi.disconnect();
     FluidNCClient::disconnect();
     
     // Small delay to ensure clean disconnect
     delay(100);
     lv_timer_handler();
     
-    // Reconnect WiFi
-    if (config.connection_type == CONN_WIRELESS && strlen(config.ssid) > 0) {
-        Serial.printf("UICommon: Reconnecting to WiFi: %s\n", config.ssid);
-        WiFi.mode(WIFI_STA);
-        WiFi.setAutoReconnect(false);
-        WiFi.begin(config.ssid, config.password);
+    if (config.connection_type == CONN_WIRED) {
+        // Wired: just reconnect UART
+        Serial.println("UICommon: Reconnecting wired UART...");
+        FluidNCClient::connect(config);
+        connection_timeout_start = millis();
+        connection_timeout_active = true;
+        connection_error_shown = false;
+        return;
+    }
+    
+    // Wireless: reconnect WiFi then FluidNC
+    WiFi.disconnect();
+    WiFi.mode(WIFI_STA);
+    WiFi.setAutoReconnect(false);
+    WiFi.begin(config.ssid, config.password);
+    
+    // Wait for WiFi connection with timeout (10 seconds)
+    int timeout = 20;
+    while (WiFi.status() != WL_CONNECTED && timeout > 0) {
+        delay(500);
+        Serial.print(".");
+        timeout--;
+        lv_timer_handler();
+    }
+    
+    if (WiFi.status() == WL_CONNECTED) {
+        Serial.println("\nWiFi reconnected!");
+        Serial.printf("IP Address: %s\n", WiFi.localIP().toString().c_str());
         
-        // Wait for WiFi connection with timeout (10 seconds)
-        int timeout = 20;
-        while (WiFi.status() != WL_CONNECTED && timeout > 0) {
-            delay(500);
-            Serial.print(".");
-            timeout--;
-            lv_timer_handler();
-        }
+        // Update status bar WiFi indicator
+        UICommon::updateConnectionStatus(false, true);
         
-        if (WiFi.status() == WL_CONNECTED) {
-            Serial.println("\nWiFi reconnected!");
-            Serial.printf("IP Address: %s\n", WiFi.localIP().toString().c_str());
-            
-            // Update status bar WiFi indicator
-            UICommon::updateConnectionStatus(false, true);
-            
-            // Update connecting popup to show machine connection
-            UICommon::hideConnectingPopup();
-            UICommon::showConnectingPopup(config.name, nullptr);
-            
-            // Reconnect to FluidNC
-            Serial.printf("UICommon: Reconnecting to FluidNC at %s:%d\n", 
-                         config.fluidnc_url, config.websocket_port);
-            FluidNCClient::connect(config);
-            
-            // Restart connection timeout monitoring (10 seconds)
-            connection_timeout_start = millis();
-            connection_timeout_active = true;
-            connection_error_shown = false;
-        } else {
-            Serial.println("\nWiFi reconnection failed!");
-            UICommon::hideConnectingPopup();
-            UICommon::showConnectionErrorDialog("WiFi Connection Failed", 
-                "Could not reconnect to WiFi.\n\nCheck network settings and try again.");
-        }
+        // Update connecting popup to show machine connection
+        UICommon::hideConnectingPopup();
+        UICommon::showConnectingPopup(config.name, nullptr);
+        
+        // Reconnect to FluidNC
+        Serial.printf("UICommon: Reconnecting to FluidNC at %s:%d\n", 
+                     config.fluidnc_url, config.websocket_port);
+        FluidNCClient::connect(config);
+        
+        // Restart connection timeout monitoring (10 seconds)
+        connection_timeout_start = millis();
+        connection_timeout_active = true;
+        connection_error_shown = false;
+    } else {
+        Serial.println("\nWiFi reconnection failed!");
+        UICommon::hideConnectingPopup();
+        UICommon::showConnectionErrorDialog("WiFi Connection Failed", 
+            "Could not reconnect to WiFi.\n\nCheck network settings and try again.");
     }
 }
 
@@ -1205,11 +1217,20 @@ void UICommon::checkConnectionTimeout() {
         // Get machine config for error message
         MachineConfig config;
         if (MachineConfigManager::getSelectedMachine(config)) {
-            // Build error message
+            // Build error message - wired vs wireless specific
             char error_msg[300];
-            snprintf(error_msg, sizeof(error_msg), 
-                    "Could not connect to machine:\n%s\n\nURL: %s:%d\n\nCheck that the machine is powered on\nand network connection is available.",
-                    config.name, config.fluidnc_url, config.websocket_port);
+            if (config.connection_type == CONN_WIRED) {
+                uint32_t rxBytes = FluidNCClient::getUartBytesReceived();
+                snprintf(error_msg, sizeof(error_msg),
+                        "Could not connect to machine:\n%s\n\nUART2: TX=43, RX=44 @ %d baud\n"
+                        "Bytes received: %d\n\n"
+                        "Check wiring (TX→RX cross) and baud rate.",
+                        config.name, (int)config.uart_baud_rate, (int)rxBytes);
+            } else {
+                snprintf(error_msg, sizeof(error_msg), 
+                        "Could not connect to machine:\n%s\n\nURL: %s:%d\n\nCheck that the machine is powered on\nand network connection is available.",
+                        config.name, config.fluidnc_url, config.websocket_port);
+            }
             
             // Show error dialog
             showConnectionErrorDialog("Machine Connection Failed", error_msg);
