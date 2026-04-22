@@ -20,6 +20,10 @@ lv_obj_t *UITabFiles::upload_dialog = nullptr;
 lv_obj_t *UITabFiles::upload_progress_dialog = nullptr;
 lv_obj_t *UITabFiles::upload_progress_bar = nullptr;
 lv_obj_t *UITabFiles::upload_progress_label = nullptr;
+lv_obj_t *UITabFiles::xmodem_dialog = nullptr;
+lv_obj_t *UITabFiles::xmodem_progress_dialog = nullptr;
+lv_obj_t *UITabFiles::xmodem_progress_bar = nullptr;
+lv_obj_t *UITabFiles::xmodem_progress_label = nullptr;
 std::vector<std::string> UITabFiles::file_names;
 std::string UITabFiles::current_path = "/sd/";  // Default to SD card root
 bool UITabFiles::initial_load_done = false;     // Track initial load
@@ -1084,36 +1088,49 @@ void UITabFiles::upload_button_event_cb(lv_event_t *e) {
 
     // Upload requires a network connection to FluidNC
     if (FluidNCClient::isWiredMode()) {
-        lv_obj_t *dialog = lv_obj_create(lv_scr_act());
-        lv_obj_set_size(dialog, LV_PCT(100), LV_PCT(100));
-        lv_obj_set_style_bg_color(dialog, lv_color_make(0, 0, 0), 0);
-        lv_obj_set_style_bg_opa(dialog, LV_OPA_70, 0);
-        lv_obj_set_style_border_width(dialog, 0, 0);
-        lv_obj_clear_flag(dialog, LV_OBJ_FLAG_SCROLLABLE);
+        // Wired (UART) mode – use XModem transfer instead of HTTP upload
+        if (!isDisplaySDAvailable()) {
+            // Show SD-not-available error
+            lv_obj_t *dlg = lv_obj_create(lv_scr_act());
+            lv_obj_set_size(dlg, LV_PCT(100), LV_PCT(100));
+            lv_obj_set_style_bg_color(dlg, lv_color_make(0, 0, 0), 0);
+            lv_obj_set_style_bg_opa(dlg, LV_OPA_70, 0);
+            lv_obj_set_style_border_width(dlg, 0, 0);
+            lv_obj_clear_flag(dlg, LV_OBJ_FLAG_SCROLLABLE);
+            lv_obj_t *ctn = lv_obj_create(dlg);
+            lv_obj_set_size(ctn, 500, 200);
+            lv_obj_center(ctn);
+            lv_obj_set_style_bg_color(ctn, UITheme::BG_MEDIUM, 0);
+            lv_obj_set_style_border_color(ctn, UITheme::UI_WARNING, 0);
+            lv_obj_set_style_border_width(ctn, 3, 0);
+            lv_obj_t *lbl = lv_label_create(ctn);
+            lv_label_set_text(lbl, "Display SD card not available.\nPlease insert SD card.");
+            lv_obj_set_style_text_font(lbl, &lv_font_montserrat_18, 0);
+            lv_obj_align(lbl, LV_ALIGN_CENTER, 0, -20);
+            lv_obj_t *btn = lv_btn_create(ctn);
+            lv_obj_set_size(btn, 120, 45);
+            lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, -10);
+            lv_obj_add_event_cb(btn, [](lv_event_t *e) {
+                lv_obj_delete((lv_obj_t*)lv_event_get_user_data(e));
+            }, LV_EVENT_CLICKED, dlg);
+            lv_obj_t *bl = lv_label_create(btn);
+            lv_label_set_text(bl, "OK");
+            lv_obj_set_style_text_font(bl, &lv_font_montserrat_18, 0);
+            lv_obj_center(bl);
+            return;
+        }
 
-        lv_obj_t *content = lv_obj_create(dialog);
-        lv_obj_set_size(content, 500, 200);
-        lv_obj_center(content);
-        lv_obj_set_style_bg_color(content, UITheme::BG_MEDIUM, 0);
-        lv_obj_set_style_border_color(content, UITheme::UI_WARNING, 0);
-        lv_obj_set_style_border_width(content, 3, 0);
+        // Open file to get size
+        std::string pathStr(fullPath);
+        size_t lastSlash = pathStr.find_last_of('/');
+        const char* fname = (lastSlash != std::string::npos)
+                            ? fullPath + lastSlash + 1 : fullPath;
+        File f = SD.open(fullPath);
+        if (!f) { Serial.printf("[Files] XModem: cannot open %s\n", fullPath); return; }
+        size_t fileSize = f.size();
+        f.close();
 
-        lv_obj_t *label = lv_label_create(content);
-        lv_label_set_text(label, "Upload not available in wired mode.\nCopy files directly to FluidNC SD card.");
-        lv_obj_set_style_text_font(label, &lv_font_montserrat_18, 0);
-        lv_obj_align(label, LV_ALIGN_CENTER, 0, -20);
-
-        lv_obj_t *btn = lv_btn_create(content);
-        lv_obj_set_size(btn, 120, 45);
-        lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, -10);
-        lv_obj_add_event_cb(btn, [](lv_event_t *e) {
-            lv_obj_delete((lv_obj_t*)lv_event_get_user_data(e));
-        }, LV_EVENT_CLICKED, dialog);
-
-        lv_obj_t *btn_label = lv_label_create(btn);
-        lv_label_set_text(btn_label, "OK");
-        lv_obj_set_style_text_font(btn_label, &lv_font_montserrat_18, 0);
-        lv_obj_center(btn_label);
+        showXModemDialog(fname, fullPath, fileSize);
         return;
     }
 
@@ -1619,3 +1636,330 @@ void UITabFiles::navigateToUploadDirectory() {
     // Refresh the file list
     refreshFileList(current_path);
 }
+
+// ============================================================================
+// XModem (wired) upload dialog and progress
+// ============================================================================
+
+// Persistent storage for the XModem transfer parameters (must outlive dialogs)
+static char xmodem_local_path[256] = {};
+static char xmodem_remote_path[256] = {};
+static char xmodem_display_name[128] = {};
+
+void UITabFiles::showXModemDialog(const char* filename, const char* fullPath, size_t fileSize) {
+    if (xmodem_dialog) {
+        lv_obj_delete(xmodem_dialog);
+        xmodem_dialog = nullptr;
+    }
+
+    // Store transfer parameters in persistent buffers
+    strncpy(xmodem_local_path,  fullPath, sizeof(xmodem_local_path)  - 1);
+    strncpy(xmodem_display_name, filename, sizeof(xmodem_display_name) - 1);
+    // Default destination: /sd/<filename>
+    snprintf(xmodem_remote_path, sizeof(xmodem_remote_path), "/sd/%s", filename);
+
+    // --- Modal backdrop ---
+    xmodem_dialog = lv_obj_create(lv_scr_act());
+    lv_obj_set_size(xmodem_dialog, LV_PCT(100), LV_PCT(100));
+    lv_obj_set_style_bg_color(xmodem_dialog, lv_color_make(0, 0, 0), 0);
+    lv_obj_set_style_bg_opa(xmodem_dialog, LV_OPA_70, 0);
+    lv_obj_set_style_border_width(xmodem_dialog, 0, 0);
+    lv_obj_clear_flag(xmodem_dialog, LV_OBJ_FLAG_SCROLLABLE);
+
+    // --- Dialog box ---
+    lv_obj_t *content = lv_obj_create(xmodem_dialog);
+    lv_obj_set_size(content, 640, 330);
+    lv_obj_center(content);
+    lv_obj_set_style_bg_color(content, UITheme::BG_MEDIUM, 0);
+    lv_obj_set_style_border_color(content, UITheme::ACCENT_PRIMARY, 0);
+    lv_obj_set_style_border_width(content, 3, 0);
+    lv_obj_set_style_pad_all(content, 20, 0);
+    lv_obj_clear_flag(content, LV_OBJ_FLAG_SCROLLABLE);
+
+    // Title
+    lv_obj_t *title = lv_label_create(content);
+    lv_label_set_text(title, LV_SYMBOL_UPLOAD " XModem Transfer");
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_22, 0);
+    lv_obj_set_style_text_color(title, UITheme::ACCENT_PRIMARY, 0);
+    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 0);
+
+    // Filename row
+    lv_obj_t *lbl_file = lv_label_create(content);
+    lv_label_set_text_fmt(lbl_file, "File: %s", filename);
+    lv_obj_set_style_text_font(lbl_file, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(lbl_file, UITheme::TEXT_LIGHT, 0);
+    lv_label_set_long_mode(lbl_file, LV_LABEL_LONG_DOT);
+    lv_obj_set_width(lbl_file, 590);
+    lv_obj_align(lbl_file, LV_ALIGN_TOP_LEFT, 0, 42);
+
+    // Size row
+    lv_obj_t *lbl_size = lv_label_create(content);
+    char sizeText[48];
+    if (fileSize >= 1048576) snprintf(sizeText, sizeof(sizeText), "Size: %.2f MB", fileSize / 1048576.0f);
+    else snprintf(sizeText, sizeof(sizeText), "Size: %.1f KB", fileSize / 1024.0f);
+    lv_label_set_text(lbl_size, sizeText);
+    lv_obj_set_style_text_font(lbl_size, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(lbl_size, UITheme::TEXT_LIGHT, 0);
+    lv_obj_align(lbl_size, LV_ALIGN_TOP_LEFT, 0, 76);
+
+    // Destination label + dropdown (SD / Flash)
+    lv_obj_t *lbl_dest_hdr = lv_label_create(content);
+    lv_label_set_text(lbl_dest_hdr, "Destination:");
+    lv_obj_set_style_text_font(lbl_dest_hdr, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(lbl_dest_hdr, UITheme::TEXT_LIGHT, 0);
+    lv_obj_align(lbl_dest_hdr, LV_ALIGN_TOP_LEFT, 0, 112);
+
+    lv_obj_t *dest_dd = lv_dropdown_create(content);
+    lv_dropdown_set_options(dest_dd, "FluidNC SD Card (/sd/)\nFluidNC Flash (/localfs/)");
+    lv_dropdown_set_selected(dest_dd, 0);
+    lv_obj_set_size(dest_dd, 300, 44);
+    lv_obj_align(dest_dd, LV_ALIGN_TOP_LEFT, 160, 106);
+    lv_obj_set_style_text_font(dest_dd, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_bg_color(dest_dd, UITheme::BG_BUTTON, 0);
+    lv_obj_set_style_text_color(dest_dd, lv_color_white(), 0);
+    // Update remote path when destination changes
+    lv_obj_add_event_cb(dest_dd, [](lv_event_t *e) {
+        lv_obj_t *dd = (lv_obj_t*)lv_event_get_target(e);
+        uint16_t sel = lv_dropdown_get_selected(dd);
+        if (sel == 0) {
+            snprintf(xmodem_remote_path, sizeof(xmodem_remote_path), "/sd/%s", xmodem_display_name);
+        } else {
+            snprintf(xmodem_remote_path, sizeof(xmodem_remote_path), "/localfs/%s", xmodem_display_name);
+        }
+        Serial.printf("[Files] XModem destination: %s\n", xmodem_remote_path);
+    }, LV_EVENT_VALUE_CHANGED, nullptr);
+
+    // Resolved destination path label (live update)
+    lv_obj_t *lbl_dest = lv_label_create(content);
+    lv_label_set_text_fmt(lbl_dest, "Path: /sd/%s", filename);
+    lv_obj_set_style_text_font(lbl_dest, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_color(lbl_dest, UITheme::TEXT_DISABLED, 0);
+    lv_label_set_long_mode(lbl_dest, LV_LABEL_LONG_DOT);
+    lv_obj_set_width(lbl_dest, 590);
+    lv_obj_align(lbl_dest, LV_ALIGN_TOP_LEFT, 0, 158);
+
+    // Button row
+    lv_obj_t *btn_row = lv_obj_create(content);
+    lv_obj_set_size(btn_row, 590, 60);
+    lv_obj_align(btn_row, LV_ALIGN_BOTTOM_MID, 0, 0);
+    lv_obj_set_flex_flow(btn_row, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(btn_row, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_bg_opa(btn_row, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(btn_row, 0, 0);
+    lv_obj_set_style_pad_all(btn_row, 0, 0);
+    lv_obj_clear_flag(btn_row, LV_OBJ_FLAG_SCROLLABLE);
+
+    // Transfer button
+    lv_obj_t *btn_xfer = lv_btn_create(btn_row);
+    lv_obj_set_size(btn_xfer, 200, 50);
+    lv_obj_set_style_bg_color(btn_xfer, UITheme::ACCENT_PRIMARY, 0);
+    lv_obj_add_event_cb(btn_xfer, [](lv_event_t *e) {
+        // Close confirmation dialog
+        if (xmodem_dialog) {
+            lv_obj_delete(xmodem_dialog);
+            xmodem_dialog = nullptr;
+        }
+
+        // Show progress dialog then start the task
+        lv_timer_create([](lv_timer_t *timer) {
+            showXModemProgress(xmodem_display_name);
+            if (!FluidNCClient::startXModemUpload(xmodem_local_path, xmodem_remote_path,
+                                                   xmodem_display_name)) {
+                closeXModemProgress(false, "Failed to start transfer task");
+            }
+            lv_timer_delete(timer);
+        }, 50, nullptr);
+    }, LV_EVENT_CLICKED, nullptr);
+    lv_obj_t *lbl_xfer = lv_label_create(btn_xfer);
+    lv_label_set_text(lbl_xfer, LV_SYMBOL_UPLOAD " Transfer");
+    lv_obj_set_style_text_font(lbl_xfer, &lv_font_montserrat_18, 0);
+    lv_obj_center(lbl_xfer);
+
+    // Cancel button
+    lv_obj_t *btn_cancel = lv_btn_create(btn_row);
+    lv_obj_set_size(btn_cancel, 160, 50);
+    lv_obj_set_style_bg_color(btn_cancel, UITheme::BG_BUTTON, 0);
+    lv_obj_add_event_cb(btn_cancel, [](lv_event_t *e) {
+        if (xmodem_dialog) {
+            lv_obj_delete(xmodem_dialog);
+            xmodem_dialog = nullptr;
+        }
+    }, LV_EVENT_CLICKED, nullptr);
+    lv_obj_t *lbl_cancel = lv_label_create(btn_cancel);
+    lv_label_set_text(lbl_cancel, "Cancel");
+    lv_obj_set_style_text_font(lbl_cancel, &lv_font_montserrat_18, 0);
+    lv_obj_center(lbl_cancel);
+}
+
+void UITabFiles::showXModemProgress(const char* filename) {
+    if (xmodem_progress_dialog) {
+        lv_obj_delete(xmodem_progress_dialog);
+        xmodem_progress_dialog = nullptr;
+        xmodem_progress_bar    = nullptr;
+        xmodem_progress_label  = nullptr;
+    }
+
+    // Modal backdrop
+    xmodem_progress_dialog = lv_obj_create(lv_scr_act());
+    lv_obj_set_size(xmodem_progress_dialog, LV_PCT(100), LV_PCT(100));
+    lv_obj_set_style_bg_color(xmodem_progress_dialog, lv_color_make(0, 0, 0), 0);
+    lv_obj_set_style_bg_opa(xmodem_progress_dialog, LV_OPA_70, 0);
+    lv_obj_set_style_border_width(xmodem_progress_dialog, 0, 0);
+    lv_obj_clear_flag(xmodem_progress_dialog, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_move_foreground(xmodem_progress_dialog);
+
+    // Dialog box
+    lv_obj_t *content = lv_obj_create(xmodem_progress_dialog);
+    lv_obj_set_size(content, 600, 280);
+    lv_obj_center(content);
+    lv_obj_set_style_bg_color(content, UITheme::BG_MEDIUM, 0);
+    lv_obj_set_style_border_color(content, UITheme::ACCENT_PRIMARY, 0);
+    lv_obj_set_style_border_width(content, 3, 0);
+    lv_obj_set_style_pad_all(content, 20, 0);
+    lv_obj_clear_flag(content, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t *title = lv_label_create(content);
+    lv_label_set_text(title, LV_SYMBOL_UPLOAD " XModem Transfer...");
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_22, 0);
+    lv_obj_set_style_text_color(title, UITheme::ACCENT_PRIMARY, 0);
+    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 0);
+
+    lv_obj_t *lbl_file = lv_label_create(content);
+    lv_label_set_text_fmt(lbl_file, "File: %s", filename);
+    lv_obj_set_style_text_font(lbl_file, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(lbl_file, UITheme::TEXT_LIGHT, 0);
+    lv_label_set_long_mode(lbl_file, LV_LABEL_LONG_DOT);
+    lv_obj_set_width(lbl_file, 550);
+    lv_obj_align(lbl_file, LV_ALIGN_TOP_LEFT, 0, 45);
+
+    lv_obj_t *lbl_dest = lv_label_create(content);
+    lv_label_set_text_fmt(lbl_dest, "Destination: %s", xmodem_remote_path);
+    lv_obj_set_style_text_font(lbl_dest, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_color(lbl_dest, UITheme::TEXT_DISABLED, 0);
+    lv_label_set_long_mode(lbl_dest, LV_LABEL_LONG_DOT);
+    lv_obj_set_width(lbl_dest, 550);
+    lv_obj_align(lbl_dest, LV_ALIGN_TOP_LEFT, 0, 75);
+
+    xmodem_progress_bar = lv_bar_create(content);
+    lv_obj_set_size(xmodem_progress_bar, 560, 30);
+    lv_obj_align(xmodem_progress_bar, LV_ALIGN_TOP_LEFT, 0, 110);
+    lv_bar_set_value(xmodem_progress_bar, 0, LV_ANIM_OFF);
+    lv_obj_set_style_bg_color(xmodem_progress_bar, UITheme::BG_DARKER, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(xmodem_progress_bar, UITheme::ACCENT_PRIMARY, LV_PART_INDICATOR);
+
+    xmodem_progress_label = lv_label_create(content);
+    lv_label_set_text(xmodem_progress_label, "Waiting for FluidNC...");
+    lv_obj_set_style_text_font(xmodem_progress_label, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(xmodem_progress_label, UITheme::TEXT_LIGHT, 0);
+    lv_obj_align(xmodem_progress_label, LV_ALIGN_TOP_LEFT, 0, 155);
+
+    lv_obj_t *lbl_note = lv_label_create(content);
+    lv_label_set_text(lbl_note, "Restart device to cancel transfer");
+    lv_obj_set_style_text_font(lbl_note, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_color(lbl_note, UITheme::TEXT_DISABLED, 0);
+    lv_obj_align(lbl_note, LV_ALIGN_BOTTOM_MID, 0, -10);
+
+    lv_refr_now(NULL);
+}
+
+void UITabFiles::closeXModemProgress(bool success, const char* error) {
+    if (!xmodem_progress_dialog) return;
+
+    // Null these out immediately so checkXModemProgress doesn't call us again next frame
+    xmodem_progress_bar   = nullptr;
+    xmodem_progress_label = nullptr;
+
+    lv_obj_t *content = lv_obj_get_child(xmodem_progress_dialog, 0);
+    if (!content) return;
+
+    lv_obj_t *title = lv_obj_get_child(content, 0);
+    if (title) {
+        if (success) {
+            lv_label_set_text(title, LV_SYMBOL_OK " Transfer Complete");
+            lv_obj_set_style_text_color(title, UITheme::UI_SUCCESS, 0);
+        } else {
+            lv_label_set_text(title, LV_SYMBOL_WARNING " Transfer Failed");
+            lv_obj_set_style_text_color(title, UITheme::STATE_ALARM, 0);
+        }
+    }
+
+    // status label is child index 4 in content (title, lbl_file, lbl_dest, bar, status_label, note)
+    lv_obj_t *status_lbl = lv_obj_get_child(content, 4);
+    if (status_lbl) {
+        if (success) {
+            lv_label_set_text(status_lbl, "File transferred successfully");
+            lv_obj_set_style_text_color(status_lbl, UITheme::UI_SUCCESS, 0);
+        } else {
+            lv_label_set_text_fmt(status_lbl, "Error: %s", error ? error : "unknown");
+            lv_obj_set_style_text_color(status_lbl, UITheme::STATE_ALARM, 0);
+        }
+    }
+
+    // Replace the "restart to cancel" note with a Close button
+    uint32_t n = lv_obj_get_child_count(content);
+    if (n > 0) {
+        lv_obj_delete(lv_obj_get_child(content, n - 1)); // remove note label
+    }
+    lv_obj_t *btn_close = lv_btn_create(content);
+    lv_obj_set_size(btn_close, 160, 50);
+    lv_obj_align(btn_close, LV_ALIGN_BOTTOM_MID, 0, -10);
+    lv_obj_set_style_bg_color(btn_close, success ? UITheme::BTN_PLAY : UITheme::BG_BUTTON, 0);
+    lv_obj_add_event_cb(btn_close, [](lv_event_t *e) {
+        if (xmodem_progress_dialog) {
+            lv_obj_delete(xmodem_progress_dialog);
+            xmodem_progress_dialog = nullptr;
+            xmodem_progress_bar    = nullptr;
+            xmodem_progress_label  = nullptr;
+        }
+    }, LV_EVENT_CLICKED, nullptr);
+    lv_obj_t *bl = lv_label_create(btn_close);
+    lv_label_set_text(bl, "Close");
+    lv_obj_set_style_text_font(bl, &lv_font_montserrat_18, 0);
+    lv_obj_center(bl);
+
+    lv_refr_now(NULL);
+}
+
+// Called from the main loop to poll XModem transfer state and update the UI
+void UITabFiles::checkXModemProgress() {
+    if (!FluidNCClient::isXModemTransferActive() && !xmodem_progress_dialog) {
+        return; // Nothing to do
+    }
+
+    const XModemTransferState& state = FluidNCClient::getXModemState();
+
+    if (state.active && !state.completed) {
+        // Transfer in progress – update progress bar and label
+        if (xmodem_progress_bar && state.totalBytes > 0) {
+            int pct = (int)((state.bytesSent * 100) / state.totalBytes);
+            lv_bar_set_value(xmodem_progress_bar, pct, LV_ANIM_OFF);
+        }
+        if (xmodem_progress_label && state.totalBytes > 0) {
+            size_t sent  = state.bytesSent;
+            size_t total = state.totalBytes;
+            int pct = (int)((sent * 100) / total);
+            char prog_text[64];
+            if (total >= 1048576) {
+                // lv_label_set_text_fmt does not support %f on ESP32; use snprintf first
+                snprintf(prog_text, sizeof(prog_text), "%.2f MB / %.2f MB (%d%%)",
+                    sent  / 1048576.0f, total / 1048576.0f, pct);
+            } else {
+                snprintf(prog_text, sizeof(prog_text), "%u KB / %u KB (%d%%)",
+                    (unsigned)(sent / 1024), (unsigned)(total / 1024), pct);
+            }
+            lv_label_set_text(xmodem_progress_label, prog_text);
+        }
+        return;
+    }
+
+    // Only finalize once: xmodem_progress_bar is nulled by closeXModemProgress on first call
+    if (state.completed && xmodem_progress_dialog && xmodem_progress_bar) {
+        // Final update: fill bar to 100% if successful
+        if (state.success) {
+            lv_bar_set_value(xmodem_progress_bar, 100, LV_ANIM_OFF);
+        }
+        closeXModemProgress(state.success,
+                            state.error[0] ? state.error : nullptr);
+    }
+}
+

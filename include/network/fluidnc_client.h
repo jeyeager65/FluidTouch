@@ -6,6 +6,19 @@
 #include "ui/machine_config.h"
 #include <functional>
 
+// Shared state for an in-progress XModem file transfer.
+// Written by the XModem FreeRTOS task; read by the LVGL main loop.
+// All progress fields are volatile so the compiler never caches them.
+struct XModemTransferState {
+    volatile bool active;            // Transfer in progress
+    volatile bool completed;         // Transfer finished (success or failure)
+    volatile bool success;           // Result when completed == true
+    volatile size_t bytesSent;       // Bytes successfully transferred
+    volatile size_t totalBytes;      // Total file size in bytes
+    char filename[128];              // Display filename (written before active=true)
+    char error[128];                 // Error message (written before completed=true)
+};
+
 // Callback type for receiving FluidNC messages (renamed to avoid conflict with ArduinoWebsockets::MessageCallback)
 typedef std::function<void(const char* message)> FluidNCMessageCallback;
 
@@ -124,6 +137,21 @@ public:
     
     // Get count of bytes received over UART (for debugging wired connection)
     static uint32_t getUartBytesReceived();
+
+    // Start an XModem file upload from the Display SD card to FluidNC over UART.
+    // localPath  : full path on the Display SD card (e.g. "/myfile.nc")
+    // remotePath : destination on FluidNC (e.g. "/sd/myfile.nc" or "/localfs/myfile.nc")
+    // filename   : display name shown in the progress dialog
+    // Returns false immediately if wired mode is not active or a transfer is already running.
+    // Only available on Advance hardware (#ifdef HARDWARE_ADVANCE).
+    static bool startXModemUpload(const char* localPath, const char* remotePath,
+                                  const char* filename);
+
+    // Returns true while an XModem transfer task is running.
+    static bool isXModemTransferActive();
+
+    // Access the shared transfer state (read-only from UI).
+    static const XModemTransferState& getXModemState();
     
     // Main loop - call regularly to handle WebSocket events
     static void loop();
@@ -180,6 +208,12 @@ private:
     static char uartRxBuffer[512];
     static uint16_t uartRxPos;
     static uint32_t uartBytesReceived;  // Total bytes received over UART (debug counter)
+
+    // XModem transfer state and task (Advance hardware only)
+    static XModemTransferState xmodemTransferState;
+    static bool isXModemTransfer;       // Pauses normal UART parsing while true
+    static TaskHandle_t xmodemTaskHandle;
+    static void xmodemUploadTask(void* pvParams);
     
     // WebSocket event handlers
     static void onMessageCallback(websockets::WebsocketsMessage message);

@@ -1,10 +1,12 @@
 #include "network/fluidnc_client.h"
+#include "network/xmodem_sender.h"
 #include "ui/ui_common.h"
 #include "ui/tabs/control/ui_tab_control_probe.h"
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #ifdef HARDWARE_ADVANCE
 #include <HardwareSerial.h>
+#include <SD.h>
 static HardwareSerial wiredSerial(2);  // UART2: TX=GPIO43, RX=GPIO44
 #endif
 
@@ -29,6 +31,9 @@ bool FluidNCClient::isWiredConnection = false;
 char FluidNCClient::uartRxBuffer[512] = {};
 uint16_t FluidNCClient::uartRxPos = 0;
 uint32_t FluidNCClient::uartBytesReceived = 0;
+XModemTransferState FluidNCClient::xmodemTransferState = {};
+bool FluidNCClient::isXModemTransfer = false;
+TaskHandle_t FluidNCClient::xmodemTaskHandle = nullptr;
 
 void FluidNCClient::init() {
     if (initialized) return;
@@ -211,11 +216,153 @@ uint32_t FluidNCClient::getUartBytesReceived() {
     return uartBytesReceived;
 }
 
+// ============================================================================
+// XModem upload support (Advance hardware only)
+// ============================================================================
+
+#ifdef HARDWARE_ADVANCE
+struct XModemTaskParams {
+    char localPath[256];
+    char remotePath[256];
+};
+
+void FluidNCClient::xmodemUploadTask(void* pvParams) {
+    XModemTaskParams* params = (XModemTaskParams*)pvParams;
+    Serial.printf("[XModem] Task started: %s -> %s\n", params->localPath, params->remotePath);
+
+    File file = SD.open(params->localPath);
+    if (!file) {
+        Serial.println("[XModem] Failed to open local file");
+        strncpy(xmodemTransferState.error, "Failed to open file on SD card",
+                sizeof(xmodemTransferState.error) - 1);
+        xmodemTransferState.success = false;
+        xmodemTransferState.completed = true;
+        xmodemTransferState.active = false;
+        isXModemTransfer = false;
+        free(params);
+        vTaskDelete(nullptr);
+        return;
+    }
+
+    size_t fileSize = file.size();
+    xmodemTransferState.totalBytes = fileSize;
+    xmodemTransferState.bytesSent  = 0;
+
+    bool ok = XModemSender::sendFile(
+        wiredSerial,
+        params->remotePath,
+        file,
+        fileSize,
+        [](size_t sent, size_t total) {
+            xmodemTransferState.bytesSent = sent;
+        }
+    );
+
+    file.close();
+
+    // Drain any bytes left in the UART buffer before resuming normal parsing
+    uint32_t drainEnd = millis() + 300;
+    while (millis() < drainEnd) {
+        while (wiredSerial.available()) wiredSerial.read();
+        vTaskDelay(10 / portTICK_PERIOD_MS);
+    }
+
+    if (ok) {
+        xmodemTransferState.error[0] = '\0';
+    } else if (xmodemTransferState.error[0] == '\0') {
+        strncpy(xmodemTransferState.error, "Transfer failed",
+                sizeof(xmodemTransferState.error) - 1);
+    }
+    xmodemTransferState.success   = ok;
+    xmodemTransferState.completed = true;
+    xmodemTransferState.active    = false;
+    isXModemTransfer = false;  // Resume normal UART line parsing
+
+    Serial.printf("[XModem] Task complete: %s\n", ok ? "SUCCESS" : "FAILED");
+
+    free(params);
+    xmodemTaskHandle = nullptr;
+    vTaskDelete(nullptr);
+}
+#endif // HARDWARE_ADVANCE
+
+bool FluidNCClient::startXModemUpload(const char* localPath,
+                                       const char* remotePath,
+                                       const char* filename) {
+#ifndef HARDWARE_ADVANCE
+    Serial.println("[XModem] Not supported on Basic hardware");
+    return false;
+#else
+    if (!isWiredConnection) {
+        Serial.println("[XModem] Not in wired mode");
+        return false;
+    }
+    if (xmodemTransferState.active) {
+        Serial.println("[XModem] Transfer already in progress");
+        return false;
+    }
+
+    XModemTaskParams* params = (XModemTaskParams*)malloc(sizeof(XModemTaskParams));
+    if (!params) {
+        Serial.println("[XModem] Out of memory for task params");
+        return false;
+    }
+    strncpy(params->localPath,  localPath,  sizeof(params->localPath)  - 1);
+    strncpy(params->remotePath, remotePath, sizeof(params->remotePath) - 1);
+    params->localPath[sizeof(params->localPath)   - 1] = '\0';
+    params->remotePath[sizeof(params->remotePath) - 1] = '\0';
+
+    // Reset state
+    memset((void*)&xmodemTransferState, 0, sizeof(xmodemTransferState));
+    strncpy(xmodemTransferState.filename, filename, sizeof(xmodemTransferState.filename) - 1);
+    xmodemTransferState.active = true;
+
+    // Block normal UART parsing while the transfer runs
+    isXModemTransfer = true;
+
+    BaseType_t rc = xTaskCreatePinnedToCore(
+        xmodemUploadTask,
+        "xmodem_upload",
+        8192,
+        params,
+        5,
+        &xmodemTaskHandle,
+        0  // Run on core 0; LVGL runs on core 1
+    );
+
+    if (rc != pdPASS) {
+        Serial.println("[XModem] xTaskCreate failed");
+        free(params);
+        memset((void*)&xmodemTransferState, 0, sizeof(xmodemTransferState));
+        isXModemTransfer = false;
+        return false;
+    }
+
+    Serial.printf("[XModem] Upload task created: %s -> %s\n", localPath, remotePath);
+    return true;
+#endif
+}
+
+bool FluidNCClient::isXModemTransferActive() {
+    return xmodemTransferState.active;
+}
+
+const XModemTransferState& FluidNCClient::getXModemState() {
+    return xmodemTransferState;
+}
+
+// ============================================================================
+// Main event loop
+// ============================================================================
+
 void FluidNCClient::loop() {
     if (!initialized) return;
 
 #ifdef HARDWARE_ADVANCE
     if (isWiredConnection) {
+        // While an XModem transfer task is running, skip normal UART parsing
+        if (isXModemTransfer) return;
+
         // Drain UART receive buffer, process complete lines
         while (wiredSerial.available()) {
             char c = (char)wiredSerial.read();
