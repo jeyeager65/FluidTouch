@@ -1222,9 +1222,9 @@ void UICommon::checkConnectionTimeout() {
             if (config.connection_type == CONN_WIRED) {
                 uint32_t rxBytes = FluidNCClient::getUartBytesReceived();
                 snprintf(error_msg, sizeof(error_msg),
-                        "Could not connect to machine:\n%s\n\nUART2: TX=43, RX=44 @ %d baud\n"
+                        "Could not connect to machine:\n%s\n\nUART1: RX=19, TX=20 @ %d baud\n"
                         "Bytes received: %d\n\n"
-                        "Check wiring (TX→RX cross) and baud rate.",
+                        "Check wiring (TX>RX cross) and baud rate.",
                         config.name, (int)config.uart_baud_rate, (int)rxBytes);
             } else {
                 snprintf(error_msg, sizeof(error_msg), 

@@ -132,7 +132,7 @@ void setup()
 void loop()
 {
     // Forward any Serial input to FluidNC (for debugging via Serial Monitor)
-    // Skip in wired mode: Serial (USB CDC) is unrelated to FluidNC UART2 in that case
+    // Skip in wired mode: Serial (USB CDC) is unrelated to FluidNC UART1 in that case
     if (!FluidNCClient::isWiredMode()) {
         static char serial_buf[128];
         static uint8_t serial_buf_pos = 0;

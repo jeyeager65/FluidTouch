@@ -7,7 +7,7 @@
 #ifdef HARDWARE_ADVANCE
 #include <HardwareSerial.h>
 #include <SD.h>
-static HardwareSerial wiredSerial(2);  // UART2: TX=GPIO43, RX=GPIO44
+static HardwareSerial wiredSerial(2);  // UART1 (board label): RX=GPIO19, TX=GPIO20
 #endif
 
 using namespace websockets;
@@ -53,25 +53,14 @@ bool FluidNCClient::connect(const MachineConfig &config) {
     
 #ifdef HARDWARE_ADVANCE
     if (config.connection_type == CONN_WIRED) {
-        Serial.printf("[FluidNC] Connecting via UART2 (TX=43, RX=44) at %d baud\n", config.uart_baud_rate);
+        Serial.printf("[FluidNC] Connecting via UART1 (RX=19, TX=20) at %d baud\n", config.uart_baud_rate);
         isWiredConnection = true;
         uartRxPos = 0;
         autoReportingEnabled = false;
         autoReportingAttempted = false;
         everConnectedSuccessfully = false;
-        
-        // UART0 (Serial) uses GPIO43/44 by default. Release it before UART2 claims the same pins.
-        Serial.flush();
-        Serial.end();
-        // Explicitly float the pins so the GPIO mux fully releases before UART2 claims them.
-        // Without this delay + pinMode reset, USB connect/disconnect was required to unstick the pins.
-        delay(20);
-        pinMode(43, INPUT);
-        pinMode(44, INPUT);
-        delay(20);
-
         uartBytesReceived = 0;
-        wiredSerial.begin(config.uart_baud_rate, SERIAL_8N1, 44, 43);  // RX=44, TX=43
+        wiredSerial.begin(config.uart_baud_rate, SERIAL_8N1, 19, 20);  // RX=19, TX=20
         // Request firmware version and enable auto-reporting
         wiredSerial.print("$Build/Info\n");
         wiredSerial.print("$Report/Interval=250\n");
@@ -81,7 +70,7 @@ bool FluidNCClient::connect(const MachineConfig &config) {
         lastPollingMs = millis() - 1000;
         lastGCodePollMs = millis() - 10000;
         currentStatus.is_connected = false;  // Set true on first status report
-        Serial.println("[FluidNC] UART2 opened, waiting for status reports...");
+        Serial.println("[FluidNC] UART1 opened, waiting for status reports...");
         return true;
     }
 #endif
