@@ -8,6 +8,7 @@ public:
     static void create(lv_obj_t *tab);
     static void updateResult(const char* message);
     static void updateResult(float x, float y, float z, bool success);
+    static void updateProbe(bool triggered);
     
     // Keyboard support
     static void showKeyboard(lv_obj_t *ta);
@@ -15,6 +16,7 @@ public:
 
 private:
     static lv_obj_t* results_text;
+    static lv_obj_t* probe_indicator;
     static lv_obj_t* keyboard;
     static lv_obj_t* parent_tab;
     

@@ -44,6 +44,7 @@
 
 // Timing constants
 #define SPLASH_DURATION_MS 2500
+#define LIMIT_SWITCH_HOLD_MS 500  // Duration to keep limit switch indicators visible after trigger clears
 
 // Preferences namespaces
 #define PREFS_NAMESPACE "fluidtouch"        // Machine configurations
