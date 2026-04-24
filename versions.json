@@ -3,8 +3,8 @@
   "default_hardware": "advance-v1.3",
   "versions": [
     {
-      "id": "1.1.0_wired",
-      "display_name": "1.1.0_wired (Preview 2026-04-23)",
+      "id": "1.0.5_dev",
+      "display_name": "1.0.5_dev (Preview 2026-04-23)",
       "hardware": [
         "basic",
         "advance-v1.3",
@@ -13,8 +13,8 @@
       "is_preview": true
     },
     {
-      "id": "1.0.5_dev",
-      "display_name": "1.0.5_dev (Preview 2026-04-23)",
+      "id": "1.1.0_wired",
+      "display_name": "1.1.0_wired (Preview 2026-04-23)",
       "hardware": [
         "basic",
         "advance-v1.3",
