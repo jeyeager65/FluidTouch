@@ -233,8 +233,11 @@ void UITabTerminal::appendMessage(const char *message) {
         return;
     }
     
-    // Filter out ping messages (those starting with 'PING:')
-    if (strncmp(message, "PING:", 5) == 0) {
+    // Filter out ping messages ('PING' or 'PING:<count>:<interval>')
+    if (strncmp(message, "PING:", 5) == 0 ||
+        strcmp(message, "PING") == 0 ||
+        strcmp(message, "PING\n") == 0 ||
+        strcmp(message, "PING\r\n") == 0) {
         return;
     }
     
