@@ -64,6 +64,14 @@ struct FluidNCStatus {
     // Connection status
     bool is_connected;
     uint32_t last_update_ms;
+    char fluidnc_version[32];  // FluidNC firmware version, e.g. "3.9.5" (parsed from $Build/Info)
+
+    // Pin states (Pn: field)
+    bool pin_limit_x;
+    bool pin_limit_y;
+    bool pin_limit_z;
+    bool pin_limit_a;
+    bool pin_probe;
     
     // Constructor
     FluidNCStatus() : state(STATE_DISCONNECTED),
@@ -73,7 +81,9 @@ struct FluidNCStatus {
                      feed_rate(0), feed_override(100), rapid_override(100),
                      spindle_speed(0), spindle_override(100),
                      is_sd_printing(false), sd_percent(0), sd_start_time_ms(0), sd_elapsed_ms(0),
-                     is_connected(false), last_update_ms(0) {
+                     is_connected(false), last_update_ms(0),
+                     pin_limit_x(false), pin_limit_y(false), pin_limit_z(false), pin_limit_a(false),
+                     pin_probe(false) {
         strcpy(modal_motion, "G0");
         strcpy(modal_wcs, "G54");
         strcpy(modal_plane, "G17");
@@ -85,6 +95,7 @@ struct FluidNCStatus {
         strcpy(modal_tool, "T0");
         last_message[0] = '\0';  // Empty message initially
         sd_filename[0] = '\0';   // No file initially
+        fluidnc_version[0] = '\0';  // Unknown until $Build/Info response received
     }
 };
 

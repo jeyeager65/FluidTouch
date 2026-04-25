@@ -291,6 +291,9 @@ void FluidNCClient::onEventsCallback(WebsocketsEvent event, String data) {
             
             // Attempt to enable automatic status reporting
             attemptEnableAutoReporting();
+            
+            // Request firmware version info
+            webSocket.send("$Build/Info\n");
             break;
             
         case WebsocketsEvent::ConnectionClosed:
@@ -469,6 +472,27 @@ void FluidNCClient::parseStatusReport(const char* message) {
         Serial.printf("[FluidNC] Parsed Ov: feed=%.0f%%, rapid=%.0f%%, spindle=%.0f%%\n", 
                       currentStatus.feed_override, currentStatus.rapid_override, currentStatus.spindle_override);
     }
+
+    // Parse pin states (Pn:XYZA P) - field only present when pins are active
+    currentStatus.pin_limit_x = false;
+    currentStatus.pin_limit_y = false;
+    currentStatus.pin_limit_z = false;
+    currentStatus.pin_limit_a = false;
+    currentStatus.pin_probe   = false;
+    const char* pn = strstr(message, "Pn:");
+    if (pn) {
+        const char* p = pn + 3;
+        while (*p && *p != '|' && *p != '>') {
+            switch (*p) {
+                case 'X': currentStatus.pin_limit_x = true; break;
+                case 'Y': currentStatus.pin_limit_y = true; break;
+                case 'Z': currentStatus.pin_limit_z = true; break;
+                case 'A': currentStatus.pin_limit_a = true; break;
+                case 'P': currentStatus.pin_probe   = true; break;
+            }
+            p++;
+        }
+    }
     
     // Parse SD card file progress (SD:percent,filename)
     const char* sd = strstr(message, "SD:");
@@ -543,6 +567,23 @@ void FluidNCClient::parseRealtimeFeedback(const char* message) {
         }
     }
     
+    // Parse FluidNC firmware version from $Build/Info response
+    // Example: [VER:3.9 FluidNC v3.9.5:]
+    if (strncmp(message, "[VER:", 5) == 0) {
+        const char* v = strstr(message + 5, " v");
+        if (v) {
+            v += 2;  // skip " v"
+            const char* end = strchr(v, ':');
+            if (!end) end = strchr(v, ']');
+            if (!end) end = v + strlen(v);
+            size_t len = (size_t)(end - v);
+            if (len >= sizeof(currentStatus.fluidnc_version)) len = sizeof(currentStatus.fluidnc_version) - 1;
+            strncpy(currentStatus.fluidnc_version, v, len);
+            currentStatus.fluidnc_version[len] = '\0';
+            Serial.printf("[FluidNC] Firmware version: %s\n", currentStatus.fluidnc_version);
+        }
+    }
+
     // Check for auto-report confirmation message
     if (strstr(message, "websocket auto report interval set") != nullptr) {
         Serial.println("[FluidNC] ✓ Auto-report confirmed - automatic reporting enabled");
@@ -641,9 +682,12 @@ void FluidNCClient::parseGCodeState(const char* message) {
     else if (strstr(ptr, "M4 ")) strcpy(currentStatus.modal_spindle, "M4");
     else if (strstr(ptr, "M5")) strcpy(currentStatus.modal_spindle, "M5");
     
-    // Parse coolant state (M7=mist, M8=flood, M9=off)
-    if (strstr(ptr, "M7 ")) strcpy(currentStatus.modal_coolant, "M7");
-    else if (strstr(ptr, "M8 ")) strcpy(currentStatus.modal_coolant, "M8");
+    // Parse coolant state (M7=mist, M8=flood, M9=off; both M7 and M8 can be active simultaneously)
+    bool hasMist = strstr(ptr, "M7 ") != nullptr;
+    bool hasFlood = strstr(ptr, "M8 ") != nullptr;
+    if (hasMist && hasFlood) strcpy(currentStatus.modal_coolant, "M7 M8");
+    else if (hasMist) strcpy(currentStatus.modal_coolant, "M7");
+    else if (hasFlood) strcpy(currentStatus.modal_coolant, "M8");
     else if (strstr(ptr, "M9")) strcpy(currentStatus.modal_coolant, "M9");
     
     // Parse tool number (T0, T1, etc.)

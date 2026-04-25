@@ -236,6 +236,9 @@ void UICommon::setDisplayDriver(DisplayDriver* driver) {
 
 void UICommon::createMainUI() {
     Serial.println("UICommon: Creating main UI");
+
+    // Load machine-specific preferences now that the machine has been selected
+    loadSystemPreferences();
     
     // Get selected machine configuration
     MachineConfig config;
@@ -1632,10 +1635,12 @@ void UICommon::showWCSLockDialog(const char *wcs_code, const char *wcs_name, voi
 
 // Load system preferences once at startup
 void UICommon::loadSystemPreferences() {
-    Preferences prefs;
-    prefs.begin(PREFS_SYSTEM_NAMESPACE, true);  // Read-only
-    enable_a_axis = prefs.getBool("enable_a_axis", false);  // Default to false
-    prefs.end();
+    // Load enable_a_axis from the selected machine's config (it's machine-specific)
+    enable_a_axis = false;
+    MachineConfig config;
+    if (MachineConfigManager::getSelectedMachine(config)) {
+        enable_a_axis = config.enable_a_axis;
+    }
 
     Serial.printf("UICommon: Loaded system preferences - enable_a_axis=%d\n", enable_a_axis);
 }

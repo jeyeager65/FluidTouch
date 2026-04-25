@@ -2,6 +2,8 @@
 #define UI_TAB_STATUS_H
 
 #include <lvgl.h>
+#include <Arduino.h>
+#include "config.h"
 
 class UITabStatus {
 public:
@@ -19,6 +21,8 @@ public:
                                   const char *units, const char *motion, const char *feedrate,
                                   const char *spindle, const char *coolant, const char *tool);
     static void updateControlButtons(int machine_state);
+    static void updateLimitSwitches(bool x, bool y, bool z, bool a = false);
+    static void updateProbe(bool triggered);
     
 private:
     static lv_obj_t *lbl_message;
@@ -33,6 +37,19 @@ private:
     static lv_obj_t *lbl_wpos_y;
     static lv_obj_t *lbl_wpos_z;
     static lv_obj_t *lbl_wpos_a;
+    
+    // Limit switch indicators
+    static lv_obj_t *ind_limit_x;
+    static lv_obj_t *ind_limit_y;
+    static lv_obj_t *ind_limit_z;
+    static lv_obj_t *ind_limit_a;
+    static lv_obj_t *ind_probe;
+
+    // Timestamps of last limit trigger per axis (millis), for visual hold
+    static uint32_t last_limit_trigger_x_ms;
+    static uint32_t last_limit_trigger_y_ms;
+    static uint32_t last_limit_trigger_z_ms;
+    static uint32_t last_limit_trigger_a_ms;
     static lv_obj_t *lbl_mpos_x;
     static lv_obj_t *lbl_mpos_y;
     static lv_obj_t *lbl_mpos_z;
@@ -65,6 +82,7 @@ private:
     static lv_obj_t *lbl_modal_feedrate;
     static lv_obj_t *lbl_modal_spindle;
     static lv_obj_t *lbl_modal_coolant;
+    static int coolant_base_y;
     static lv_obj_t *lbl_modal_tool;
     
     // Cached values for delta checking (prevent unnecessary redraws)

@@ -1,6 +1,7 @@
 #include "ui/tabs/settings/ui_tab_settings_general.h"
 #include "ui/ui_theme.h"
 #include "ui/ui_common.h"
+#include "ui/machine_config.h"
 #include "ui/settings_manager.h"
 #include "core/display_driver.h"
 #include "config.h"
@@ -26,14 +27,19 @@ void UITabSettingsGeneral::create(lv_obj_t *tab) {
     // Disable scrolling for fixed layout
     lv_obj_clear_flag(tab, LV_OBJ_FLAG_SCROLLABLE);
     
-    // Load current preferences
     Preferences prefs;
     prefs.begin(PREFS_SYSTEM_NAMESPACE, true);  // Read-only
     bool show_machine_select = prefs.getBool("show_mach_sel", true);  // Default to true
     bool folders_on_top = prefs.getBool("folders_on_top", false);  // Default to false (folders at bottom)
     uint8_t display_rotation = prefs.getUChar("display_rot", 0);  // Default to 0 (normal)
-    bool enable_a_axis = prefs.getBool("enable_a_axis", false);  // Default to false (A-axis disabled)
     prefs.end();
+
+    // Load enable_a_axis from the selected machine config (it's machine-specific)
+    bool enable_a_axis = false;
+    MachineConfig mc;
+    if (MachineConfigManager::getSelectedMachine(mc)) {
+        enable_a_axis = mc.enable_a_axis;
+    }
 
     Serial.printf("UITabSettingsGeneral: Loaded show_mach_sel=%d, folders_on_top=%d, display_rot=%d, enable_a_axis=%d\n", show_machine_select, folders_on_top, display_rotation, enable_a_axis);
     
@@ -195,12 +201,6 @@ static void btn_save_general_event_handler(lv_event_t *e) {
         prefs.putBool("show_mach_sel", show_machine_select);
         prefs.putBool("folders_on_top", folders_on_top);
 
-        // Check if A-axis setting changed - may require restart for UI updates
-        bool old_enable_a_axis = prefs.getBool("enable_a_axis", false);
-        bool a_axis_changed = (enable_a_axis != old_enable_a_axis);
-
-        prefs.putBool("enable_a_axis", enable_a_axis);
-
         // Check if rotation changed - requires restart
         uint8_t old_rotation = prefs.getUChar("display_rot", 0);
         bool rotation_changed = (rotation != old_rotation);
@@ -208,18 +208,29 @@ static void btn_save_general_event_handler(lv_event_t *e) {
         prefs.putUChar("display_rot", rotation);
         prefs.end();
 
+        // Save enable_a_axis to the selected machine config
+        bool a_axis_changed = false;
+        {
+            MachineConfig mc;
+            int sel_idx = MachineConfigManager::getSelectedMachineIndex();
+            if (sel_idx >= 0 && MachineConfigManager::getMachine(sel_idx, mc)) {
+                a_axis_changed = (enable_a_axis != mc.enable_a_axis);
+                mc.enable_a_axis = enable_a_axis;
+                MachineConfigManager::saveMachine(sel_idx, mc);
+            }
+        }
+
         // Update cached A-axis setting immediately (no restart needed)
         UICommon::setAAxisEnabled(enable_a_axis);
 
-        // Verify it was saved
+        // Verify system prefs were saved
         prefs.begin(PREFS_SYSTEM_NAMESPACE, true);
         bool verified_machine = prefs.getBool("show_mach_sel", true);
         bool verified_folders = prefs.getBool("folders_on_top", false);
         uint8_t verified_rotation = prefs.getUChar("display_rot", 0);
-        bool verified_a_axis = prefs.getBool("enable_a_axis", false);
         prefs.end();
 
-        Serial.printf("UITabSettingsGeneral: Verified show_mach_sel=%d, folders_on_top=%d, display_rot=%d, enable_a_axis=%d\n", verified_machine, verified_folders, verified_rotation, verified_a_axis);
+        Serial.printf("UITabSettingsGeneral: Verified show_mach_sel=%d, folders_on_top=%d, display_rot=%d, enable_a_axis=%d\n", verified_machine, verified_folders, verified_rotation, enable_a_axis);
 
         if (status_label != NULL) {
             lv_label_set_text(status_label, "Settings saved!");

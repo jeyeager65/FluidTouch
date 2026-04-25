@@ -104,7 +104,7 @@ Configure default jogging behavior:
   - Maximum speed for A-axis jogging
   - Used by joystick Z/A slider in A mode
   - Used by A jog buttons
-- **Note:** Only visible when A-axis is enabled in Settings → General
+- **Note:** Only visible when A-axis is enabled for the selected machine (Settings → General)
 
 ### XY Steps
 
@@ -123,7 +123,7 @@ Configure default jogging behavior:
 - **Format:** Comma-separated values (e.g., `50,25,10,1,0.1`)
 - **Default:** `50,25,10,1,0.1`
 - **Usage:** Defines the step size buttons shown in the A jog section
-- **Note:** Only visible when A-axis is enabled in Settings → General
+- **Note:** Only visible when A-axis is enabled for the selected machine (Settings → General)
 
 ---
 

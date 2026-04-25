@@ -20,6 +20,7 @@
 #include "ui/tabs/settings/ui_tab_settings_about.h" // About tab for screenshot URL updates
 #include "ui/tabs/control/ui_tab_control_actions.h" // Actions tab for pause button updates
 #include "ui/tabs/control/ui_tab_control_override.h" // Override tab for updates
+#include "ui/tabs/control/ui_tab_control_probe.h"   // Probe tab for probe indicator
 #include "ui/machine_config.h"  // Machine configuration manager
 
 void setup()
@@ -74,10 +75,6 @@ void setup()
     // Initialize FluidNC Client
     Serial.println("Initializing FluidNC client...");
     FluidNCClient::init();
-
-    // Load system preferences once (cached for entire session)
-    Serial.println("Loading system preferences...");
-    UICommon::loadSystemPreferences();
 
     // Check for auto-import (only if no machines configured)
     Serial.println("Checking for settings auto-import...");
@@ -220,6 +217,10 @@ void loop()
                                         status.modal_units, status.modal_motion, status.modal_feedrate,
                                         status.modal_spindle, status.modal_coolant, status.modal_tool);
             UITabStatus::updateMessage(status.last_message);
+            UITabStatus::updateLimitSwitches(status.pin_limit_x, status.pin_limit_y, status.pin_limit_z, status.pin_limit_a);
+            UITabControlActions::updateLimitSwitches(status.pin_limit_x, status.pin_limit_y, status.pin_limit_z, status.pin_limit_a);
+            UITabStatus::updateProbe(status.pin_probe);
+            UITabControlProbe::updateProbe(status.pin_probe);
             
             // Update file progress in status bar (UICommon) instead of status tab
             UICommon::updateFileProgress(status.is_sd_printing, status.sd_percent,
