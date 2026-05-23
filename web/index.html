@@ -805,7 +805,7 @@
             Web Installer
         </p>
         <div class="version-badge">
-            <span>Version 1.0.4</span>
+            <span>Version 1.0.5</span>
         </div>
         <p style="text-align: center; font-size: 1.2em; color: #c9d1d9; margin-bottom: 30px;">
             ESP32 Touchscreen CNC Controller for FluidNC
@@ -813,22 +813,18 @@
 
         <!-- Changelog -->
         <div class="changelog">
-            <h3>🎉 Version 1.0.4</h3>
+            <h3>🎉 Version 1.0.5</h3>
             <div class="changelog-content">
                 <div class="changelog-version">
-                    <div class="changelog-date">March 23, 2026</div>
+                    <div class="changelog-date">April 24, 2026</div>
                     <ul class="changelog-items">
-                        <li><strong>A-Axis Support:</strong> Full optional 4th-axis support — enable via Settings → General → Enable A-Axis (takes effect after restart)
-                            <ul class="changelog-items">
-                                <li><strong>Jogging:</strong> A-axis section in Jog tab, Z/A toggle on Joystick tab right slider, Zero A button in Actions</li>
-                                <li><strong>Settings:</strong> Configure A-axis max feed rate and step sizes in Settings → Jog</li>
-                            </ul>
-                        </li>
-                        <li><strong>Configurable Jog Steps:</strong> XY, Z, and A-axis step button values are now fully customizable per machine in Settings → Jog</li>
-                        <li><strong>Bugfix:</strong> Resolved crash when browsing directories with large numbers of files</li>
-                        <li><strong>Bugfix:</strong> First touch after wake from deep sleep no longer triggers unintended UI actions</li>
-                        <li><strong>Improvement:</strong> Message display now filters to info/error messages only, reducing noise</li>
-                        <li><strong>Serial Forwarding:</strong> Commands entered in a serial terminal are forwarded to FluidNC for debugging</li>
+                        <li><strong>Probe / Limit Switch Indicators:</strong> Real-time pin status — probe indicator on Control → Probe and the Status tab; per-axis limit-switch indicators on Control → Actions and the Status tab. Triggered indicators stay visible for 500ms so brief activations are easy to see</li>
+                        <li><strong>Terminal History:</strong> Terminal tab retains command history — recall previous commands for re-sending</li>
+                        <li><strong>FluidNC Version on About Tab:</strong> Settings → About now displays the connected FluidNC controller's firmware version</li>
+                        <li><strong>M7 + M8 Coolant Display:</strong> Status tab now correctly shows both flood (M8) and mist (M7) coolant when active simultaneously</li>
+                        <li><strong>A-Axis is Per-Machine:</strong> A-axis enable/disable is now stored per machine instead of as a global setting, allowing mixed 3-axis and 4-axis configurations</li>
+                        <li><strong>Library Updates:</strong> LVGL 9.5.0, LovyanGFX 1.2.19, ArduinoJson 7.4.3</li>
+                        <li><strong>ESP32 Platform Branch:</strong> Switched to <code>Arduino/IDF53_gcc15</code> after the previous upstream branch was removed/renamed</li>
                     </ul>
                 </div>
             </div>
@@ -837,6 +833,23 @@
             <div class="changelog-collapsed" id="changelog-prior" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(0, 188, 212, 0.2);">
                 <h3 onclick="toggleChangelog('changelog-prior')">📜 Prior Releases</h3>
                 <div class="changelog-content">
+                    <div class="changelog-version">
+                        <h4>Version 1.0.4 - A-Axis Support & Configurable Jog Steps</h4>
+                        <div class="changelog-date">March 23, 2026</div>
+                        <ul class="changelog-items">
+                            <li><strong>A-Axis Support:</strong> Full optional 4th-axis support — enable via Settings → General → Enable A-Axis (takes effect after restart)
+                                <ul class="changelog-items">
+                                    <li><strong>Jogging:</strong> A-axis section in Jog tab, Z/A toggle on Joystick tab right slider, Zero A button in Actions</li>
+                                    <li><strong>Settings:</strong> Configure A-axis max feed rate and step sizes in Settings → Jog</li>
+                                </ul>
+                            </li>
+                            <li><strong>Configurable Jog Steps:</strong> XY, Z, and A-axis step button values are now fully customizable per machine in Settings → Jog</li>
+                            <li><strong>Bugfix:</strong> Resolved crash when browsing directories with large numbers of files</li>
+                            <li><strong>Bugfix:</strong> First touch after wake from deep sleep no longer triggers unintended UI actions</li>
+                            <li><strong>Improvement:</strong> Message display now filters to info/error messages only, reducing noise</li>
+                            <li><strong>Serial Forwarding:</strong> Commands entered in a serial terminal are forwarded to FluidNC for debugging</li>
+                        </ul>
+                    </div>
                     <div class="changelog-version">
                         <h4>Version 1.0.3 - Advance v1.2 Support, mDNS, WCS Enhancements</h4>
                         <div class="changelog-date">February 10, 2026</div>

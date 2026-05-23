@@ -8,6 +8,12 @@
 // Static member initialization
 lv_obj_t *UITabControlActions::btn_pause = nullptr;
 lv_obj_t *UITabControlActions::lbl_pause = nullptr;
+lv_obj_t *UITabControlActions::btn_home_x = nullptr;
+lv_obj_t *UITabControlActions::btn_home_y = nullptr;
+lv_obj_t *UITabControlActions::btn_home_z = nullptr;
+uint32_t UITabControlActions::last_trigger_x_ms = 0;
+uint32_t UITabControlActions::last_trigger_y_ms = 0;
+uint32_t UITabControlActions::last_trigger_z_ms = 0;
 
 void UITabControlActions::create(lv_obj_t *tab) {
     const int col_width = 180;
@@ -84,7 +90,7 @@ void UITabControlActions::create(lv_obj_t *tab) {
     y_pos = 40;
     
     // Home X
-    lv_obj_t *btn_home_x = lv_button_create(tab);
+    btn_home_x = lv_button_create(tab);
     lv_obj_set_size(btn_home_x, col_width, btn_height);
     lv_obj_set_pos(btn_home_x, middle_col_x, y_pos);
     lv_obj_set_style_bg_color(btn_home_x, UITheme::AXIS_X, LV_PART_MAIN);
@@ -97,7 +103,7 @@ void UITabControlActions::create(lv_obj_t *tab) {
     y_pos += btn_height + spacing;
     
     // Home Y
-    lv_obj_t *btn_home_y = lv_button_create(tab);
+    btn_home_y = lv_button_create(tab);
     lv_obj_set_size(btn_home_y, col_width, btn_height);
     lv_obj_set_pos(btn_home_y, middle_col_x, y_pos);
     lv_obj_set_style_bg_color(btn_home_y, UITheme::AXIS_Y, LV_PART_MAIN);
@@ -110,7 +116,7 @@ void UITabControlActions::create(lv_obj_t *tab) {
     y_pos += btn_height + spacing;
     
     // Home Z
-    lv_obj_t *btn_home_z = lv_button_create(tab);
+    btn_home_z = lv_button_create(tab);
     lv_obj_set_size(btn_home_z, col_width, btn_height);
     lv_obj_set_pos(btn_home_z, middle_col_x, y_pos);
     lv_obj_set_style_bg_color(btn_home_z, UITheme::AXIS_Z, LV_PART_MAIN);
@@ -209,6 +215,34 @@ void UITabControlActions::create(lv_obj_t *tab) {
 }
 
 // ========== EVENT HANDLERS ==========
+
+void UITabControlActions::updateLimitSwitches(bool x, bool y, bool z, bool a) {
+    uint32_t now = millis();
+
+    // Update timestamps when a trigger is seen
+    if (x) last_trigger_x_ms = now;
+    if (y) last_trigger_y_ms = now;
+    if (z) last_trigger_z_ms = now;
+
+    // Visual state: triggered now, or triggered recently within hold window
+    bool vis_x = x || (now - last_trigger_x_ms < LIMIT_SWITCH_HOLD_MS);
+    bool vis_y = y || (now - last_trigger_y_ms < LIMIT_SWITCH_HOLD_MS);
+    bool vis_z = z || (now - last_trigger_z_ms < LIMIT_SWITCH_HOLD_MS);
+
+    auto setHomeBorder = [](lv_obj_t *btn, bool triggered) {
+        if (!btn) return;
+        if (triggered) {
+            lv_obj_set_style_border_width(btn, 3, LV_PART_MAIN);
+            lv_obj_set_style_border_color(btn, LV_COLOR_MAKE(0xFF, 0xFF, 0xFF), LV_PART_MAIN);
+        } else {
+            lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
+        }
+    };
+
+    setHomeBorder(btn_home_x, vis_x);
+    setHomeBorder(btn_home_y, vis_y);
+    setHomeBorder(btn_home_z, vis_z);
+}
 
 void UITabControlActions::updatePauseButton(int machine_state) {
     if (!btn_pause || !lbl_pause) return;

@@ -9,6 +9,7 @@
 
 // Static member for results display
 lv_obj_t* UITabControlProbe::results_text = nullptr;
+lv_obj_t* UITabControlProbe::probe_indicator = nullptr;
 
 // Keyboard support
 lv_obj_t* UITabControlProbe::keyboard = nullptr;
@@ -225,7 +226,16 @@ void UITabControlProbe::create(lv_obj_t *parent) {
     lv_label_set_text(results_header, "PROBE RESULT");
     lv_obj_set_style_text_font(results_header, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(results_header, UITheme::TEXT_DISABLED, 0);
-    lv_obj_set_pos(results_header, 260, 260);  // Aligned with parameters section, moved down 20px
+    lv_obj_set_pos(results_header, 280, 260);
+
+    probe_indicator = lv_obj_create(parent);
+    lv_obj_set_size(probe_indicator, 14, 14);
+    lv_obj_set_pos(probe_indicator, 260, 264);
+    lv_obj_set_style_radius(probe_indicator, 7, 0);
+    lv_obj_set_style_bg_color(probe_indicator, UITheme::BG_BUTTON, 0);
+    lv_obj_set_style_border_width(probe_indicator, 1, 0);
+    lv_obj_set_style_border_color(probe_indicator, UITheme::BORDER_MEDIUM, 0);
+    lv_obj_clear_flag(probe_indicator, LV_OBJ_FLAG_SCROLLABLE);
     
     results_text = lv_textarea_create(parent);
     lv_textarea_set_text(results_text, "No probe data");
@@ -238,6 +248,11 @@ void UITabControlProbe::create(lv_obj_t *parent) {
 }
 
 // Event handlers
+void UITabControlProbe::updateProbe(bool triggered) {
+    if (!probe_indicator) return;
+    lv_obj_set_style_bg_color(probe_indicator, triggered ? UITheme::BTN_PLAY : UITheme::BG_BUTTON, 0);
+}
+
 void UITabControlProbe::probe_x_minus_handler(lv_event_t* e) {
     executeProbe('X', '-');
 }

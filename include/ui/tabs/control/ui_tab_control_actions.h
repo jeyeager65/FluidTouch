@@ -2,11 +2,14 @@
 #define UI_TAB_CONTROL_ACTIONS_H
 
 #include <lvgl.h>
+#include <Arduino.h>
+#include "config.h"
 
 class UITabControlActions {
 public:
     static void create(lv_obj_t *tab);
     static void updatePauseButton(int machine_state);
+    static void updateLimitSwitches(bool x, bool y, bool z, bool a = false);
 
 private:
     // Event handlers
@@ -27,6 +30,16 @@ private:
     // State tracking for pause/resume button
     static lv_obj_t *btn_pause;
     static lv_obj_t *lbl_pause;
+    
+    // Home button references for limit switch indicators
+    static lv_obj_t *btn_home_x;
+    static lv_obj_t *btn_home_y;
+    static lv_obj_t *btn_home_z;
+
+    // Timestamps of last trigger per axis (millis), for visual hold
+    static uint32_t last_trigger_x_ms;
+    static uint32_t last_trigger_y_ms;
+    static uint32_t last_trigger_z_ms;
 };
 
 #endif // UI_TAB_CONTROL_ACTIONS_H

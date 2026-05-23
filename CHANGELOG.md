@@ -5,6 +5,30 @@ All notable changes to FluidTouch will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.5] - 2026-04-24
+
+### Added
+
+- **Probe / Limit Switch Indicators** - Real-time pin status indicators on Control tabs and Status tab
+  - Probe indicator on **Control → Probe** and on the Status tab
+  - Limit-switch indicators (per axis) on **Control → Actions** and on the Status tab
+  - Triggered indicators remain visible for 500ms so brief activations are easy to see
+- **Terminal History** - Terminal tab now retains command history; recall previous commands for re-sending
+- **FluidNC Version on About Tab** - Settings → About now displays the connected FluidNC controller's firmware version
+- **M7 + M8 Coolant Display** - Status tab correctly shows both flood (M8) and mist (M7) coolant when active simultaneously
+
+### Changed
+
+- **A-Axis Setting is Per-Machine** - A-axis enable/disable is now stored per machine instead of as a global setting, allowing mixed 3-axis and 4-axis machine configurations
+- **LVGL 9.5.0** - Updated UI library from 9.4.x to 9.5.0
+- **LovyanGFX 1.2.19** - Updated display driver
+- **ArduinoJson 7.4.3** - Updated JSON library
+- **ESP32 Platform Branch** - Switched to the `Arduino/IDF53_gcc15` branch of the Jason2866 ESP32 platform after the previous `Arduino/IDF53` branch was removed/renamed upstream
+
+### Fixed
+
+- **Build Compatibility** - Resolved build break caused by the LovyanGFX update
+
 ## [1.0.4] - 2026-03-23
 
 ### Added
@@ -108,6 +132,7 @@ FluidTouch 1.0.0 is the first stable release of the ESP32-S3 touchscreen CNC con
 - Configuration guide for WiFi, machines, and settings
 - Development guide for building from source
 
+[1.0.5]: https://github.com/jeyeager65/FluidTouch/releases/tag/v1.0.5
 [1.0.4]: https://github.com/jeyeager65/FluidTouch/releases/tag/v1.0.4
 [1.0.3]: https://github.com/jeyeager65/FluidTouch/releases/tag/v1.0.3
 [1.0.2]: https://github.com/jeyeager65/FluidTouch/releases/tag/v1.0.2

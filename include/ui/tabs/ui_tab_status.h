@@ -2,6 +2,8 @@
 #define UI_TAB_STATUS_H
 
 #include <lvgl.h>
+#include <Arduino.h>
+#include "config.h"
 
 class UITabStatus {
 public:
@@ -42,6 +44,12 @@ private:
     static lv_obj_t *ind_limit_z;
     static lv_obj_t *ind_limit_a;
     static lv_obj_t *ind_probe;
+
+    // Timestamps of last limit trigger per axis (millis), for visual hold
+    static uint32_t last_limit_trigger_x_ms;
+    static uint32_t last_limit_trigger_y_ms;
+    static uint32_t last_limit_trigger_z_ms;
+    static uint32_t last_limit_trigger_a_ms;
     static lv_obj_t *lbl_mpos_x;
     static lv_obj_t *lbl_mpos_y;
     static lv_obj_t *lbl_mpos_z;

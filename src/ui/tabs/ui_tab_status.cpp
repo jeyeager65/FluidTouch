@@ -27,6 +27,10 @@ lv_obj_t *UITabStatus::ind_limit_y = nullptr;
 lv_obj_t *UITabStatus::ind_limit_z = nullptr;
 lv_obj_t *UITabStatus::ind_limit_a = nullptr;
 lv_obj_t *UITabStatus::ind_probe = nullptr;
+uint32_t UITabStatus::last_limit_trigger_x_ms = 0;
+uint32_t UITabStatus::last_limit_trigger_y_ms = 0;
+uint32_t UITabStatus::last_limit_trigger_z_ms = 0;
+uint32_t UITabStatus::last_limit_trigger_a_ms = 0;
 lv_obj_t *UITabStatus::lbl_mpos_x = nullptr;
 lv_obj_t *UITabStatus::lbl_mpos_y = nullptr;
 lv_obj_t *UITabStatus::lbl_mpos_z = nullptr;
@@ -982,14 +986,26 @@ void UITabStatus::updateControlButtons(int machine_state) {
 }
 
 void UITabStatus::updateLimitSwitches(bool x, bool y, bool z, bool a) {
+    uint32_t now = millis();
+
+    if (x) last_limit_trigger_x_ms = now;
+    if (y) last_limit_trigger_y_ms = now;
+    if (z) last_limit_trigger_z_ms = now;
+    if (a) last_limit_trigger_a_ms = now;
+
+    bool vis_x = x || (now - last_limit_trigger_x_ms < LIMIT_SWITCH_HOLD_MS);
+    bool vis_y = y || (now - last_limit_trigger_y_ms < LIMIT_SWITCH_HOLD_MS);
+    bool vis_z = z || (now - last_limit_trigger_z_ms < LIMIT_SWITCH_HOLD_MS);
+    bool vis_a = a || (now - last_limit_trigger_a_ms < LIMIT_SWITCH_HOLD_MS);
+
     auto setIndicator = [](lv_obj_t *ind, bool triggered) {
         if (!ind) return;
         lv_obj_set_style_bg_color(ind, triggered ? UITheme::BTN_PLAY : UITheme::BG_BUTTON, 0);
     };
-    setIndicator(ind_limit_x, x);
-    setIndicator(ind_limit_y, y);
-    setIndicator(ind_limit_z, z);
-    setIndicator(ind_limit_a, a);
+    setIndicator(ind_limit_x, vis_x);
+    setIndicator(ind_limit_y, vis_y);
+    setIndicator(ind_limit_z, vis_z);
+    setIndicator(ind_limit_a, vis_a);
 }
 
 void UITabStatus::updateProbe(bool triggered) {

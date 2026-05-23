@@ -135,8 +135,13 @@ Real-time machine status display with four columns:
 - Motion Mode (G0/G1/G2/G3)
 - Feed Mode (G93/G94)
 - Spindle State (M3/M4/M5)
-- Coolant (M7/M8/M9)
+- Coolant (M7/M8/M9 — shows both M7 and M8 when active simultaneously)
 - Tool Number
+
+**Pin Status Indicators:**
+- **Probe** indicator — lights up when the probe pin is active
+- **Limit X / Y / Z (and A)** indicators — light up per axis when a limit switch is triggered
+- Indicators remain visible for at least 500ms after deactivation so brief activations are easy to see
 
 ### SD Card File Progress
 (while running a job)
@@ -193,6 +198,10 @@ Machine control buttons:
 - **Zero A** - Zero A-axis work coordinate (visible only when A-axis is enabled)
 - **Unlock** - Clear alarm state ($X)
 - **Reset** - Soft reset (Ctrl+X)
+
+**Limit Switch Indicators:**
+- Per-axis indicators (X / Y / Z, plus A when enabled) light up when a limit switch is triggered
+- Indicators remain visible for at least 500ms after deactivation so brief activations are easy to see
 
 ### Jog
 
@@ -287,6 +296,10 @@ Touch probe operations:
 - Two-line result textarea
 - Shows probed axis value
 - Success/failure message
+
+**Probe Indicator:**
+- A probe pin indicator lights up whenever the probe input is active
+- Stays visible for at least 500ms after deactivation so brief contacts are easy to see
 
 ### Overrides
 
@@ -418,6 +431,11 @@ Raw WebSocket message display:
 - Auto-scroll toggle
 - Excludes messages such as status updates to prevent performance issues.
 
+**Command History:**
+- Up / Down arrow buttons next to the input field recall previously sent commands
+- Stores the most recent 10 unique commands; consecutive duplicates are skipped
+- History is kept while the controller is running (cleared on restart)
+
 ---
 
 ## Settings Tab
@@ -439,6 +457,7 @@ The Settings tab contains six sub-tabs for configuration:
 
 **Enable A-Axis:**
 - When enabled, a 4th A-axis is shown in the status bar, Status tab, Jog tab, Joystick tab, and Actions tab.
+- Setting is **per-machine** — the toggle applies to the currently selected machine, allowing mixed 3-axis and 4-axis configurations.
 - Requires a restart to take effect after changing.
 
 ### Backup
@@ -516,6 +535,7 @@ Power management and display brightness:
 
 Project information:
 - FluidTouch version
+- FluidNC controller firmware version (shown when connected)
 - GitHub link with QR code
 - Screenshot server link with QR code
 
