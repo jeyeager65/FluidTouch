@@ -39,6 +39,12 @@
     - **DIP Switch Configuration:** Both versions require DIP switches S0 and S1 set to position 1
     - **Version 1.3:** Fully tested (use `elecrow-crowpanel-7-advance-v13` build environment)
     - **Version 1.2:** ⚠️ Untested (use `elecrow-crowpanel-7-advance-v12` build environment)
+- Waveshare ESP32-S3-Touch-LCD-7 (experimental support)
+    - 800×480 RGB LCD, GT911 touch
+    - Build environment: `waveshare-esp32-s3-touch-lcd-7`
+    - CH422G expander support is used for backlight switching and SD card chip-select
+    - Current limitation: backlight is switch-only, so PowerManager skips the DIMMED state and transitions directly from full brightness to screen-off
+    - Settings import/restore behavior: on Waveshare ESP32-S3-Touch-LCD-7, `dim_timeout` and `dim_brightness` are ignored because the backlight is switch-only (no analog dimming); other power settings import normally (with informational serial logs)
 - Serial terminal (PlatformIO includes one)
 - Chrome/Edge browser (for ESP Web Tools testing)
 
@@ -73,6 +79,7 @@ code .
 - `elecrow-crowpanel-7-basic` - Basic hardware (4MB flash, PWM backlight)
 - `elecrow-crowpanel-7-advance-v12` - Advance v1.2 hardware (16MB flash, I2C backlight)
 - `elecrow-crowpanel-7-advance-v13` - Advance v1.3 hardware (16MB flash, I2C backlight)
+- `waveshare-esp32-s3-touch-lcd-7` - Waveshare 7" hardware (16MB flash, RGB LCD, touch)
 
 **Windows PowerShell:**
 ```powershell
@@ -85,6 +92,9 @@ code .
 # Build only (Advance v1.3)
 & "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run -e elecrow-crowpanel-7-advance-v13
 
+# Build only (Waveshare ESP32-S3-Touch-LCD-7)
+& "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run -e waveshare-esp32-s3-touch-lcd-7
+
 # Build and upload (Basic)
 & "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run --target upload -e elecrow-crowpanel-7-basic
 
@@ -93,6 +103,9 @@ code .
 
 # Build and upload (Advance v1.3)
 & "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run --target upload -e elecrow-crowpanel-7-advance-v13
+
+# Build and upload (Waveshare ESP32-S3-Touch-LCD-7)
+& "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run --target upload -e waveshare-esp32-s3-touch-lcd-7
 
 # Clean build
 & "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run -t clean
@@ -112,6 +125,9 @@ platformio run -e elecrow-crowpanel-7-advance-v12
 # Build only (Advance v1.3)
 platformio run -e elecrow-crowpanel-7-advance-v13
 
+# Build only (Waveshare ESP32-S3-Touch-LCD-7)
+platformio run -e waveshare-esp32-s3-touch-lcd-7
+
 # Build and upload (Basic)
 platformio run --target upload -e elecrow-crowpanel-7-basic
 
@@ -120,6 +136,9 @@ platformio run --target upload -e elecrow-crowpanel-7-advance-v12
 
 # Build and upload (Advance v1.3)
 platformio run --target upload -e elecrow-crowpanel-7-advance-v13
+
+# Build and upload (Waveshare ESP32-S3-Touch-LCD-7)
+platformio run --target upload -e waveshare-esp32-s3-touch-lcd-7
 
 # Clean build
 platformio run -t clean
@@ -141,6 +160,7 @@ platformio device monitor -b 115200
 - Basic Firmware: `.pio/build/elecrow-crowpanel-7-basic/firmware.bin`
 - Advance v1.2 Firmware: `.pio/build/elecrow-crowpanel-7-advance-v12/firmware.bin`
 - Advance v1.3 Firmware: `.pio/build/elecrow-crowpanel-7-advance-v13/firmware.bin`
+- Waveshare Firmware: `.pio/build/waveshare-esp32-s3-touch-lcd-7/firmware.bin`
 
 ---
 

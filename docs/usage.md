@@ -84,6 +84,8 @@ If you have a settings backup file from another FluidTouch device or a previous 
 4. Verify jog/probe settings are correct
 5. Check that macros are properly loaded
 
+**Waveshare Note:** On Waveshare ESP32-S3-Touch-LCD-7, `dim_timeout` and `dim_brightness` are ignored because the backlight is switch-only (no analog dimming). Other power settings import normally.
+
 ---
 
 ## Connecting to Your Machine
@@ -314,6 +316,9 @@ FluidTouch stores settings in non-volatile memory, but if settings are lost:
 - File must be in root directory of Display SD card
 - Auto-import only works when no machines are configured
 - Check file is valid JSON (view in text editor)
+
+**Waveshare Expected Behavior:**
+- Import succeeds even though `dim_timeout` and `dim_brightness` are ignored on Waveshare ESP32-S3-Touch-LCD-7.
 
 ---
 
