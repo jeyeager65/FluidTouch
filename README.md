@@ -74,6 +74,16 @@ Refer to the **[Development Guide](./docs/development.md)** for additional instr
 - External battery connector
 - [Buy on Elecrow ↗](https://www.awin1.com/cread.php?awinmid=82721&awinaffid=2663106&ued=https%3A%2F%2Fwww.elecrow.com%2Fesp32-display-7-inch-hmi-display-rgb-tft-lcd-touch-screen-support-lvgl.html) *(affiliate link)*
 
+**Waveshare ESP32-S3-Touch-LCD-7** *(experimental)*
+- ESP32-S3-N16R8 (16MB Flash + 8MB PSRAM)
+- 800×480 RGB LCD (ST7262 panel path)
+- GT911 Capacitive Touch (GPIO8/9 I2C)
+- Build environment: `waveshare-esp32-s3-touch-lcd-7`
+- CH422G I/O expander support for backlight switching and Display SD card chip-select
+- Current limitation: backlight control is switch-only (on/off), so Waveshare does not support true PWM dimming levels
+- Settings import note: on Waveshare ESP32-S3-Touch-LCD-7, `dim_timeout` and `dim_brightness` are ignored because the backlight is switch-only (no analog dimming); other power settings import normally
+- [Product page ↗](https://www.waveshare.com/esp32-s3-touch-lcd-7.htm)
+
 ---
 
 ## 📖 Documentation

@@ -187,6 +187,8 @@ Configure power management and display brightness:
 - During RUN, ALARM, HOLD, or JOG states, display stays at full brightness
 - Touch activity resets timers and restores full brightness
 - Deep sleep mode requires reset button to wake
+- Waveshare ESP32-S3-Touch-LCD-7 uses switch-only backlight control (no analog dimming)
+- On Waveshare, dim-specific settings are not applied at runtime; screen transitions from normal brightness directly to screen-off
 
 ---
 
@@ -231,6 +233,10 @@ Creates a backup file on the Display SD card:
 3. Confirm warning dialog
 4. Device restarts and auto-imports if settings file exists
 5. Configure WiFi passwords for each machine
+
+**Waveshare Import Note:**
+- On Waveshare ESP32-S3-Touch-LCD-7, `dim_timeout` and `dim_brightness` are ignored because the backlight is switch-only (no analog dimming).
+- Other power settings still import normally (enabled, sleep timeout, deep sleep timeout, normal brightness).
 
 ### Clearing All Settings
 
