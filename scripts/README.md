@@ -1,3 +1,43 @@
+# Script Utilities
+
+## Keep developer updates + working driver fixes (cross-platform)
+
+These scripts automate the safe workflow for keeping your custom driver branch up to date with upstream `main`.
+
+- **Windows PowerShell**: `Sync-DriverBranch.ps1`
+- **Linux/macOS Bash**: `sync-driver-branch.sh`
+
+What they do:
+
+1. Optionally stash dirty local changes
+2. Fetch and fast-forward `main` from remote
+3. Switch to your driver branch
+4. Create a timestamped safety backup branch
+5. Rebase (default) or merge from `main`
+6. Optionally push updated branches
+7. Restore your original branch and stashed changes
+
+Defaults:
+
+- main branch: `main`
+- driver branch: `waveshare-driver-stable`
+- remote: `origin`
+- integration mode: rebase
+
+### PowerShell examples
+
+- Default rebase workflow: `./Sync-DriverBranch.ps1`
+- Merge instead of rebase: `./Sync-DriverBranch.ps1 -Merge`
+- Also push after sync: `./Sync-DriverBranch.ps1 -Push`
+
+### Bash examples
+
+- Default rebase workflow: `./sync-driver-branch.sh`
+- Merge instead of rebase: `./sync-driver-branch.sh --merge`
+- Also push after sync: `./sync-driver-branch.sh --push`
+
+> Note: On Linux/macOS, make executable once with `chmod +x scripts/sync-driver-branch.sh`.
+
 # Custom LVGL Font Generation
 
 This directory contains scripts for generating custom LVGL fonts from FontAwesome icons.
