@@ -16,6 +16,7 @@ struct MachineConfig {
     char ssid[33];           // WiFi SSID (max 32 chars + null)
     char password[64];       // WiFi password (max 63 chars + null)
     char fluidnc_url[128];   // FluidNC URL (e.g., "192.168.1.100" or "fluidnc.local")
+    char fluidnc_IP[128];    // Resolved IP saved from FluidNCClient::connect
     uint16_t websocket_port; // WebSocket port (default 81)
     bool is_configured;      // Whether this slot has a valid machine
     

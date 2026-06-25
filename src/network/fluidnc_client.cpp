@@ -97,6 +97,8 @@ bool FluidNCClient::connect(const MachineConfig &config) {
     // Connect to WebSocket (ws://hostname:port/)
     char wsUrl[128];
     snprintf(wsUrl, sizeof(wsUrl), "ws://%s:%d/", resolvedHost.c_str(), config.websocket_port);
+    // Save the resolved IP to machine current config
+    snprintf(currentConfig.fluidnc_IP, sizeof(currentConfig.fluidnc_IP), resolvedHost.c_str());
     bool connected = webSocket.connect(wsUrl);
     
     if (!connected) {
@@ -196,8 +198,8 @@ void FluidNCClient::requestStatusReport() {
 String FluidNCClient::getMachineIP() {
     if (!currentStatus.is_connected) return "";
     
-    // Get URL from config
-    String url = String(currentConfig.fluidnc_url);
+    // Get IP saved from FluidNCClient::connect 
+    String url = String(currentConfig.fluidnc_IP);
     
     // Extract IP from URL (may already be just an IP address)
     // If it starts with a protocol, remove it
