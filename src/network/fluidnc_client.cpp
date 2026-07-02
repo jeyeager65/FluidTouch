@@ -2,12 +2,26 @@
 #include "network/xmodem_sender.h"
 #include "ui/ui_common.h"
 #include "ui/tabs/control/ui_tab_control_probe.h"
+#include "debug_log.h"
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #ifdef HARDWARE_ADVANCE
 #include <HardwareSerial.h>
 #include <SD.h>
 static HardwareSerial wiredSerial(2);  // UART1 (board label): RX=GPIO19, TX=GPIO20
+// "USB CDC" mode on the Elecrow CrowPanel actually uses UART0 (GPIO43 TX / GPIO44 RX)
+// routed through the on-board CH340 USB-UART bridge to the USB-C jack. FluidNC's USB
+// host sees the CH340 as a USB CDC ACM device. The ESP32-S3's native USB peripheral
+// on GPIO19/20 is NOT connected to the USB-C jack on this board, so we use Serial
+// (UART0) for this mode rather than the USBCDC class.
+//
+// While USB CDC mode is active, the global `g_serialMuted` flag (declared in
+// debug_log.h) silences LOG_PRINT/LOG_PRINTLN/LOG_PRINTF across the firmware so
+// stray debug bytes never reach FluidNC as garbage commands.
+//
+// Currently-active serial stream (set on connect, used by all read/write paths).
+// nullptr means no serial connection is active (WebSocket mode or disconnected).
+static Stream*       activeStream  = nullptr;
 #endif
 
 using namespace websockets;
@@ -27,7 +41,7 @@ uint32_t FluidNCClient::lastGCodePollMs = 0;
 uint32_t FluidNCClient::lastAutoReportAttemptMs = 0;
 bool FluidNCClient::everConnectedSuccessfully = false;
 bool FluidNCClient::isHandlingDisconnect = false;
-bool FluidNCClient::isWiredConnection = false;
+ConnectionType FluidNCClient::activeSerialMode = CONN_WIFI;  // CONN_WIFI = "no serial active"
 char FluidNCClient::uartRxBuffer[512] = {};
 uint16_t FluidNCClient::uartRxPos = 0;
 uint32_t FluidNCClient::uartBytesReceived = 0;
@@ -38,13 +52,13 @@ TaskHandle_t FluidNCClient::xmodemTaskHandle = nullptr;
 void FluidNCClient::init() {
     if (initialized) return;
     
-    Serial.println("[FluidNC] Initializing client");
+    LOG_PRINTLN("[FluidNC] Initializing client");
     initialized = true;
 }
 
 bool FluidNCClient::connect(const MachineConfig &config) {
     if (!initialized) {
-        Serial.println("[FluidNC] Error: Client not initialized");
+        LOG_PRINTLN("[FluidNC] Error: Client not initialized");
         return false;
     }
     
@@ -52,15 +66,16 @@ bool FluidNCClient::connect(const MachineConfig &config) {
     currentConfig = config;
     
 #ifdef HARDWARE_ADVANCE
-    if (config.connection_type == CONN_WIRED) {
-        Serial.printf("[FluidNC] Connecting via UART1 (RX=19, TX=20) at %d baud\n", config.uart_baud_rate);
-        isWiredConnection = true;
+    if (config.connection_type == CONN_UART) {
+        LOG_PRINTF("[FluidNC] Connecting via UART1 (RX=19, TX=20) at %d baud\n", config.uart_baud_rate);
+        activeSerialMode = CONN_UART;
         uartRxPos = 0;
         autoReportingEnabled = false;
         autoReportingAttempted = false;
         everConnectedSuccessfully = false;
         uartBytesReceived = 0;
         wiredSerial.begin(config.uart_baud_rate, SERIAL_8N1, 19, 20);  // RX=19, TX=20
+        activeStream = &wiredSerial;
         // Request firmware version and enable auto-reporting
         wiredSerial.print("$Build/Info\n");
         wiredSerial.print("$Report/Interval=250\n");
@@ -70,21 +85,86 @@ bool FluidNCClient::connect(const MachineConfig &config) {
         lastPollingMs = millis() - 1000;
         lastGCodePollMs = millis() - 10000;
         currentStatus.is_connected = false;  // Set true on first status report
-        Serial.println("[FluidNC] UART1 opened, waiting for status reports...");
+        LOG_PRINTLN("[FluidNC] UART1 opened, waiting for status reports...");
+        return true;
+    }
+    if (config.connection_type == CONN_USB_CDC) {
+        // USB CDC over the on-board USB-C jack goes through a CH340 USB-UART
+        // bridge to ESP32 UART0. The baud rate here must match what FluidNC's
+        // `uart3: usb_host: baud:` is set to in config.yaml. Default 115200.
+        uint32_t baud = (config.uart_baud_rate > 0) ? config.uart_baud_rate : 115200;
+
+        // Pre-mute *before* touching Serial so any LOG_* call from a concurrent
+        // task (or from Serial.end() / Serial.begin() internals) can't escape
+        // onto the wire as garbage to FluidNC.
+        LOG_PRINTF("[FluidNC] Connecting via USB CDC (UART0 / on-board USB-UART bridge) at %u baud\n",
+                   (unsigned)baud);
+        LOG_PRINTLN("[FluidNC] NOTE: Serial debug output is suppressed until disconnect");
+        Serial.flush();
+        delay(50);          // Let the last debug bytes drain physically
+        g_serialMuted = true;
+
+        // Re-open UART0 at the FluidNC USB CDC baud rate with a larger RX buffer
+        // so back-to-back status reports + WCO + GCode state don't overflow the
+        // default 256-byte ring at 115200.
+        Serial.end();
+        delay(100);          // Brief gap so FluidNC's USB host sees a clean re-enumeration
+        Serial.setRxBufferSize(2048);
+        Serial.begin(baud);
+
+        activeSerialMode = CONN_USB_CDC;
+        uartRxPos = 0;
+        autoReportingEnabled = false;
+        autoReportingAttempted = false;
+        everConnectedSuccessfully = false;
+        uartBytesReceived = 0;
+        activeStream = &Serial;
+
+        // FluidNC's USB host typically needs ~500-1500 ms to enumerate the CH340
+        // and mount its CDC endpoint. Sending commands before that is just throwing
+        // bytes into a void. Wait for the link to settle, drain any startup garbage
+        // (the CH340 emits a break on open and FluidNC echoes a welcome banner),
+        // then send the report-interval request. The auto-report attempt timer
+        // doesn't start until after this settle, so the 2 s fallback-polling timeout
+        // is measured from a meaningful baseline.
+        uint32_t settleEnd = millis() + 1500;
+        while (millis() < settleEnd) {
+            while (Serial.available()) {
+                (void)Serial.read();
+                uartBytesReceived++;
+            }
+            delay(10);
+        }
+
+        // Send a soft "are you there" then enable auto-reporting. If FluidNC
+        // missed the first $Report/Interval (still mid-mount), we'll resend
+        // it from loop() on a state change or via fallback polling.
+        Serial.print("\n");                       // Flush any partial line
+        Serial.print("$Build/Info\n");
+        Serial.print("$Report/Interval=250\n");
+        autoReportingAttempted = true;
+        autoReportingEnabled = false;
+        lastAutoReportAttemptMs = millis();
+        lastPollingMs = millis() - 1000;
+        lastGCodePollMs = millis() - 10000;
+        currentStatus.is_connected = false;
         return true;
     }
 #endif
 
-    // Reset wired flag for WebSocket connections
-    isWiredConnection = false;
+    // Reset serial-mode flag for WebSocket connections
+    activeSerialMode = CONN_WIFI;
+#ifdef HARDWARE_ADVANCE
+    activeStream = nullptr;
+#endif
 
     // Check WiFi connection first
     if (WiFi.status() != WL_CONNECTED) {
-        Serial.println("[FluidNC] Error: WiFi not connected");
+        LOG_PRINTLN("[FluidNC] Error: WiFi not connected");
         return false;
     }
     
-    Serial.printf("[FluidNC] Connecting to %s:%d via WebSocket\n", 
+    LOG_PRINTF("[FluidNC] Connecting to %s:%d via WebSocket\n", 
                   config.fluidnc_url, config.websocket_port);
     
     // Resolve hostname if needed (mDNS support)
@@ -92,20 +172,20 @@ bool FluidNCClient::connect(const MachineConfig &config) {
     IPAddress serverIP;
     if (resolvedHost.indexOf('.') == -1 || resolvedHost.endsWith(".local")) {
         // It's a hostname or mDNS name, try to resolve it
-        Serial.printf("[FluidNC] Resolving hostname: %s\n", resolvedHost.c_str());
+        LOG_PRINTF("[FluidNC] Resolving hostname: %s\n", resolvedHost.c_str());
         
         // Try resolving with retries (mDNS can be slow to respond)
         bool resolved = false;
         for (int attempt = 0; attempt < 5 && !resolved; attempt++) {
             if (attempt > 0) {
-                Serial.printf("[FluidNC] Retry attempt %d/5...\n", attempt + 1);
+                LOG_PRINTF("[FluidNC] Retry attempt %d/5...\n", attempt + 1);
                 delay(1000);  // Longer delay between retries for mDNS
             }
             
             if (resolvedHost.endsWith(".local")) {
                 // Use MDNS.queryHost() for .local hostnames (strip the .local suffix)
                 String hostname = resolvedHost.substring(0, resolvedHost.length() - 6);
-                Serial.printf("[FluidNC] Using mDNS query for: %s\n", hostname.c_str());
+                LOG_PRINTF("[FluidNC] Using mDNS query for: %s\n", hostname.c_str());
                 serverIP = MDNS.queryHost(hostname);
             } else {
                 // Use standard DNS for non-.local hostnames
@@ -114,20 +194,20 @@ bool FluidNCClient::connect(const MachineConfig &config) {
             
             // Validate that we got a real IP address (not 0.0.0.0)
             if (serverIP != IPAddress(0, 0, 0, 0)) {
-                Serial.printf("[FluidNC] Resolved on attempt %d to IP: %s\n", attempt + 1, serverIP.toString().c_str());
+                LOG_PRINTF("[FluidNC] Resolved on attempt %d to IP: %s\n", attempt + 1, serverIP.toString().c_str());
                 resolved = true;
             } else {
-                Serial.printf("[FluidNC] Attempt %d returned invalid IP (0.0.0.0)\n", attempt + 1);
+                LOG_PRINTF("[FluidNC] Attempt %d returned invalid IP (0.0.0.0)\n", attempt + 1);
             }
         }
         
         if (!resolved) {
-            Serial.printf("[FluidNC] Failed to resolve hostname: %s after 5 attempts\n", resolvedHost.c_str());
-            Serial.println("[FluidNC] Tip: Try using the IP address instead, or check that mDNS is working on your network");
+            LOG_PRINTF("[FluidNC] Failed to resolve hostname: %s after 5 attempts\n", resolvedHost.c_str());
+            LOG_PRINTLN("[FluidNC] Tip: Try using the IP address instead, or check that mDNS is working on your network");
             return false;
         }
         resolvedHost = serverIP.toString();
-        Serial.printf("[FluidNC] Using resolved IP: %s\n", resolvedHost.c_str());
+        LOG_PRINTF("[FluidNC] Using resolved IP: %s\n", resolvedHost.c_str());
     }
     
     // Set up event callbacks
@@ -140,24 +220,37 @@ bool FluidNCClient::connect(const MachineConfig &config) {
     bool connected = webSocket.connect(wsUrl);
     
     if (!connected) {
-        Serial.println("[FluidNC] Initial connection failed");
+        LOG_PRINTLN("[FluidNC] Initial connection failed");
         currentStatus.is_connected = false;
         return false;
     }
     
-    Serial.println("[FluidNC] WebSocket connection initiated");
+    LOG_PRINTLN("[FluidNC] WebSocket connection initiated");
     currentStatus.is_connected = false;  // Will be set to true when first message received
     
     return true;
 }
 
 void FluidNCClient::disconnect() {
-    Serial.println("[FluidNC] Disconnecting");
+    LOG_PRINTLN("[FluidNC] Disconnecting");
 #ifdef HARDWARE_ADVANCE
-    if (isWiredConnection) {
+    if (activeSerialMode == CONN_UART) {
         wiredSerial.end();
-        isWiredConnection = false;
+        activeSerialMode = CONN_WIFI;
+        activeStream = nullptr;
         uartRxPos = 0;
+    } else if (activeSerialMode == CONN_USB_CDC) {
+        // Re-open Serial at the default debug baud so the console comes back to life.
+        Serial.end();
+        delay(50);
+        Serial.begin(115200);
+        activeSerialMode = CONN_WIFI;
+        activeStream = nullptr;
+        uartRxPos = 0;
+        // Unmute *after* Serial is back at the debug baud so the first print lands
+        // on the host terminal cleanly.
+        g_serialMuted = false;
+        Serial.println("[FluidNC] USB CDC disconnected, debug console restored");
     } else
 #endif
     if (webSocket.available()) {
@@ -170,7 +263,7 @@ void FluidNCClient::disconnect() {
 }
 
 void FluidNCClient::stopReconnectionAttempts() {
-    Serial.println("[FluidNC] Stopping reconnection attempts");
+    LOG_PRINTLN("[FluidNC] Stopping reconnection attempts");
     // Don't call close() if we're already handling a disconnect event
     // This prevents re-entrant calls that cause stack overflow
     if (!isHandlingDisconnect && webSocket.available()) {
@@ -182,7 +275,7 @@ void FluidNCClient::stopReconnectionAttempts() {
 
 bool FluidNCClient::isConnected() {
 #ifdef HARDWARE_ADVANCE
-    if (isWiredConnection) {
+    if (activeSerialMode == CONN_UART || activeSerialMode == CONN_USB_CDC) {
         return currentStatus.is_connected;
     }
 #endif
@@ -193,11 +286,38 @@ bool FluidNCClient::isAutoReporting() {
     return autoReportingEnabled;
 }
 
-bool FluidNCClient::isWiredMode() {
+bool FluidNCClient::isUartMode() {
 #ifdef HARDWARE_ADVANCE
-    return isWiredConnection;
+    return activeSerialMode == CONN_UART;
 #else
     return false;
+#endif
+}
+
+bool FluidNCClient::isUsbCdcMode() {
+#ifdef HARDWARE_ADVANCE
+    return activeSerialMode == CONN_USB_CDC;
+#else
+    return false;
+#endif
+}
+
+bool FluidNCClient::isSerialMode() {
+#ifdef HARDWARE_ADVANCE
+    return activeSerialMode == CONN_UART || activeSerialMode == CONN_USB_CDC;
+#else
+    return false;
+#endif
+}
+
+bool FluidNCClient::isWiFiMode() {
+#ifdef HARDWARE_ADVANCE
+    // On Advance, "WiFi mode" means no serial stream is active. activeSerialMode
+    // is the runtime source of truth (currentConfig may not match what's actually
+    // open, e.g. after disconnect()).
+    return activeSerialMode == CONN_WIFI;
+#else
+    return true;  // Basic hardware has only WiFi
 #endif
 }
 
@@ -217,11 +337,11 @@ struct XModemTaskParams {
 
 void FluidNCClient::xmodemUploadTask(void* pvParams) {
     XModemTaskParams* params = (XModemTaskParams*)pvParams;
-    Serial.printf("[XModem] Task started: %s -> %s\n", params->localPath, params->remotePath);
+    LOG_PRINTF("[XModem] Task started: %s -> %s\n", params->localPath, params->remotePath);
 
     File file = SD.open(params->localPath);
     if (!file) {
-        Serial.println("[XModem] Failed to open local file");
+        LOG_PRINTLN("[XModem] Failed to open local file");
         strncpy(xmodemTransferState.error, "Failed to open file on SD card",
                 sizeof(xmodemTransferState.error) - 1);
         xmodemTransferState.success = false;
@@ -237,8 +357,24 @@ void FluidNCClient::xmodemUploadTask(void* pvParams) {
     xmodemTransferState.totalBytes = fileSize;
     xmodemTransferState.bytesSent  = 0;
 
+    // Use whichever serial stream the user picked (UART or USB CDC)
+    Stream* xmodemStream = activeStream;
+    if (!xmodemStream) {
+        LOG_PRINTLN("[XModem] No active serial stream");
+        strncpy(xmodemTransferState.error, "No serial stream",
+                sizeof(xmodemTransferState.error) - 1);
+        xmodemTransferState.success   = false;
+        xmodemTransferState.completed = true;
+        xmodemTransferState.active    = false;
+        isXModemTransfer = false;
+        file.close();
+        free(params);
+        vTaskDelete(nullptr);
+        return;
+    }
+
     bool ok = XModemSender::sendFile(
-        wiredSerial,
+        *xmodemStream,
         params->remotePath,
         file,
         fileSize,
@@ -249,10 +385,10 @@ void FluidNCClient::xmodemUploadTask(void* pvParams) {
 
     file.close();
 
-    // Drain any bytes left in the UART buffer before resuming normal parsing
+    // Drain any bytes left in the serial buffer before resuming normal parsing
     uint32_t drainEnd = millis() + 300;
     while (millis() < drainEnd) {
-        while (wiredSerial.available()) wiredSerial.read();
+        while (xmodemStream->available()) xmodemStream->read();
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 
@@ -267,7 +403,7 @@ void FluidNCClient::xmodemUploadTask(void* pvParams) {
     xmodemTransferState.active    = false;
     isXModemTransfer = false;  // Resume normal UART line parsing
 
-    Serial.printf("[XModem] Task complete: %s\n", ok ? "SUCCESS" : "FAILED");
+    LOG_PRINTF("[XModem] Task complete: %s\n", ok ? "SUCCESS" : "FAILED");
 
     free(params);
     xmodemTaskHandle = nullptr;
@@ -279,21 +415,21 @@ bool FluidNCClient::startXModemUpload(const char* localPath,
                                        const char* remotePath,
                                        const char* filename) {
 #ifndef HARDWARE_ADVANCE
-    Serial.println("[XModem] Not supported on Basic hardware");
+    LOG_PRINTLN("[XModem] Not supported on Basic hardware");
     return false;
 #else
-    if (!isWiredConnection) {
-        Serial.println("[XModem] Not in wired mode");
+    if (activeSerialMode != CONN_UART && activeSerialMode != CONN_USB_CDC) {
+        LOG_PRINTLN("[XModem] Not in a serial (UART or USB CDC) mode");
         return false;
     }
     if (xmodemTransferState.active) {
-        Serial.println("[XModem] Transfer already in progress");
+        LOG_PRINTLN("[XModem] Transfer already in progress");
         return false;
     }
 
     XModemTaskParams* params = (XModemTaskParams*)malloc(sizeof(XModemTaskParams));
     if (!params) {
-        Serial.println("[XModem] Out of memory for task params");
+        LOG_PRINTLN("[XModem] Out of memory for task params");
         return false;
     }
     strncpy(params->localPath,  localPath,  sizeof(params->localPath)  - 1);
@@ -320,14 +456,14 @@ bool FluidNCClient::startXModemUpload(const char* localPath,
     );
 
     if (rc != pdPASS) {
-        Serial.println("[XModem] xTaskCreate failed");
+        LOG_PRINTLN("[XModem] xTaskCreate failed");
         free(params);
         memset((void*)&xmodemTransferState, 0, sizeof(xmodemTransferState));
         isXModemTransfer = false;
         return false;
     }
 
-    Serial.printf("[XModem] Upload task created: %s -> %s\n", localPath, remotePath);
+    LOG_PRINTF("[XModem] Upload task created: %s -> %s\n", localPath, remotePath);
     return true;
 #endif
 }
@@ -348,13 +484,13 @@ void FluidNCClient::loop() {
     if (!initialized) return;
 
 #ifdef HARDWARE_ADVANCE
-    if (isWiredConnection) {
-        // While an XModem transfer task is running, skip normal UART parsing
+    if (activeStream != nullptr) {
+        // While an XModem transfer task is running, skip normal line parsing
         if (isXModemTransfer) return;
 
-        // Drain UART receive buffer, process complete lines
-        while (wiredSerial.available()) {
-            char c = (char)wiredSerial.read();
+        // Drain serial receive buffer, process complete lines
+        while (activeStream->available()) {
+            char c = (char)activeStream->read();
             uartBytesReceived++;
             if (c == '\n') {
                 uartRxBuffer[uartRxPos] = '\0';
@@ -376,15 +512,15 @@ void FluidNCClient::loop() {
                 autoReportingAttempted = false;  // Switch to fallback polling
             }
         }
-        // Fallback polling over UART
+        // Fallback polling over active serial stream
         if (!autoReportingAttempted && !autoReportingEnabled) {
             uint32_t now = millis();
             if (now - lastPollingMs >= 1000) {
-                wiredSerial.print("?");
+                activeStream->print("?");
                 lastPollingMs = now;
             }
             if (now - lastGCodePollMs >= 10000) {
-                wiredSerial.print("$G\n");
+                activeStream->print("$G\n");
                 lastGCodePollMs = now;
             }
         }
@@ -405,7 +541,7 @@ void FluidNCClient::loop() {
         uint32_t now = millis();
         if (now - lastAutoReportAttemptMs >= 2000) {
             // No status received - assume auto-reporting failed
-            Serial.println("[FluidNC] Auto-reporting timeout - switching to fallback polling");
+            LOG_PRINTLN("[FluidNC] Auto-reporting timeout - switching to fallback polling");
             autoReportingAttempted = false;  // Allow fallback polling to start
         }
     }
@@ -428,14 +564,14 @@ void FluidNCClient::clearLastMessage() {
 
 void FluidNCClient::sendCommand(const char* command) {
     if (!currentStatus.is_connected) {
-        Serial.println("[FluidNC] Error: Not connected");
+        LOG_PRINTLN("[FluidNC] Error: Not connected");
         return;
     }
     
-    Serial.printf("[FluidNC] Sending command: %s\n", command);
+    LOG_PRINTF("[FluidNC] Sending command: %s\n", command);
 #ifdef HARDWARE_ADVANCE
-    if (isWiredConnection) {
-        wiredSerial.print(command);
+    if (activeStream != nullptr) {
+        activeStream->print(command);
         return;
     }
 #endif
@@ -446,8 +582,8 @@ void FluidNCClient::requestStatusReport() {
     if (!currentStatus.is_connected) return;
     
 #ifdef HARDWARE_ADVANCE
-    if (isWiredConnection) {
-        wiredSerial.print("?");
+    if (activeStream != nullptr) {
+        activeStream->print("?");
         return;
     }
 #endif
@@ -485,22 +621,22 @@ String FluidNCClient::getMachineIP() {
 
 void FluidNCClient::setMessageCallback(FluidNCMessageCallback callback) {
     messageCallback = callback;
-    Serial.println("[FluidNC] Message callback registered");
+    LOG_PRINTLN("[FluidNC] Message callback registered");
 }
 
 void FluidNCClient::clearMessageCallback() {
     messageCallback = nullptr;
-    Serial.println("[FluidNC] Message callback cleared");
+    LOG_PRINTLN("[FluidNC] Message callback cleared");
 }
 
 void FluidNCClient::setTerminalCallback(FluidNCMessageCallback callback) {
     terminalCallback = callback;
-    Serial.println("[FluidNC] Terminal callback registered");
+    LOG_PRINTLN("[FluidNC] Terminal callback registered");
 }
 
 void FluidNCClient::clearTerminalCallback() {
     terminalCallback = nullptr;
-    Serial.println("[FluidNC] Terminal callback cleared");
+    LOG_PRINTLN("[FluidNC] Terminal callback cleared");
 }
 
 void FluidNCClient::onMessageCallback(WebsocketsMessage message) {
@@ -508,7 +644,7 @@ void FluidNCClient::onMessageCallback(WebsocketsMessage message) {
     
     // Only log non-status messages to reduce serial spam
     if (payload[0] != '<') {
-        Serial.printf("[FluidNC] Received: %s\n", payload);
+        LOG_PRINTF("[FluidNC] Received: %s\n", payload);
     }
     
     // Call message callback if registered (for file lists, etc.)
@@ -542,7 +678,7 @@ void FluidNCClient::onMessageCallback(WebsocketsMessage message) {
 void FluidNCClient::onEventsCallback(WebsocketsEvent event, String data) {
     switch(event) {
         case WebsocketsEvent::ConnectionOpened:
-            Serial.println("[FluidNC] WebSocket connected");
+            LOG_PRINTLN("[FluidNC] WebSocket connected");
             // Don't set is_connected yet - wait for first status report
             currentStatus.state = STATE_IDLE;
             currentStatus.last_update_ms = millis();
@@ -559,7 +695,7 @@ void FluidNCClient::onEventsCallback(WebsocketsEvent event, String data) {
             break;
             
         case WebsocketsEvent::ConnectionClosed:
-            Serial.println("[FluidNC] WebSocket disconnected");
+            LOG_PRINTLN("[FluidNC] WebSocket disconnected");
             
             // Set flag to prevent re-entrant close() calls
             isHandlingDisconnect = true;
@@ -583,11 +719,11 @@ void FluidNCClient::onEventsCallback(WebsocketsEvent event, String data) {
             break;
             
         case WebsocketsEvent::GotPing:
-            Serial.println("[FluidNC] Received ping");
+            LOG_PRINTLN("[FluidNC] Received ping");
             break;
             
         case WebsocketsEvent::GotPong:
-            Serial.println("[FluidNC] Received pong");
+            LOG_PRINTLN("[FluidNC] Received pong");
             break;
     }
 }
@@ -600,14 +736,14 @@ void FluidNCClient::parseStatusReport(const char* message) {
     if (autoReportingAttempted && !autoReportingEnabled) {
         autoReportingEnabled = true;
         autoReportingAttempted = false;  // Clear the attempt flag
-        Serial.println("[FluidNC] ✓ Auto-reporting confirmed (status received)");
+        LOG_PRINTLN("[FluidNC] ✓ Auto-reporting confirmed (status received)");
     }
     
     // If we receive ANY status report and not connected yet, mark as connected
     // This handles both auto-reporting and fallback polling
     if (!currentStatus.is_connected) {
         currentStatus.is_connected = true;
-        Serial.println("[FluidNC] ✓ Connection established (status received)");
+        LOG_PRINTLN("[FluidNC] ✓ Connection established (status received)");
         
         // Hide connecting popup
         UICommon::hideConnectingPopup();
@@ -620,7 +756,7 @@ void FluidNCClient::parseStatusReport(const char* message) {
     static uint32_t lastStatusLog = 0;
     uint32_t now = millis();
     if (now - lastStatusLog >= 5000) {
-        Serial.printf("[FluidNC] Status update (5s): %s\n", message);
+        LOG_PRINTF("[FluidNC] Status update (5s): %s\n", message);
         lastStatusLog = now;
     }
     
@@ -631,7 +767,7 @@ void FluidNCClient::parseStatusReport(const char* message) {
     // and actual disconnections after successful communication
     if (!everConnectedSuccessfully) {
         everConnectedSuccessfully = true;
-        Serial.println("[FluidNC] ✓ First status report received - connection validated");
+        LOG_PRINTLN("[FluidNC] ✓ First status report received - connection validated");
     }
     
     // Track previous state for state change detection
@@ -662,7 +798,7 @@ void FluidNCClient::parseStatusReport(const char* message) {
     // Detect state change to IDLE from HOLD or RUN - retry auto-reporting
     if (newState == STATE_IDLE && (previousState == STATE_HOLD || previousState == STATE_RUN)) {
         if (!autoReportingEnabled) {
-            Serial.println("[FluidNC] Machine returned to IDLE - retrying auto-reporting");
+            LOG_PRINTLN("[FluidNC] Machine returned to IDLE - retrying auto-reporting");
             attemptEnableAutoReporting();
         }
     }
@@ -695,7 +831,7 @@ void FluidNCClient::parseStatusReport(const char* message) {
             // Only 3 axes parsed - machine doesn't have A-axis, set to 0
             currentStatus.wco_a = 0.0f;
         }
-        Serial.printf("[FluidNC] WCO updated: (%.3f,%.3f,%.3f,%.3f)\n",
+        LOG_PRINTF("[FluidNC] WCO updated: (%.3f,%.3f,%.3f,%.3f)\n",
                       currentStatus.wco_x, currentStatus.wco_y, currentStatus.wco_z, currentStatus.wco_a);
     }
     
@@ -723,7 +859,7 @@ void FluidNCClient::parseStatusReport(const char* message) {
     const char* fs = strstr(message, "FS:");
     if (fs) {
         sscanf(fs + 3, "%f,%f", &currentStatus.feed_rate, &currentStatus.spindle_speed);
-        Serial.printf("[FluidNC] Parsed FS: feed=%.0f, spindle=%.0f\n", 
+        LOG_PRINTF("[FluidNC] Parsed FS: feed=%.0f, spindle=%.0f\n", 
                       currentStatus.feed_rate, currentStatus.spindle_speed);
     }
     
@@ -731,7 +867,7 @@ void FluidNCClient::parseStatusReport(const char* message) {
     const char* ov = strstr(message, "Ov:");
     if (ov) {
         sscanf(ov + 3, "%f,%f,%f", &currentStatus.feed_override, &currentStatus.rapid_override, &currentStatus.spindle_override);
-        Serial.printf("[FluidNC] Parsed Ov: feed=%.0f%%, rapid=%.0f%%, spindle=%.0f%%\n", 
+        LOG_PRINTF("[FluidNC] Parsed Ov: feed=%.0f%%, rapid=%.0f%%, spindle=%.0f%%\n", 
                       currentStatus.feed_override, currentStatus.rapid_override, currentStatus.spindle_override);
     }
 
@@ -787,13 +923,13 @@ void FluidNCClient::parseStatusReport(const char* message) {
             }
             currentStatus.sd_elapsed_ms = millis() - currentStatus.sd_start_time_ms;
             
-            Serial.printf("[FluidNC] SD Progress: %.1f%% - %s (Elapsed: %lums)\n",
+            LOG_PRINTF("[FluidNC] SD Progress: %.1f%% - %s (Elapsed: %lums)\n",
                           percent, currentStatus.sd_filename, currentStatus.sd_elapsed_ms);
         }
     } else {
         // No SD: field means not printing from SD
         if (currentStatus.is_sd_printing) {
-            Serial.println("[FluidNC] SD file completed or stopped");
+            LOG_PRINTLN("[FluidNC] SD file completed or stopped");
         }
         currentStatus.is_sd_printing = false;
         currentStatus.sd_percent = 0;
@@ -805,7 +941,7 @@ void FluidNCClient::parseStatusReport(const char* message) {
     // Parse modal states (Pn:, WCO:, etc.)
     // Note: Full parser state might come in separate $G response
     
-    Serial.printf("[FluidNC] Status: State=%d, MPos=(%.3f,%.3f,%.3f,%.3f), WPos=(%.3f,%.3f,%.3f,%.3f)\n",
+    LOG_PRINTF("[FluidNC] Status: State=%d, MPos=(%.3f,%.3f,%.3f,%.3f), WPos=(%.3f,%.3f,%.3f,%.3f)\n",
                   currentStatus.state,
                   currentStatus.mpos_x, currentStatus.mpos_y, currentStatus.mpos_z, currentStatus.mpos_a,
                   currentStatus.wpos_x, currentStatus.wpos_y, currentStatus.wpos_z, currentStatus.wpos_a);
@@ -813,7 +949,7 @@ void FluidNCClient::parseStatusReport(const char* message) {
 
 void FluidNCClient::parseRealtimeFeedback(const char* message) {
     // Handle realtime feedback messages like [MSG:...], [G92:...], [PRB:...], etc.
-    Serial.printf("[FluidNC] Feedback: %s\n", message);
+    LOG_PRINTF("[FluidNC] Feedback: %s\n", message);
     
     // Check for probe result message: [PRB:x,y,z:success]
     // Example: [PRB:151.000,149.000,-137.505:1] (success=1) or [PRB:0.000,0.000,0.000:0] (failure=0)
@@ -824,7 +960,7 @@ void FluidNCClient::parseRealtimeFeedback(const char* message) {
             // Update probe tab result display with coordinates
             UITabControlProbe::updateResult(x, y, z, success != 0);
             
-            Serial.printf("[FluidNC] Probe %s at (%.3f, %.3f, %.3f)\n", 
+            LOG_PRINTF("[FluidNC] Probe %s at (%.3f, %.3f, %.3f)\n", 
                          success ? "SUCCESS" : "FAILED", x, y, z);
         }
     }
@@ -842,18 +978,18 @@ void FluidNCClient::parseRealtimeFeedback(const char* message) {
             if (len >= sizeof(currentStatus.fluidnc_version)) len = sizeof(currentStatus.fluidnc_version) - 1;
             strncpy(currentStatus.fluidnc_version, v, len);
             currentStatus.fluidnc_version[len] = '\0';
-            Serial.printf("[FluidNC] Firmware version: %s\n", currentStatus.fluidnc_version);
+            LOG_PRINTF("[FluidNC] Firmware version: %s\n", currentStatus.fluidnc_version);
         }
     }
 
     // Check for auto-report confirmation message
     if (strstr(message, "websocket auto report interval set") != nullptr) {
-        Serial.println("[FluidNC] ✓ Auto-report confirmed - automatic reporting enabled");
+        LOG_PRINTLN("[FluidNC] ✓ Auto-report confirmed - automatic reporting enabled");
         autoReportingEnabled = true;
         
         if (!currentStatus.is_connected) {
             currentStatus.is_connected = true;
-            Serial.println("[FluidNC] ✓ Connection established");
+            LOG_PRINTLN("[FluidNC] ✓ Connection established");
             
             // Hide connecting popup
             UICommon::hideConnectingPopup();
@@ -906,7 +1042,7 @@ void FluidNCClient::parseGCodeState(const char* message) {
     // Example: [GC:G0 G54 G17 G21 G90 G94 M5 M9 T0 F0 S0]
     // Parse modal states from GCode parser state report
     
-    Serial.printf("[FluidNC] GCode State: %s\n", message);
+    LOG_PRINTF("[FluidNC] GCode State: %s\n", message);
     
     // Extract modal values by searching for specific patterns
     const char* ptr = message + 4;  // Skip "[GC:"
@@ -985,7 +1121,7 @@ void FluidNCClient::parseGCodeState(const char* message) {
         }
     }
     
-    Serial.printf("[FluidNC] Parsed modals: Motion=%s, WCS=%s, Plane=%s, Units=%s, Distance=%s, Spindle=%s, Coolant=%s, Tool=%s, Feed=%.0f, SpindleSpeed=%.0f\n",
+    LOG_PRINTF("[FluidNC] Parsed modals: Motion=%s, WCS=%s, Plane=%s, Units=%s, Distance=%s, Spindle=%s, Coolant=%s, Tool=%s, Feed=%.0f, SpindleSpeed=%.0f\n",
                   currentStatus.modal_motion, currentStatus.modal_wcs, currentStatus.modal_plane,
                   currentStatus.modal_units, currentStatus.modal_distance, currentStatus.modal_spindle,
                   currentStatus.modal_coolant, currentStatus.modal_tool,
@@ -1047,10 +1183,10 @@ void FluidNCClient::processUartLine(char* line) { (void)line; }
 #endif
 
 void FluidNCClient::attemptEnableAutoReporting() {
-    Serial.println("[FluidNC] Attempting to enable automatic reporting (250ms)");
+    LOG_PRINTLN("[FluidNC] Attempting to enable automatic reporting (250ms)");
 #ifdef HARDWARE_ADVANCE
-    if (isWiredConnection) {
-        wiredSerial.print("$Report/Interval=250\n");
+    if (activeStream != nullptr) {
+        activeStream->print("$Report/Interval=250\n");
     } else
 #endif
     {
@@ -1072,14 +1208,14 @@ void FluidNCClient::performFallbackPolling() {
     
     // Send status poll ("?") every 1 second
     if (now - lastPollingMs >= 1000) {
-        Serial.println("[FluidNC] Fallback polling: sending '?'");
+        LOG_PRINTLN("[FluidNC] Fallback polling: sending '?'");
         webSocket.send("?");
         lastPollingMs = now;
     }
     
     // Send GCode parser state poll ("$G") every 10 seconds
     if (now - lastGCodePollMs >= 10000) {
-        Serial.println("[FluidNC] Fallback polling: sending '$G'");
+        LOG_PRINTLN("[FluidNC] Fallback polling: sending '$G'");
         webSocket.send("$G\n");
         lastGCodePollMs = now;
     }

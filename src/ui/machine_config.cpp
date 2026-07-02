@@ -29,7 +29,7 @@ void MachineConfigManager::loadMachines(MachineConfig machines[MAX_MACHINES]) {
         
         if (machines[i].is_configured) {
             prefs.getString((prefix + "name").c_str(), machines[i].name, sizeof(machines[i].name));
-            machines[i].connection_type = (ConnectionType)prefs.getUChar((prefix + "type").c_str(), CONN_WIRELESS);
+            machines[i].connection_type = (ConnectionType)prefs.getUChar((prefix + "type").c_str(), CONN_WIFI);
             prefs.getString((prefix + "ssid").c_str(), machines[i].ssid, sizeof(machines[i].ssid));
             prefs.getString((prefix + "pwd").c_str(), machines[i].password, sizeof(machines[i].password));
             prefs.getString((prefix + "url").c_str(), machines[i].fluidnc_url, sizeof(machines[i].fluidnc_url));

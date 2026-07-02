@@ -256,10 +256,10 @@ void UICommon::createMainUI() {
     
     // Show connecting popup BEFORE creating UI (faster response)
     // This gives immediate visual feedback while UI is being built
-    if (config.connection_type == CONN_WIRELESS && strlen(config.ssid) > 0) {
+    if (config.connection_type == CONN_WIFI && strlen(config.ssid) > 0) {
         showConnectingPopup(config.name, config.ssid);
         lv_refr_now(nullptr);  // Force immediate display update
-    } else if (config.connection_type == CONN_WIRED) {
+    } else if (connectionIsSerial(config.connection_type)) {
         showConnectingPopup(config.name, nullptr);
         lv_refr_now(nullptr);  // Force immediate display update
     }
@@ -271,7 +271,7 @@ void UICommon::createMainUI() {
     UITabs::createTabs();
     
     // Initialize WiFi connection using machine-specific credentials
-    if (config.connection_type == CONN_WIRELESS) {
+    if (config.connection_type == CONN_WIFI) {
         if (strlen(config.ssid) > 0) {
             Serial.println("\n=== WiFi Connection ===");
             Serial.printf("Connecting to WiFi: %s\n", config.ssid);
@@ -564,7 +564,7 @@ void UICommon::createStatusBar() {
     MachineConfig selected_machine;
     
     if (MachineConfigManager::getSelectedMachine(selected_machine)) {
-        const char *symbol = (selected_machine.connection_type == CONN_WIRELESS) ? LV_SYMBOL_WIFI : LV_SYMBOL_USB;
+        const char *symbol = connectionIsWireless(selected_machine.connection_type) ? LV_SYMBOL_WIFI : LV_SYMBOL_USB;
         
         // Symbol (will be colored based on connection status)
         lbl_machine_symbol = lv_label_create(status_bar);
@@ -587,14 +587,14 @@ void UICommon::createStatusBar() {
         lv_obj_align(lbl_modal_states, LV_ALIGN_TOP_RIGHT, -5, 3);
     }
 
-    // Right side Line 2: WiFi network (or "Wired" label for wired connections)
+    // Right side Line 2: WiFi network (or serial-link label for UART / USB CDC connections)
     MachineConfig wifi_config;
     bool has_config = MachineConfigManager::getSelectedMachine(wifi_config);
-    bool is_wired = has_config && (wifi_config.connection_type == CONN_WIRED);
+    bool is_serial  = has_config && connectionIsSerial(wifi_config.connection_type);
 
     String wifi_ssid;
-    if (is_wired) {
-        wifi_ssid = "Wired";
+    if (is_serial) {
+        wifi_ssid = (wifi_config.connection_type == CONN_USB_CDC) ? "USB CDC" : "UART";
     } else if (WiFi.isConnected()) {
         wifi_ssid = WiFi.SSID();
     } else {
@@ -613,14 +613,14 @@ void UICommon::createStatusBar() {
     lv_obj_set_width(lbl_wifi_name, 180);
     lv_obj_align(lbl_wifi_name, LV_ALIGN_BOTTOM_RIGHT, -32, -3);
     
-    // WiFi/Wired symbol
+    // WiFi/serial symbol
     lbl_wifi_symbol = lv_label_create(status_bar);
-    lv_label_set_text(lbl_wifi_symbol, is_wired ? LV_SYMBOL_USB : LV_SYMBOL_WIFI);
+    lv_label_set_text(lbl_wifi_symbol, is_serial ? LV_SYMBOL_USB : LV_SYMBOL_WIFI);
     lv_obj_set_style_text_font(lbl_wifi_symbol, &lv_font_montserrat_18, 0);
-    // Wired: always green (connection is physical, not network-dependent)
+    // Serial (UART / USB CDC): always green (connection is physical, not network-dependent)
     // Wireless: green if connected, red if not
     lv_obj_set_style_text_color(lbl_wifi_symbol,
-        (is_wired || WiFi.isConnected()) ? UITheme::STATE_IDLE : UITheme::STATE_ALARM, 0);
+        (is_serial || WiFi.isConnected()) ? UITheme::STATE_IDLE : UITheme::STATE_ALARM, 0);
     lv_obj_align(lbl_wifi_symbol, LV_ALIGN_BOTTOM_RIGHT, -5, -3);
 }
 
@@ -763,8 +763,8 @@ void UICommon::updateConnectionStatus(bool machine_connected, bool wifi_connecte
         last_auto_reporting = auto_reporting;
     }
     
-    // Update WiFi symbol color (skip for wired connections - symbol is always green)
-    if (lbl_wifi_symbol && wifi_connected != last_wifi_connected && !FluidNCClient::isWiredMode()) {
+    // Update WiFi symbol color (skip for serial connections - symbol is always green)
+    if (lbl_wifi_symbol && wifi_connected != last_wifi_connected && !FluidNCClient::isSerialMode()) {
         lv_obj_set_style_text_color(lbl_wifi_symbol, 
             wifi_connected ? UITheme::STATE_IDLE : UITheme::STATE_ALARM, 0);
         last_wifi_connected = wifi_connected;
@@ -1010,7 +1010,7 @@ static void on_connection_error_connect(lv_event_t *e) {
     }
     
     // Show connecting popup
-    UICommon::showConnectingPopup(config.name, config.connection_type == CONN_WIRELESS ? config.ssid : nullptr);
+    UICommon::showConnectingPopup(config.name, config.connection_type == CONN_WIFI ? config.ssid : nullptr);
     lv_refr_now(nullptr);  // Force immediate display update
     
     // Disconnect existing connections
@@ -1020,9 +1020,9 @@ static void on_connection_error_connect(lv_event_t *e) {
     delay(100);
     lv_timer_handler();
     
-    if (config.connection_type == CONN_WIRED) {
-        // Wired: just reconnect UART
-        Serial.println("UICommon: Reconnecting wired UART...");
+    if (connectionIsSerial(config.connection_type)) {
+        // Serial (UART or USB CDC): just reconnect the link
+        Serial.println("UICommon: Reconnecting serial link...");
         FluidNCClient::connect(config);
         connection_timeout_start = millis();
         connection_timeout_active = true;
@@ -1217,14 +1217,22 @@ void UICommon::checkConnectionTimeout() {
         // Get machine config for error message
         MachineConfig config;
         if (MachineConfigManager::getSelectedMachine(config)) {
-            // Build error message - wired vs wireless specific
+            // Build error message - serial vs wireless specific
             char error_msg[300];
-            if (config.connection_type == CONN_WIRED) {
+            if (config.connection_type == CONN_UART) {
                 uint32_t rxBytes = FluidNCClient::getUartBytesReceived();
                 snprintf(error_msg, sizeof(error_msg),
                         "Could not connect to machine:\n%s\n\nUART1: RX=19, TX=20 @ %d baud\n"
                         "Bytes received: %d\n\n"
                         "Check wiring (TX>RX cross) and baud rate.",
+                        config.name, (int)config.uart_baud_rate, (int)rxBytes);
+            } else if (config.connection_type == CONN_USB_CDC) {
+                uint32_t rxBytes = FluidNCClient::getUartBytesReceived();
+                snprintf(error_msg, sizeof(error_msg),
+                        "Could not connect to machine:\n%s\n\nUSB CDC (UART0 via USB-C jack @ %d baud)\n"
+                        "Bytes received: %d\n\n"
+                        "Check that the baud rate matches FluidNC's\n"
+                        "uart3: usb_host: baud: setting in config.yaml.",
                         config.name, (int)config.uart_baud_rate, (int)rxBytes);
             } else {
                 snprintf(error_msg, sizeof(error_msg), 

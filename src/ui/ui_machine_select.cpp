@@ -189,7 +189,7 @@ void UIMachineSelect::refreshMachineList() {
                 
                 // Machine label with symbol
                 lv_obj_t *label = lv_label_create(machine_buttons[i]);
-                const char *symbol = (machines[i].connection_type == CONN_WIRELESS) ? LV_SYMBOL_WIFI : LV_SYMBOL_USB;
+                const char *symbol = connectionIsWireless(machines[i].connection_type) ? LV_SYMBOL_WIFI : LV_SYMBOL_USB;
                 String text = String(symbol) + " " + String(machines[i].name);
                 lv_label_set_text(label, text.c_str());
                 lv_obj_set_style_text_font(label, &lv_font_montserrat_22, 0);
@@ -291,8 +291,12 @@ void UIMachineSelect::refreshMachineList() {
                 // Line 2: Connection type symbol + SSID/Wired (bottom area)
                 lv_obj_t *connection_label = lv_label_create(machine_buttons[i]);
                 String connection_text;
-                if (machines[i].connection_type == CONN_WIRELESS) {
+                if (machines[i].connection_type == CONN_WIFI) {
                     connection_text = String(LV_SYMBOL_WIFI) + " " + String(machines[i].ssid);
+                } else if (machines[i].connection_type == CONN_UART) {
+                    connection_text = String(LV_SYMBOL_USB) + " UART";
+                } else if (machines[i].connection_type == CONN_USB_CDC) {
+                    connection_text = String(LV_SYMBOL_USB) + " USB CDC";
                 } else {
                     connection_text = String(LV_SYMBOL_USB) + " Wired";
                 }
@@ -420,7 +424,7 @@ void UIMachineSelect::onMachineSelected(lv_event_t *e) {
     Serial.printf("UIMachineSelect: Machine selected: %s (index %d)\n", machines[index].name, index);
     
     // Check if WiFi password is set for wireless machines
-    if (machines[index].connection_type == CONN_WIRELESS && strlen(machines[index].password) == 0) {
+    if (machines[index].connection_type == CONN_WIFI && strlen(machines[index].password) == 0) {
         Serial.println("UIMachineSelect: WiFi password not set!");
         
         // Create modal backdrop
@@ -569,8 +573,13 @@ void UIMachineSelect::onConfigSave(lv_event_t *e) {
     // Create config
     MachineConfig config;
     strncpy(config.name, name, sizeof(config.name) - 1);
-    // Dropdown order: 0=Wireless, 1=Wired (note: enum CONN_WIRED=0, CONN_WIRELESS=1 differs from display order)
-    config.connection_type = (sel == 0) ? CONN_WIRELESS : CONN_WIRED;
+    // Dropdown order: 0=WiFi, 1=UART, 2=USB CDC (Basic only has option 0)
+    switch (sel) {
+        case 0: config.connection_type = CONN_WIFI;    break;
+        case 1: config.connection_type = CONN_UART;    break;
+        case 2: config.connection_type = CONN_USB_CDC; break;
+        default: config.connection_type = CONN_WIFI;   break;
+    }
     strncpy(config.ssid, ssid, sizeof(config.ssid) - 1);
     strncpy(config.password, password, sizeof(config.password) - 1);
     strncpy(config.fluidnc_url, url, sizeof(config.fluidnc_url) - 1);
@@ -602,22 +611,32 @@ void UIMachineSelect::onConnectionTypeChanged(lv_event_t *e) {
 
 void UIMachineSelect::updateConnectionFields() {
     uint16_t sel = lv_dropdown_get_selected(dd_connection_type);
-    // Dropdown order: 0=Wireless, 1=Wired
-    bool is_wireless = (sel == 0);
-    
-    // Enable/disable wireless-specific fields
-    if (is_wireless) {
+    // Dropdown order: 0=WiFi, 1=UART, 2=USB CDC
+    bool is_wifi    = (sel == 0);
+    bool is_uart    = (sel == 1);
+    bool is_usb_cdc = (sel == 2);
+
+    // Enable/disable WiFi-specific fields
+    if (is_wifi) {
         lv_obj_clear_state(ta_ssid, LV_STATE_DISABLED);
         lv_obj_clear_state(ta_password, LV_STATE_DISABLED);
         lv_obj_clear_state(ta_url, LV_STATE_DISABLED);
         lv_obj_clear_state(ta_port, LV_STATE_DISABLED);
-        if (baud_rate_container) lv_obj_add_flag(baud_rate_container, (lv_obj_flag_t)(LV_OBJ_FLAG_HIDDEN | LV_OBJ_FLAG_FLOATING));
     } else {
         lv_obj_add_state(ta_ssid, LV_STATE_DISABLED);
         lv_obj_add_state(ta_password, LV_STATE_DISABLED);
         lv_obj_add_state(ta_url, LV_STATE_DISABLED);
         lv_obj_add_state(ta_port, LV_STATE_DISABLED);
-        if (baud_rate_container) lv_obj_clear_flag(baud_rate_container, (lv_obj_flag_t)(LV_OBJ_FLAG_HIDDEN | LV_OBJ_FLAG_FLOATING));
+    }
+
+    // Baud rate applies to both UART and USB CDC (USB CDC baud must match
+    // FluidNC's uart3: usb_host: baud: setting in config.yaml).
+    if (baud_rate_container) {
+        if (is_uart || is_usb_cdc) {
+            lv_obj_clear_flag(baud_rate_container, (lv_obj_flag_t)(LV_OBJ_FLAG_HIDDEN | LV_OBJ_FLAG_FLOATING));
+        } else {
+            lv_obj_add_flag(baud_rate_container, (lv_obj_flag_t)(LV_OBJ_FLAG_HIDDEN | LV_OBJ_FLAG_FLOATING));
+        }
     }
 }
 
@@ -739,12 +758,21 @@ void UIMachineSelect::showConfigDialog(int index) {
     lv_obj_set_style_text_font(dd_connection_type, &lv_font_montserrat_18, 0);
     lv_obj_set_style_pad_top(dd_connection_type, 12, LV_PART_MAIN);
 #ifdef HARDWARE_ADVANCE
-    lv_dropdown_set_options(dd_connection_type, "Wireless\nWired");
+    lv_dropdown_set_options(dd_connection_type, "WiFi\nUART\nUSB CDC");
 #else
-    lv_dropdown_set_options(dd_connection_type, "Wireless");
+    lv_dropdown_set_options(dd_connection_type, "WiFi");
 #endif
-    // Dropdown order: 0=Wireless, 1=Wired (enum CONN_WIRED=0/CONN_WIRELESS=1 differs from display order)
-    if (!is_new) lv_dropdown_set_selected(dd_connection_type, (machines[index].connection_type == CONN_WIRELESS) ? 0 : 1);
+    // Dropdown order: 0=WiFi, 1=UART, 2=USB CDC
+    if (!is_new) {
+        uint16_t dropdown_idx = 0;  // default = WiFi
+        switch (machines[index].connection_type) {
+            case CONN_WIFI:    dropdown_idx = 0; break;
+            case CONN_UART:    dropdown_idx = 1; break;
+            case CONN_USB_CDC: dropdown_idx = 2; break;
+            default:           dropdown_idx = 0; break;
+        }
+        lv_dropdown_set_selected(dd_connection_type, dropdown_idx);
+    }
     lv_obj_add_event_cb(dd_connection_type, onConnectionTypeChanged, LV_EVENT_VALUE_CHANGED, nullptr);
 
     // Baud Rate container (wired only - Advance hardware): holds label + dropdown together for hide/show

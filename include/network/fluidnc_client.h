@@ -132,17 +132,24 @@ public:
     // Check if using auto-reporting (true) or fallback polling (false)
     static bool isAutoReporting();
 
-    // Check if using wired (UART) connection
-    static bool isWiredMode();
-    
-    // Get count of bytes received over UART (for debugging wired connection)
+    // Check the active connection mode
+    static bool isUartMode();    // CONN_UART (hardware UART)
+    static bool isUsbCdcMode();  // CONN_USB_CDC (native USB CDC device)
+    static bool isSerialMode();  // UART or USB CDC (any byte-stream mode)
+    static bool isWiFiMode();    // CONN_WIFI (WebSocket)
+
+    // Backwards-compat alias - prefer isUartMode() in new code
+    static inline bool isWiredMode() { return isUartMode(); }
+
+    // Get count of bytes received over the active serial stream (debug)
     static uint32_t getUartBytesReceived();
 
-    // Start an XModem file upload from the Display SD card to FluidNC over UART.
+    // Start an XModem file upload from the Display SD card to FluidNC over the
+    // active serial stream (UART or USB CDC).
     // localPath  : full path on the Display SD card (e.g. "/myfile.nc")
     // remotePath : destination on FluidNC (e.g. "/sd/myfile.nc" or "/localfs/myfile.nc")
     // filename   : display name shown in the progress dialog
-    // Returns false immediately if wired mode is not active or a transfer is already running.
+    // Returns false immediately if not in a serial mode or a transfer is already running.
     // Only available on Advance hardware (#ifdef HARDWARE_ADVANCE).
     static bool startXModemUpload(const char* localPath, const char* remotePath,
                                   const char* filename);
@@ -203,11 +210,12 @@ private:
     static bool everConnectedSuccessfully; // True once first status report received, never reset
     static bool isHandlingDisconnect;     // Guard to prevent re-entrant close() calls
 
-    // Wired (UART) connection support - Advance hardware only
-    static bool isWiredConnection;
+    // Active serial connection state - Advance hardware only.
+    // activeSerialMode is CONN_UART, CONN_USB_CDC, or CONN_WIFI (for "neither").
+    static ConnectionType activeSerialMode;
     static char uartRxBuffer[512];
     static uint16_t uartRxPos;
-    static uint32_t uartBytesReceived;  // Total bytes received over UART (debug counter)
+    static uint32_t uartBytesReceived;  // Total bytes received over serial stream (debug counter)
 
     // XModem transfer state and task (Advance hardware only)
     static XModemTransferState xmodemTransferState;
@@ -232,7 +240,7 @@ private:
     static void attemptEnableAutoReporting();
     static void performFallbackPolling();
 
-    // Process a complete line received over UART (wired mode)
+    // Process a complete line received over the active serial stream
     static void processUartLine(char* line);
     
     // Helper to extract float value from status report

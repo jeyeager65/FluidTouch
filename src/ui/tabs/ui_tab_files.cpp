@@ -1087,8 +1087,8 @@ void UITabFiles::upload_button_event_cb(lv_event_t *e) {
     const char* fullPath = (const char*)lv_event_get_user_data(e);
 
     // Upload requires a network connection to FluidNC
-    if (FluidNCClient::isWiredMode()) {
-        // Wired (UART) mode – use XModem transfer instead of HTTP upload
+    if (FluidNCClient::isSerialMode()) {
+        // Serial mode (UART or USB CDC) – use XModem transfer instead of HTTP upload
         if (!isDisplaySDAvailable()) {
             // Show SD-not-available error
             lv_obj_t *dlg = lv_obj_create(lv_scr_act());

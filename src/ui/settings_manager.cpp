@@ -53,6 +53,7 @@ bool SettingsManager::exportSettings(const char* filepath) {
         machine["password"] = "";  // Password not exported for security
         machine["fluidnc_url"] = machine_configs[i].fluidnc_url;
         machine["websocket_port"] = machine_configs[i].websocket_port;
+        machine["uart_baud_rate"] = machine_configs[i].uart_baud_rate;
         
         // Jog settings
         JsonObject jog = machine["jog"].to<JsonObject>();
@@ -224,6 +225,7 @@ bool SettingsManager::importSettings(const char* filepath) {
             strncpy(machine_configs[machine_index].password, machine["password"] | "", sizeof(machine_configs[machine_index].password) - 1);
             strncpy(machine_configs[machine_index].fluidnc_url, machine["fluidnc_url"] | "", sizeof(machine_configs[machine_index].fluidnc_url) - 1);
             machine_configs[machine_index].websocket_port = machine["websocket_port"] | 81;
+            machine_configs[machine_index].uart_baud_rate = machine["uart_baud_rate"] | 115200;
             
             // Jog settings
             JsonObject jog = machine["jog"];

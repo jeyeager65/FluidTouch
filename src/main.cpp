@@ -2,6 +2,7 @@
 #include <lvgl.h>
 #include <WiFi.h>
 #include <Preferences.h>
+#include "debug_log.h"               // Global serial-debug mute (LOG_* macros)
 #include "core/display_driver.h"     // Display driver module
 #include "core/touch_driver.h"       // Touch driver module
 #include "core/power_manager.h"      // Power management module
@@ -23,8 +24,16 @@
 #include "ui/tabs/control/ui_tab_control_probe.h"   // Probe tab for probe indicator
 #include "ui/machine_config.h"  // Machine configuration manager
 
+// Global serial-debug mute flag (declared extern in debug_log.h).
+// Set true by FluidNCClient while a USB CDC connection owns UART0.
+bool g_serialMuted = false;
+
 void setup()
 {
+    // Enlarge RX buffer before begin so a controller already pumping status
+    // reports into UART0 (e.g. CH340 jack tied to FluidNC USB host) can't
+    // overflow the default 256 B buffer during boot.
+    Serial.setRxBufferSize(2048);
     Serial.begin(115200);
     delay(1000);
     Serial.println("\n\n=== FluidTouch - LVGL 9 with LovyanGFX ===");
@@ -133,8 +142,9 @@ void setup()
 void loop()
 {
     // Forward any Serial input to FluidNC (for debugging via Serial Monitor)
-    // Skip in wired mode: Serial (USB CDC) is unrelated to FluidNC UART1 in that case
-    if (!FluidNCClient::isWiredMode()) {
+    // Skip in serial modes: the FluidNC link uses UART1 or native USB CDC, both
+    // of which share GPIO19/20 with the USB-C connector that drives `Serial`.
+    if (!FluidNCClient::isSerialMode()) {
         static char serial_buf[128];
         static uint8_t serial_buf_pos = 0;
         while (Serial.available()) {
@@ -249,14 +259,14 @@ void loop()
                 // New macro just started
                 macro_start_time = millis();
                 macro_print_started = false;
-                Serial.printf("[Main] New macro started, tracking start time\n");
+                LOG_PRINTF("[Main] New macro started, tracking start time\n");
             }
             was_macro_running = is_macro_running;
             
             if (status.is_sd_printing && status.sd_percent > 0 && is_macro_running) {
                 macro_print_started = true;  // Mark that print has started
                 completion_display_start = 0;  // Reset completion timer while printing
-                Serial.printf("[Main] Showing progress: printing=%d, percent=%.1f, macro_running=%d\n", 
+                LOG_PRINTF("[Main] Showing progress: printing=%d, percent=%.1f, macro_running=%d\n", 
                     status.is_sd_printing, status.sd_percent, is_macro_running);
                 // Use the stored macro name (not the SD filename)
                 UITabMacros::updateProgress((int)status.sd_percent, UITabMacros::getRunningMacroName(), status.last_message);
@@ -268,26 +278,26 @@ void loop()
                 if (is_macro_running && macro_print_started && !status.is_sd_printing) {
                     // Normal case: SD print started and then stopped
                     macro_completed = true;
-                    Serial.printf("[Main] Macro completed (normal)\n");
+                    LOG_PRINTF("[Main] Macro completed (normal)\n");
                 } else if (is_macro_running && !macro_print_started && macro_start_time > 0 && 
                           (millis() - macro_start_time >= FAST_MACRO_TIMEOUT_MS)) {
                     // Fast macro case: never saw SD activity, but enough time passed
                     macro_completed = true;
-                    Serial.printf("[Main] Macro completed (fast, no SD activity detected)\n");
+                    LOG_PRINTF("[Main] Macro completed (fast, no SD activity detected)\n");
                 }
                 
                 if (macro_completed) {
                     // Macro completed - start 2-second display timer if not already started
                     if (completion_display_start == 0) {
                         completion_display_start = millis();
-                        Serial.printf("[Main] Showing 100%% for 2 seconds\n");
+                        LOG_PRINTF("[Main] Showing 100%% for 2 seconds\n");
                         // Show 100% with the macro name
                         UITabMacros::updateProgress(100, UITabMacros::getRunningMacroName(), "Complete");
                         UITabMacros::showProgress();
                     } else {
                         // Check if 2 seconds have elapsed
                         if (millis() - completion_display_start >= COMPLETION_DISPLAY_MS) {
-                            Serial.printf("[Main] Completion display timeout, clearing macro\n");
+                            LOG_PRINTF("[Main] Completion display timeout, clearing macro\n");
                             UITabMacros::clearRunningMacro();
                             macro_print_started = false;
                             completion_display_start = 0;
@@ -350,7 +360,7 @@ void loop()
     static unsigned long lastUpdate = 0;
     if (millis() - lastUpdate > 5000) {
         lastUpdate = millis();
-        Serial.printf("[%lu] LVGL running, Free heap: %d, FluidNC: %s\n", 
+        LOG_PRINTF("[%lu] LVGL running, Free heap: %d, FluidNC: %s\n", 
                       millis()/1000, ESP.getFreeHeap(),
                       FluidNCClient::isConnected() ? "Connected" : "Disconnected");
     }

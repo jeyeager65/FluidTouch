@@ -1,4 +1,11 @@
 #include "network/xmodem_sender.h"
+#include "debug_log.h"
+
+// In USB CDC mode the `serial` stream handed to this sender IS the Arduino
+// `Serial` (UART0) debug console, so any raw Serial.print() here would be
+// injected straight into the xmodem byte stream to FluidNC and corrupt the
+// transfer. All logging therefore goes through the LOG_* macros, which are
+// silenced by g_serialMuted while a USB CDC link is active.
 
 // XModem control characters
 #define XMODEM_SOH  0x01   // Start of 128-byte block
@@ -59,7 +66,7 @@ bool XModemSender::sendFile(Stream& serial,
     snprintf(cmd, sizeof(cmd), "$Xmodem/Receive=%s\n", remotePath);
     serial.print(cmd);
     serial.flush();
-    Serial.printf("[XModem] Sent: %s", cmd);
+    LOG_PRINTF("[XModem] Sent: %s", cmd);
 
     // -----------------------------------------------------------------------
     // Step 2: Drain any "ok" / MSG lines FluidNC echoes back before it starts
@@ -71,29 +78,29 @@ bool XModemSender::sendFile(Stream& serial,
     // Step 3: Wait for 'C' – the receiver's CRC-mode handshake.
     //         FluidNC sends 'C' every second until the sender responds.
     // -----------------------------------------------------------------------
-    Serial.println("[XModem] Waiting for CRC handshake ('C')...");
+    LOG_PRINTLN("[XModem] Waiting for CRC handshake ('C')...");
     bool receiverReady = false;
     uint32_t waitStart = millis();
     while (millis() - waitStart < 30000) { // up to 30 s
         int b = readByte(serial, 1200);
         if (b == XMODEM_CRC) {
-            Serial.println("[XModem] CRC handshake received");
+            LOG_PRINTLN("[XModem] CRC handshake received");
             receiverReady = true;
             break;
         } else if (b == XMODEM_NAK) {
             // Receiver supports only checksum mode; we will still use CRC
             // packets – most implementations accept them regardless.
-            Serial.println("[XModem] NAK handshake received (proceeding with CRC packets)");
+            LOG_PRINTLN("[XModem] NAK handshake received (proceeding with CRC packets)");
             receiverReady = true;
             break;
         } else if (b >= 0) {
             // Ignore stray bytes (leftover echo text, etc.)
-            Serial.printf("[XModem] Skipping byte: 0x%02X\n", (uint8_t)b);
+            LOG_PRINTF("[XModem] Skipping byte: 0x%02X\n", (uint8_t)b);
         }
     }
 
     if (!receiverReady) {
-        Serial.println("[XModem] ERROR: Timeout waiting for handshake");
+        LOG_PRINTLN("[XModem] ERROR: Timeout waiting for handshake");
         return false;
     }
 
@@ -102,7 +109,7 @@ bool XModemSender::sendFile(Stream& serial,
     // -----------------------------------------------------------------------
     size_t totalBlocks = (fileSize + XMODEM_BLOCK_SIZE - 1) / XMODEM_BLOCK_SIZE;
     if (totalBlocks == 0) totalBlocks = 1;
-    Serial.printf("[XModem] Sending %u blocks (%u bytes)\n", (unsigned)totalBlocks, (unsigned)fileSize);
+    LOG_PRINTF("[XModem] Sending %u blocks (%u bytes)\n", (unsigned)totalBlocks, (unsigned)fileSize);
 
     uint8_t seqNum = 1;
     size_t bytesSent = 0;
@@ -132,7 +139,7 @@ bool XModemSender::sendFile(Stream& serial,
         bool blockAcked = false;
         for (int retry = 0; retry < XMODEM_MAX_RETRIES && !blockAcked; retry++) {
             if (retry > 0) {
-                Serial.printf("[XModem] Retry %d for block %u\n", retry, (unsigned)seqNum);
+                LOG_PRINTF("[XModem] Retry %d for block %u\n", retry, (unsigned)seqNum);
                 flushInput(serial, 150); // drain garbage before resend
             }
 
@@ -145,17 +152,17 @@ bool XModemSender::sendFile(Stream& serial,
             } else if (response == XMODEM_NAK) {
                 // Will retry
             } else if (response == XMODEM_CAN) {
-                Serial.println("[XModem] CAN received – transfer cancelled by receiver");
+                LOG_PRINTLN("[XModem] CAN received – transfer cancelled by receiver");
                 return false;
             } else if (response < 0) {
-                Serial.println("[XModem] Timeout waiting for ACK");
+                LOG_PRINTLN("[XModem] Timeout waiting for ACK");
             } else {
-                Serial.printf("[XModem] Unexpected response 0x%02X\n", (uint8_t)response);
+                LOG_PRINTF("[XModem] Unexpected response 0x%02X\n", (uint8_t)response);
             }
         }
 
         if (!blockAcked) {
-            Serial.printf("[XModem] Block %u failed after max retries – aborting\n", (unsigned)seqNum);
+            LOG_PRINTF("[XModem] Block %u failed after max retries – aborting\n", (unsigned)seqNum);
             // Send two CAN bytes to abort the receiver
             serial.write((uint8_t)XMODEM_CAN);
             serial.write((uint8_t)XMODEM_CAN);
@@ -174,19 +181,19 @@ bool XModemSender::sendFile(Stream& serial,
     // -----------------------------------------------------------------------
     // Step 5: End of Transmission
     // -----------------------------------------------------------------------
-    Serial.println("[XModem] Sending EOT...");
+    LOG_PRINTLN("[XModem] Sending EOT...");
     for (int eotTry = 0; eotTry < 5; eotTry++) {
         serial.write((uint8_t)XMODEM_EOT);
         serial.flush();
         int response = readByte(serial, 5000);
         if (response == XMODEM_ACK) {
-            Serial.println("[XModem] Transfer complete");
+            LOG_PRINTLN("[XModem] Transfer complete");
             return true;
         }
-        Serial.printf("[XModem] EOT response 0x%02X, retry %d\n",
+        LOG_PRINTF("[XModem] EOT response 0x%02X, retry %d\n",
                       response >= 0 ? (uint8_t)response : 0xFF, eotTry + 1);
     }
 
-    Serial.println("[XModem] ERROR: EOT not acknowledged");
+    LOG_PRINTLN("[XModem] ERROR: EOT not acknowledged");
     return false;
 }
