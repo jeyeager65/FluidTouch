@@ -153,6 +153,7 @@ private:
     static websockets::WebsocketsClient webSocket;
     static FluidNCStatus currentStatus;
     static MachineConfig currentConfig;
+    static String resolvedIP;         // IP address resolved (DNS/mDNS) during connect()
     static uint32_t lastStatusRequestMs;
     static bool initialized;
     static FluidNCMessageCallback messageCallback;  // Optional callback for raw messages

@@ -10,6 +10,7 @@ using namespace websockets;
 WebsocketsClient FluidNCClient::webSocket;
 FluidNCStatus FluidNCClient::currentStatus;
 MachineConfig FluidNCClient::currentConfig;
+String FluidNCClient::resolvedIP = "";
 uint32_t FluidNCClient::lastStatusRequestMs = 0;
 bool FluidNCClient::initialized = false;
 FluidNCMessageCallback FluidNCClient::messageCallback = nullptr;
@@ -90,6 +91,10 @@ bool FluidNCClient::connect(const MachineConfig &config) {
         Serial.printf("[FluidNC] Using resolved IP: %s\n", resolvedHost.c_str());
     }
     
+    // Cache the resolved IP so other modules (e.g. UploadManager) don't need to
+    // re-resolve hostnames/mDNS names themselves - just call getMachineIP()
+    resolvedIP = resolvedHost;
+    
     // Set up event callbacks
     webSocket.onMessage(onMessageCallback);
     webSocket.onEvent(onEventsCallback);
@@ -118,6 +123,7 @@ void FluidNCClient::disconnect() {
     }
     currentStatus.is_connected = false;
     currentStatus.state = STATE_DISCONNECTED;
+    resolvedIP = "";
 }
 
 void FluidNCClient::stopReconnectionAttempts() {
@@ -196,7 +202,14 @@ void FluidNCClient::requestStatusReport() {
 String FluidNCClient::getMachineIP() {
     if (!currentStatus.is_connected) return "";
     
-    // Get URL from config
+    // Return the IP address resolved during connect() (handles hostnames and
+    // .local mDNS names) so callers never need to re-resolve it themselves.
+    if (resolvedIP.length() > 0) {
+        return resolvedIP;
+    }
+    
+    // Fallback: derive from the configured URL directly (shouldn't normally
+    // be needed since connect() always sets resolvedIP on success)
     String url = String(currentConfig.fluidnc_url);
     
     // Extract IP from URL (may already be just an IP address)
