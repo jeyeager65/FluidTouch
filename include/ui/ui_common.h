@@ -38,7 +38,7 @@ public:
     static void hideHoldPopup();
     static void showAlarmPopup(const char *message);
     static void hideAlarmPopup();
-    static void checkStatePopups(int current_state, const char *last_message);  // Called from main loop
+    static void checkStatePopups(int current_state, const char *last_message, const char *alarm_message);  // Called from main loop
     
     // WCS lock confirmation dialog
     static void showWCSLockDialog(const char *wcs_code, const char *wcs_name, void (*continue_callback)(lv_event_t*));

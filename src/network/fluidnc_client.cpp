@@ -182,6 +182,33 @@ void FluidNCClient::clearLastMessage() {
     currentStatus.last_message[0] = '\0';
 }
 
+void FluidNCClient::clearAlarmMessage() {
+    currentStatus.alarm_message[0] = '\0';
+}
+
+// Translate FluidNC alarm codes into human-readable descriptions.
+// Reference: http://wiki.fluidnc.com/en/support/alarm_and_error_codes
+static const char* alarmCodeToDescription(int code) {
+    switch (code) {
+        case 1:  return "Hard Limit - reset required. Machine position may be lost; re-homing is recommended.";
+        case 2:  return "Soft Limit - G-code motion exceeds machine travel.";
+        case 3:  return "Abort During Cycle - reset while in motion. Re-homing is recommended.";
+        case 4:  return "Probe Fail - probe was not in the expected initial state.";
+        case 5:  return "Probe Fail - no workpiece contact detected during probing.";
+        case 6:  return "Homing Fail - homing cycle was reset.";
+        case 7:  return "Homing Fail - safety door opened during homing.";
+        case 8:  return "Homing Fail - pull-off failed to clear the limit switch.";
+        case 9:  return "Homing Fail - could not find a limit switch.";
+        case 10: return "Spindle Control Error.";
+        case 11: return "Control Pin Error.";
+        case 12: return "Ambiguous Limit Switch - unable to determine which switch is active.";
+        case 13: return "Hard Stop.";
+        case 14: return "Unhomed - machine needs to be homed ($H).";
+        case 15: return "Initialization Alarm.";
+        default: return nullptr;
+    }
+}
+
 void FluidNCClient::sendCommand(const char* command) {
     if (!currentStatus.is_connected) {
         Serial.println("[FluidNC] Error: Not connected");
@@ -287,6 +314,22 @@ void FluidNCClient::onMessageCallback(WebsocketsMessage message) {
         // Plain-text error/alarm lines, e.g. "error:9" or "ALARM:2"
         strncpy(currentStatus.last_message, payload, sizeof(currentStatus.last_message) - 1);
         currentStatus.last_message[sizeof(currentStatus.last_message) - 1] = '\0';
+        
+        // For ALARM lines, also populate a dedicated, translated alarm_message so
+        // the ALARM popup always shows the actual alarm reason - not whatever
+        // unrelated message (e.g. auto-report confirmation) happened to arrive last.
+        if (strncmp(payload, "ALARM:", 6) == 0) {
+            int code = atoi(payload + 6);
+            const char* description = alarmCodeToDescription(code);
+            if (description) {
+                snprintf(currentStatus.alarm_message, sizeof(currentStatus.alarm_message),
+                         "Alarm %d: %s", code, description);
+            } else {
+                snprintf(currentStatus.alarm_message, sizeof(currentStatus.alarm_message),
+                         "Alarm %d", code);
+            }
+            Serial.printf("[FluidNC] Alarm message: %s\n", currentStatus.alarm_message);
+        }
     }
 }
 

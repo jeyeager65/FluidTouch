@@ -201,7 +201,7 @@ void loop()
             UICommon::updateWorkPosition(status.wpos_x, status.wpos_y, status.wpos_z, status.wpos_a);
 
             // Check for HOLD/ALARM state and show popups if needed
-            UICommon::checkStatePopups(status.state, status.last_message);
+            UICommon::checkStatePopups(status.state, status.last_message, status.alarm_message);
 
             // Update Control Actions pause/resume button based on machine state
             UITabControlActions::updatePauseButton(status.state);

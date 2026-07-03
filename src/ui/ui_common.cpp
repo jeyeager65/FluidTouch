@@ -1368,8 +1368,9 @@ void UICommon::showAlarmPopup(const char *message) {
         FluidNCClient::sendCommand("\x18"); // Ctrl-X (soft reset)
         delay(100);
         FluidNCClient::sendCommand("$X\n");   // Unlock
-        // Clear the last message so it doesn't persist after clearing the alarm
+        // Clear the last/alarm message so it doesn't persist after clearing the alarm
         FluidNCClient::clearLastMessage();
+        FluidNCClient::clearAlarmMessage();
         if (alarm_popup_msg_label) lv_label_set_text(alarm_popup_msg_label, "");
     }, LV_EVENT_CLICKED, nullptr);
     
@@ -1405,7 +1406,7 @@ void UICommon::hideAlarmPopup() {
 }
 
 // Check current state and manage popups accordingly
-void UICommon::checkStatePopups(int current_state, const char *last_message) {
+void UICommon::checkStatePopups(int current_state, const char *last_message, const char *alarm_message) {
     // If state changed from previous, reset dismissal flags and hide any existing popups
     if (current_state != last_popup_state && last_popup_state != -1) {
         // State changed - reset dismissal flags
@@ -1429,10 +1430,14 @@ void UICommon::checkStatePopups(int current_state, const char *last_message) {
             lv_label_set_text(hold_popup_msg_label, last_message);
         }
     } else if (current_state == STATE_ALARM && !alarm_popup_dismissed) {
+        // Prefer the dedicated, translated alarm message (set only from ALARM:<code>
+        // lines) so unrelated messages - like the auto-report confirmation - never
+        // get shown in the ALARM popup. Fall back to last_message if unavailable.
+        const char *alarm_text = (alarm_message && strlen(alarm_message) > 0) ? alarm_message : last_message;
         if (!alarm_popup) {
-            showAlarmPopup(last_message);
-        } else if (alarm_popup_msg_label && last_message) {
-            lv_label_set_text(alarm_popup_msg_label, last_message);
+            showAlarmPopup(alarm_text);
+        } else if (alarm_popup_msg_label && alarm_text) {
+            lv_label_set_text(alarm_popup_msg_label, alarm_text);
         }
     }
     

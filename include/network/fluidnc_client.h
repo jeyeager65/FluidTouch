@@ -53,6 +53,7 @@ struct FluidNCStatus {
     
     // Last message from FluidNC
     char last_message[128]; // Store last [MSG:...] or feedback message
+    char alarm_message[128]; // Translated alarm description, set only from ALARM:<code> lines
     
     // SD card file progress (when running from SD)
     bool is_sd_printing;        // True if running a file from SD card
@@ -94,6 +95,7 @@ struct FluidNCStatus {
         strcpy(modal_coolant, "M9");
         strcpy(modal_tool, "T0");
         last_message[0] = '\0';  // Empty message initially
+        alarm_message[0] = '\0'; // Empty until an ALARM:<code> line is received
         sd_filename[0] = '\0';   // No file initially
         fluidnc_version[0] = '\0';  // Unknown until $Build/Info response received
     }
@@ -130,6 +132,9 @@ public:
     
     // Clear the stored last message
     static void clearLastMessage();
+    
+    // Clear the stored alarm message
+    static void clearAlarmMessage();
     
     // Request status report (sends "?")
     static void requestStatusReport();
