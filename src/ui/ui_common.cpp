@@ -1342,7 +1342,7 @@ void UICommon::showAlarmPopup(const char *message) {
     
     // Message label
     alarm_popup_msg_label = lv_label_create(dialog);
-    lv_label_set_text(alarm_popup_msg_label, message && strlen(message) > 0 ? message : "Alarm condition detected");
+    lv_label_set_text(alarm_popup_msg_label, message && strlen(message) > 0 ? message : "Unknown Alarm");
     lv_obj_set_style_text_font(alarm_popup_msg_label, &lv_font_montserrat_24, 0);
     lv_obj_set_style_text_color(alarm_popup_msg_label, UITheme::TEXT_LIGHT, 0);
     lv_obj_set_width(alarm_popup_msg_label, 520);
@@ -1432,8 +1432,8 @@ void UICommon::checkStatePopups(int current_state, const char *last_message, con
     } else if (current_state == STATE_ALARM && !alarm_popup_dismissed) {
         // Prefer the dedicated, translated alarm message (set only from ALARM:<code>
         // lines) so unrelated messages - like the auto-report confirmation - never
-        // get shown in the ALARM popup. Fall back to last_message if unavailable.
-        const char *alarm_text = (alarm_message && strlen(alarm_message) > 0) ? alarm_message : last_message;
+        // get shown in the ALARM popup. Fall back to a fixed label if unavailable.
+        const char *alarm_text = (alarm_message && strlen(alarm_message) > 0) ? alarm_message : "Unknown Alarm";
         if (!alarm_popup) {
             showAlarmPopup(alarm_text);
         } else if (alarm_popup_msg_label && alarm_text) {
