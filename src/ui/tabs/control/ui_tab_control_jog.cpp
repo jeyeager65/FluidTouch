@@ -92,11 +92,19 @@ void UITabControlJog::create(lv_obj_t *tab) {
     
     // ========== XY Section (Left side) ==========
     
-    // XY Jog header - centered above Y+ button
+    // XY Jog header - text/color adapts to whichever of X/Y are enabled
+    bool xy_x_enabled = UICommon::isXAxisEnabled();
+    bool xy_y_enabled = UICommon::isYAxisEnabled();
+    const char *xy_header_text = (xy_x_enabled && xy_y_enabled) ? "XY JOG" :
+                                 xy_x_enabled ? "X JOG" :
+                                 xy_y_enabled ? "Y JOG" : "";
+    lv_color_t xy_header_color = (xy_x_enabled && xy_y_enabled) ? UITheme::AXIS_XY :
+                                 xy_x_enabled ? UITheme::AXIS_X :
+                                 xy_y_enabled ? UITheme::AXIS_Y : UITheme::TEXT_DISABLED;
     lv_obj_t *xy_jog_header = lv_label_create(tab);
-    lv_label_set_text(xy_jog_header, "XY JOG");
+    lv_label_set_text(xy_jog_header, xy_header_text);
     lv_obj_set_style_text_font(xy_jog_header, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_text_color(xy_jog_header, UITheme::AXIS_XY, 0);
+    lv_obj_set_style_text_color(xy_jog_header, xy_header_color, 0);
     lv_obj_set_pos(xy_jog_header, 167, 5);  // Centered above Y+ button, shifted 2px right
     
     // XY Step size selection - VERTICAL buttons on left
@@ -156,9 +164,33 @@ void UITabControlJog::create(lv_obj_t *tab) {
     };
     
     for (int i = 0; i < 9; i++) {
+        // Which cells to keep depends on which of X/Y are enabled:
+        // both -> full 3x3 grid; X-only -> horizontal W/center/E row;
+        // Y-only -> vertical N/center/S column; neither -> no pad at all.
+        bool keep_cell;
+        if (xy_x_enabled && xy_y_enabled) {
+            keep_cell = true;
+        } else if (xy_x_enabled) {
+            keep_cell = (i == 3 || i == 4 || i == 5);
+        } else if (xy_y_enabled) {
+            keep_cell = (i == 1 || i == 4 || i == 7);
+        } else {
+            keep_cell = false;
+        }
+        if (!keep_cell) {
+            continue;
+        }
+        
         lv_obj_t *btn_xy = lv_button_create(tab);
         lv_obj_set_size(btn_xy, 70, 70);
-        lv_obj_set_pos(btn_xy, 85 + (i % 3) * 80, 30 + (i / 3) * 80);
+        if (xy_x_enabled && !xy_y_enabled) {
+            // X-only: center the horizontal W/center/E row vertically in the pad area
+            lv_obj_set_pos(btn_xy, 85 + (i % 3) * 80, 110);
+        } else {
+            // XY grid or Y-only column both use the standard grid formula
+            // (Y-only's N/center/S cells all share the same column already)
+            lv_obj_set_pos(btn_xy, 85 + (i % 3) * 80, 30 + (i / 3) * 80);
+        }
         
         // Apply axis-specific colors
         lv_obj_set_style_bg_color(btn_xy, xy_axis_colors[i], 0);
@@ -252,6 +284,9 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_obj_center(lbl_xy_plus1000);
     
     // ========== Z Section (Right side) ==========
+    // Entire section is skipped when Z-axis is disabled for this machine
+    // (e.g. a single-axis miter saw fence) - there's nothing to jog here.
+    if (UICommon::isZAxisEnabled()) {
 
     // Z/A Jog header - changes based on toggle state
     za_header = lv_label_create(tab);
@@ -403,6 +438,8 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_label_set_text(lbl_z_plus1000, "+1000");
     lv_obj_set_style_text_font(lbl_z_plus1000, &lv_font_montserrat_14, 0);
     lv_obj_center(lbl_z_plus1000);
+    
+    } // if (UICommon::isZAxisEnabled())
     
     // ========== Cancel Jog Button (Upper Right) ==========
     // Create a container for the octagon stop button

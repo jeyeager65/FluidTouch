@@ -14,6 +14,7 @@
 #include "ui/ui_tabs.h"         // UI tabs module
 #include "ui/settings_manager.h" // Settings import/export/clear
 #include "ui/tabs/ui_tab_status.h" // Status tab for updates
+#include "ui/tabs/ui_tab_main.h"   // Main tab (reduced-axis machines) for updates
 #include "ui/tabs/ui_tab_files.h" // Files tab for refresh check
 #include "ui/tabs/ui_tab_macros.h" // Macros tab for progress updates
 #include "ui/tabs/ui_tab_terminal.h" // Terminal tab for updates
@@ -222,6 +223,13 @@ void loop()
             UITabStatus::updateProbe(status.pin_probe);
             UITabControlProbe::updateProbe(status.pin_probe);
             
+            // Update Main tab (reduced-axis machines) - no-ops if not created
+            UITabMain::updateState(state_str);
+            UITabMain::updateWorkPosition(status.wpos_x, status.wpos_y, status.wpos_z, status.wpos_a);
+            UITabMain::updateMachinePosition(status.mpos_x, status.mpos_y, status.mpos_z, status.mpos_a);
+            UITabMain::updateMessage(status.last_message);
+            UITabMain::updateLimitSwitches(status.pin_limit_x, status.pin_limit_y, status.pin_limit_z, status.pin_limit_a);
+
             // Update file progress in status bar (UICommon) instead of status tab
             UICommon::updateFileProgress(status.is_sd_printing, status.sd_percent,
                                         status.sd_filename, status.sd_elapsed_ms);
@@ -320,6 +328,11 @@ void loop()
             UITabStatus::updateRapidOverride(-9999.0f);        // Reset rapid override
             UITabStatus::updateSpindle(-9999.0f, -9999.0f);    // Reset spindle and override
             UITabStatus::updateModalStates("---", "---", "---", "---", "---", "---", "---", "---", "---");
+
+            // Update Main tab with OFFLINE state and reset all values (no-ops if not created)
+            UITabMain::updateState("OFFLINE");
+            UITabMain::updateWorkPosition(-9999.0f, -9999.0f, -9999.0f, -9999.0f);
+            UITabMain::updateMachinePosition(-9999.0f, -9999.0f, -9999.0f, -9999.0f);
             
             // Update power manager with OFFLINE state (treat as IDLE for power management)
             PowerManager::update(STATE_IDLE);

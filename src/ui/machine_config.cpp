@@ -62,7 +62,10 @@ void MachineConfigManager::loadMachines(MachineConfig machines[MAX_MACHINES]) {
             machines[i].probe_thickness = prefs.getFloat((prefix + "p_thick").c_str(), 0.0f);
 
             // Load axis configuration
-            machines[i].enable_a_axis = prefs.getBool((prefix + "a_en").c_str(), false);
+            machines[i].axis_x_enabled = prefs.getBool((prefix + "x_en").c_str(), true);
+            machines[i].axis_y_enabled = prefs.getBool((prefix + "y_en").c_str(), true);
+            machines[i].axis_z_enabled = prefs.getBool((prefix + "z_en").c_str(), true);
+            machines[i].axis_a_enabled = prefs.getBool((prefix + "a_en").c_str(), false);
         }
     }
     
@@ -117,7 +120,10 @@ void MachineConfigManager::saveMachines(const MachineConfig machines[MAX_MACHINE
             prefs.putFloat((prefix + "p_thick").c_str(), machines[i].probe_thickness);
 
             // Save axis configuration
-            prefs.putBool((prefix + "a_en").c_str(), machines[i].enable_a_axis);
+            prefs.putBool((prefix + "x_en").c_str(), machines[i].axis_x_enabled);
+            prefs.putBool((prefix + "y_en").c_str(), machines[i].axis_y_enabled);
+            prefs.putBool((prefix + "z_en").c_str(), machines[i].axis_z_enabled);
+            prefs.putBool((prefix + "a_en").c_str(), machines[i].axis_a_enabled);
         }
     }
     

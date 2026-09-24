@@ -954,9 +954,13 @@ void UITabControlJoystick::create(lv_obj_t *parent) {
     
     // XY Label (centered above joystick) - will update based on mode
     xy_jog_label = lv_label_create(xy_outer_container);
-    lv_label_set_text(xy_jog_label, "XY JOG");
+    lv_label_set_text(xy_jog_label, (UICommon::isXAxisEnabled() && UICommon::isYAxisEnabled()) ? "XY JOG" :
+                                     UICommon::isXAxisEnabled() ? "X JOG" :
+                                     UICommon::isYAxisEnabled() ? "Y JOG" : "");
     lv_obj_set_style_text_font(xy_jog_label, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_text_color(xy_jog_label, UITheme::AXIS_XY, 0);
+    lv_obj_set_style_text_color(xy_jog_label, (UICommon::isXAxisEnabled() && UICommon::isYAxisEnabled()) ? UITheme::AXIS_XY :
+                                               UICommon::isXAxisEnabled() ? UITheme::AXIS_X :
+                                               UICommon::isYAxisEnabled() ? UITheme::AXIS_Y : UITheme::TEXT_DISABLED, 0);
 
     // Joystick container (will be rebuilt based on mode)
     xy_joystick_container = lv_obj_create(xy_outer_container);
@@ -966,8 +970,21 @@ void UITabControlJoystick::create(lv_obj_t *parent) {
     lv_obj_set_style_bg_opa(xy_joystick_container, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(xy_joystick_container, 0, 0);
     
-    // Build initial joystick (XY mode)
-    rebuildJoystick();
+    // Reduced-axis machines (e.g. a miter saw fence with only X, or a
+    // Y/Z-only gantry) default straight into whichever single axis is
+    // available so there's no XY/X/Y mode selection needed.
+    bool joy_x_enabled = UICommon::isXAxisEnabled();
+    bool joy_y_enabled = UICommon::isYAxisEnabled();
+    if (joy_x_enabled && !joy_y_enabled) {
+        current_axis_mode = MODE_X;
+    } else if (!joy_x_enabled && joy_y_enabled) {
+        current_axis_mode = MODE_Y;
+    }
+    
+    // Build initial joystick (XY mode), unless neither X nor Y is enabled
+    if (joy_x_enabled || joy_y_enabled) {
+        rebuildJoystick();
+    }
     
     // Axis selection buttons (XY, X, Y)
     lv_obj_t *axis_button_container = lv_obj_create(xy_outer_container);
@@ -980,37 +997,51 @@ void UITabControlJoystick::create(lv_obj_t *parent) {
     lv_obj_set_style_bg_opa(axis_button_container, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(axis_button_container, 0, 0);
     
-    // XY button (initially selected with white border)
-    btn_xy = lv_button_create(axis_button_container);
-    lv_obj_set_size(btn_xy, 60, 40);
-    lv_obj_set_style_bg_color(btn_xy, UITheme::JOYSTICK_XY, LV_PART_MAIN);
-    lv_obj_set_style_border_width(btn_xy, 3, LV_PART_MAIN);  // Initial selection border
-    lv_obj_set_style_border_color(btn_xy, lv_color_white(), LV_PART_MAIN);
-    lv_obj_t *lbl_xy = lv_label_create(btn_xy);
-    lv_label_set_text(lbl_xy, "XY");
-    lv_obj_set_style_text_font(lbl_xy, &lv_font_montserrat_16, 0);
-    lv_obj_center(lbl_xy);
-    lv_obj_add_event_cb(btn_xy, axis_button_event_handler, LV_EVENT_CLICKED, (void*)MODE_XY);
+    // XY button (initially selected with white border) - only when both X and Y enabled
+    if (joy_x_enabled && joy_y_enabled) {
+        btn_xy = lv_button_create(axis_button_container);
+        lv_obj_set_size(btn_xy, 60, 40);
+        lv_obj_set_style_bg_color(btn_xy, UITheme::JOYSTICK_XY, LV_PART_MAIN);
+        lv_obj_set_style_border_width(btn_xy, 3, LV_PART_MAIN);  // Initial selection border
+        lv_obj_set_style_border_color(btn_xy, lv_color_white(), LV_PART_MAIN);
+        lv_obj_t *lbl_xy = lv_label_create(btn_xy);
+        lv_label_set_text(lbl_xy, "XY");
+        lv_obj_set_style_text_font(lbl_xy, &lv_font_montserrat_16, 0);
+        lv_obj_center(lbl_xy);
+        lv_obj_add_event_cb(btn_xy, axis_button_event_handler, LV_EVENT_CLICKED, (void*)MODE_XY);
+    }
     
-    // X button
-    btn_x = lv_button_create(axis_button_container);
-    lv_obj_set_size(btn_x, 60, 40);
-    lv_obj_set_style_bg_color(btn_x, UITheme::AXIS_X, LV_PART_MAIN);
-    lv_obj_t *lbl_x = lv_label_create(btn_x);
-    lv_label_set_text(lbl_x, "X");
-    lv_obj_set_style_text_font(lbl_x, &lv_font_montserrat_16, 0);
-    lv_obj_center(lbl_x);
-    lv_obj_add_event_cb(btn_x, axis_button_event_handler, LV_EVENT_CLICKED, (void*)MODE_X);
+    // X button - only when X enabled; pre-selected if Y is disabled (X-only mode)
+    if (joy_x_enabled) {
+        btn_x = lv_button_create(axis_button_container);
+        lv_obj_set_size(btn_x, 60, 40);
+        lv_obj_set_style_bg_color(btn_x, UITheme::AXIS_X, LV_PART_MAIN);
+        if (!joy_y_enabled) {
+            lv_obj_set_style_border_width(btn_x, 3, LV_PART_MAIN);
+            lv_obj_set_style_border_color(btn_x, lv_color_white(), LV_PART_MAIN);
+        }
+        lv_obj_t *lbl_x = lv_label_create(btn_x);
+        lv_label_set_text(lbl_x, "X");
+        lv_obj_set_style_text_font(lbl_x, &lv_font_montserrat_16, 0);
+        lv_obj_center(lbl_x);
+        lv_obj_add_event_cb(btn_x, axis_button_event_handler, LV_EVENT_CLICKED, (void*)MODE_X);
+    }
     
-    // Y button
-    btn_y = lv_button_create(axis_button_container);
-    lv_obj_set_size(btn_y, 60, 40);
-    lv_obj_set_style_bg_color(btn_y, UITheme::AXIS_Y, LV_PART_MAIN);
-    lv_obj_t *lbl_y = lv_label_create(btn_y);
-    lv_label_set_text(lbl_y, "Y");
-    lv_obj_set_style_text_font(lbl_y, &lv_font_montserrat_16, 0);
-    lv_obj_center(lbl_y);
-    lv_obj_add_event_cb(btn_y, axis_button_event_handler, LV_EVENT_CLICKED, (void*)MODE_Y);
+    // Y button - only when Y enabled; pre-selected if X is disabled (Y-only mode)
+    if (joy_y_enabled) {
+        btn_y = lv_button_create(axis_button_container);
+        lv_obj_set_size(btn_y, 60, 40);
+        lv_obj_set_style_bg_color(btn_y, UITheme::AXIS_Y, LV_PART_MAIN);
+        if (!joy_x_enabled) {
+            lv_obj_set_style_border_width(btn_y, 3, LV_PART_MAIN);
+            lv_obj_set_style_border_color(btn_y, lv_color_white(), LV_PART_MAIN);
+        }
+        lv_obj_t *lbl_y = lv_label_create(btn_y);
+        lv_label_set_text(lbl_y, "Y");
+        lv_obj_set_style_text_font(lbl_y, &lv_font_montserrat_16, 0);
+        lv_obj_center(lbl_y);
+        lv_obj_add_event_cb(btn_y, axis_button_event_handler, LV_EVENT_CLICKED, (void*)MODE_Y);
+    }
 
     // ========== Center Info Display (XY + Z values) ==========
     lv_obj_t *info_container = lv_obj_create(parent);
@@ -1026,9 +1057,13 @@ void UITabControlJoystick::create(lv_obj_t *parent) {
     
     // XY Percentage (radial distance)
     xy_percent_label = lv_label_create(info_container);
-    lv_label_set_text(xy_percent_label, "XY: 0%");
+    lv_label_set_text(xy_percent_label, (UICommon::isXAxisEnabled() && UICommon::isYAxisEnabled()) ? "XY: 0%" :
+                                         UICommon::isXAxisEnabled() ? "X: 0%" :
+                                         UICommon::isYAxisEnabled() ? "Y: 0%" : "0%");
     lv_obj_set_style_text_font(xy_percent_label, &lv_font_montserrat_20, 0);
-    lv_obj_set_style_text_color(xy_percent_label, UITheme::JOYSTICK_XY, 0);
+    lv_obj_set_style_text_color(xy_percent_label, (UICommon::isXAxisEnabled() && UICommon::isYAxisEnabled()) ? UITheme::JOYSTICK_XY :
+                                                   UICommon::isXAxisEnabled() ? UITheme::AXIS_X :
+                                                   UICommon::isYAxisEnabled() ? UITheme::AXIS_Y : UITheme::TEXT_DISABLED, 0);
     
     // XY Feedrate
     xy_feedrate_label = lv_label_create(info_container);
@@ -1097,6 +1132,9 @@ void UITabControlJoystick::create(lv_obj_t *parent) {
     }
 
     // ========== Z/A Slider Section (Vertical layout like XY) ==========
+    // Entire section is skipped when Z-axis is disabled for this machine
+    // (e.g. a single-axis miter saw fence) - there's nothing to jog here.
+    if (UICommon::isZAxisEnabled()) {
     lv_obj_t *za_outer_container = lv_obj_create(parent);
     lv_obj_set_size(za_outer_container, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
     lv_obj_set_style_pad_all(za_outer_container, 5, 0);
@@ -1241,4 +1279,5 @@ void UITabControlJoystick::create(lv_obj_t *parent) {
         lv_obj_center(lbl_a);
         lv_obj_add_event_cb(btn_a_mode, za_joystick_toggle_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)0);
     }
+    } // if (UICommon::isZAxisEnabled())
 }
