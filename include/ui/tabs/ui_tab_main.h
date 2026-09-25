@@ -6,12 +6,15 @@
 #include "config.h"
 
 // Consolidated single-screen tab for reduced-axis machines (e.g. a CNC miter
-// saw fence with only an X axis). Used instead of UITabStatus - and the
-// top-level tab is labeled "Main" instead of "Status" - when both Y and Z
-// are disabled for the selected machine (see UICommon::isYAxisEnabled() /
-// isZAxisEnabled()). Combines X position display/edit, Home X and Zero X
-// into a single tab so the user never needs to visit the Control tab for
-// everyday operation.
+// saw stop or table saw fence with only an X axis). Used instead of
+// UITabStatus - and the top-level tab is labeled "Main" instead of "Status" -
+// when both Y and Z are disabled for the selected machine (see
+// UICommon::isYAxisEnabled() / isZAxisEnabled()).
+//
+// Everything needed for everyday use is on this one tab: X position (tap to
+// go to a position), jogging with the Jog settings' step sizes and feed,
+// a per-machine list of saved positions (Save the current position, tap to
+// go there, long-press to delete), plus STOP / Home X / Zero X / Unlock.
 class UITabMain {
 public:
     static void create(lv_obj_t *tab);
@@ -51,6 +54,43 @@ private:
     static void position_field_event_handler(lv_event_t *e);
     static void keyboard_event_handler(lv_event_t *e);
     static void showValidationError(const char *message);
+
+    // Jogging - step sizes and feed come from the Jog settings (XY values)
+    static const int MAX_STEPS = 5;
+    static float step_values[MAX_STEPS];
+    static int step_count;
+    static int step_index;
+    static lv_obj_t *step_buttons[MAX_STEPS];
+    static void loadStepValues();
+    static void updateStepButtonStyles();
+    static void onStepClicked(lv_event_t *e);
+    static void onJogClicked(lv_event_t *e);   // user_data: +1 or -1
+
+    // Saved positions (per machine, stored in Preferences as m<i>_qpos)
+    static const int MAX_SAVED = 8;
+    static float saved_positions[MAX_SAVED];
+    static int saved_count;
+    static lv_obj_t *saved_buttons[MAX_SAVED];
+    static lv_obj_t *lbl_saved_hint;
+    static int pending_delete_index;
+    static void loadSavedPositions();
+    static void storeSavedPositions();
+    static void refreshSavedButtons();
+    static void goToWorkX(float x);
+    static void onSaveClicked(lv_event_t *e);
+    static void onSavedClicked(lv_event_t *e);      // short click: go to
+    static void onSavedLongPressed(lv_event_t *e);  // long press: delete
+    static void showDeleteDialog(int index);
+    static void updateSavedHighlight();  // Border on the saved position matching the current X
+
+    // State label shrinks its font to fit long states ("DISCONNECTED") in its column
+    static const int STATE_MAX_WIDTH = 176;
+    static void fitStateLabel(const char *state);
+
+    // Short-lived notices from this tab, held so status updates don't overwrite them
+    static const uint32_t NOTICE_HOLD_MS = 3000;
+    static uint32_t notice_until_ms;
+    static void showNotice(const char *message);
 
     // Action button handlers
     static void onHomeXClicked(lv_event_t *e);
