@@ -223,13 +223,17 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_obj_set_pos(lbl_wpos_x, 70, 95);
     lv_obj_clear_flag(lbl_wpos_x, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_text_font(lbl_wpos_x, &lv_font_montserrat_32, 0);
-    lv_obj_set_style_pad_top(lbl_wpos_x, 2, 0);
-    lv_obj_set_style_pad_bottom(lbl_wpos_x, 2, 0);
-    lv_obj_set_style_pad_left(lbl_wpos_x, 5, 0);
+    lv_obj_set_style_pad_top(lbl_wpos_x, 0, 0);
+    lv_obj_set_style_pad_bottom(lbl_wpos_x, 0, 0);
+    lv_obj_set_style_pad_left(lbl_wpos_x, 3, 0);
     lv_obj_set_style_text_align(lbl_wpos_x, LV_TEXT_ALIGN_LEFT, 0);
     lv_obj_set_style_text_color(lbl_wpos_x, UITheme::AXIS_X, 0);
     lv_obj_set_style_bg_color(lbl_wpos_x, UITheme::BG_BLACK, 0);
-    lv_obj_set_style_border_width(lbl_wpos_x, 0, 0);
+    // Same 2px border focused or not (invisible when unfocused) - a border that only
+    // appears on focus shrinks the content below the font height and makes the
+    // textarea keep scrolling to the cursor, so the number bounces while editing
+    lv_obj_set_style_border_width(lbl_wpos_x, 2, 0);
+    lv_obj_set_style_border_color(lbl_wpos_x, UITheme::BG_BLACK, 0);
     lv_obj_set_style_border_width(lbl_wpos_x, 2, LV_STATE_FOCUSED);
     lv_obj_set_style_border_color(lbl_wpos_x, UITheme::AXIS_X, LV_STATE_FOCUSED);
     lv_obj_set_user_data(lbl_wpos_x, (void*)"WX");
@@ -259,13 +263,17 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_obj_set_pos(lbl_wpos_y, 70, 140);
     lv_obj_clear_flag(lbl_wpos_y, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_text_font(lbl_wpos_y, &lv_font_montserrat_32, 0);
-    lv_obj_set_style_pad_top(lbl_wpos_y, 2, 0);
-    lv_obj_set_style_pad_bottom(lbl_wpos_y, 2, 0);
-    lv_obj_set_style_pad_left(lbl_wpos_y, 5, 0);
+    lv_obj_set_style_pad_top(lbl_wpos_y, 0, 0);
+    lv_obj_set_style_pad_bottom(lbl_wpos_y, 0, 0);
+    lv_obj_set_style_pad_left(lbl_wpos_y, 3, 0);
     lv_obj_set_style_text_align(lbl_wpos_y, LV_TEXT_ALIGN_LEFT, 0);
     lv_obj_set_style_text_color(lbl_wpos_y, UITheme::AXIS_Y, 0);
     lv_obj_set_style_bg_color(lbl_wpos_y, UITheme::BG_BLACK, 0);
-    lv_obj_set_style_border_width(lbl_wpos_y, 0, 0);
+    // Same 2px border focused or not (invisible when unfocused) - a border that only
+    // appears on focus shrinks the content below the font height and makes the
+    // textarea keep scrolling to the cursor, so the number bounces while editing
+    lv_obj_set_style_border_width(lbl_wpos_y, 2, 0);
+    lv_obj_set_style_border_color(lbl_wpos_y, UITheme::BG_BLACK, 0);
     lv_obj_set_style_border_width(lbl_wpos_y, 2, LV_STATE_FOCUSED);
     lv_obj_set_style_border_color(lbl_wpos_y, UITheme::AXIS_Y, LV_STATE_FOCUSED);
     lv_obj_set_user_data(lbl_wpos_y, (void*)"WY");
@@ -295,13 +303,17 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_obj_set_pos(lbl_wpos_z, 70, 185);
     lv_obj_clear_flag(lbl_wpos_z, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_text_font(lbl_wpos_z, &lv_font_montserrat_32, 0);
-    lv_obj_set_style_pad_top(lbl_wpos_z, 2, 0);
-    lv_obj_set_style_pad_bottom(lbl_wpos_z, 2, 0);
-    lv_obj_set_style_pad_left(lbl_wpos_z, 5, 0);
+    lv_obj_set_style_pad_top(lbl_wpos_z, 0, 0);
+    lv_obj_set_style_pad_bottom(lbl_wpos_z, 0, 0);
+    lv_obj_set_style_pad_left(lbl_wpos_z, 3, 0);
     lv_obj_set_style_text_align(lbl_wpos_z, LV_TEXT_ALIGN_LEFT, 0);
     lv_obj_set_style_text_color(lbl_wpos_z, UITheme::AXIS_Z, 0);
     lv_obj_set_style_bg_color(lbl_wpos_z, UITheme::BG_BLACK, 0);
-    lv_obj_set_style_border_width(lbl_wpos_z, 0, 0);
+    // Same 2px border focused or not (invisible when unfocused) - a border that only
+    // appears on focus shrinks the content below the font height and makes the
+    // textarea keep scrolling to the cursor, so the number bounces while editing
+    lv_obj_set_style_border_width(lbl_wpos_z, 2, 0);
+    lv_obj_set_style_border_color(lbl_wpos_z, UITheme::BG_BLACK, 0);
     lv_obj_set_style_border_width(lbl_wpos_z, 2, LV_STATE_FOCUSED);
     lv_obj_set_style_border_color(lbl_wpos_z, UITheme::AXIS_Z, LV_STATE_FOCUSED);
     lv_obj_set_user_data(lbl_wpos_z, (void*)"WZ");
@@ -324,13 +336,17 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_obj_set_pos(lbl_mpos_x, 260, 95);
     lv_obj_clear_flag(lbl_mpos_x, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_text_font(lbl_mpos_x, &lv_font_montserrat_32, 0);
-    lv_obj_set_style_pad_top(lbl_mpos_x, 2, 0);
-    lv_obj_set_style_pad_bottom(lbl_mpos_x, 2, 0);
-    lv_obj_set_style_pad_left(lbl_mpos_x, 5, 0);
+    lv_obj_set_style_pad_top(lbl_mpos_x, 0, 0);
+    lv_obj_set_style_pad_bottom(lbl_mpos_x, 0, 0);
+    lv_obj_set_style_pad_left(lbl_mpos_x, 3, 0);
     lv_obj_set_style_text_align(lbl_mpos_x, LV_TEXT_ALIGN_LEFT, 0);
     lv_obj_set_style_text_color(lbl_mpos_x, UITheme::AXIS_X, 0);
     lv_obj_set_style_bg_color(lbl_mpos_x, UITheme::BG_BLACK, 0);
-    lv_obj_set_style_border_width(lbl_mpos_x, 0, 0);
+    // Same 2px border focused or not (invisible when unfocused) - a border that only
+    // appears on focus shrinks the content below the font height and makes the
+    // textarea keep scrolling to the cursor, so the number bounces while editing
+    lv_obj_set_style_border_width(lbl_mpos_x, 2, 0);
+    lv_obj_set_style_border_color(lbl_mpos_x, UITheme::BG_BLACK, 0);
     lv_obj_set_style_border_width(lbl_mpos_x, 2, LV_STATE_FOCUSED);
     lv_obj_set_style_border_color(lbl_mpos_x, UITheme::AXIS_X, LV_STATE_FOCUSED);
     lv_obj_set_user_data(lbl_mpos_x, (void*)"MX");
@@ -345,13 +361,17 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_obj_set_pos(lbl_mpos_y, 260, 140);
     lv_obj_clear_flag(lbl_mpos_y, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_text_font(lbl_mpos_y, &lv_font_montserrat_32, 0);
-    lv_obj_set_style_pad_top(lbl_mpos_y, 2, 0);
-    lv_obj_set_style_pad_bottom(lbl_mpos_y, 2, 0);
-    lv_obj_set_style_pad_left(lbl_mpos_y, 5, 0);
+    lv_obj_set_style_pad_top(lbl_mpos_y, 0, 0);
+    lv_obj_set_style_pad_bottom(lbl_mpos_y, 0, 0);
+    lv_obj_set_style_pad_left(lbl_mpos_y, 3, 0);
     lv_obj_set_style_text_align(lbl_mpos_y, LV_TEXT_ALIGN_LEFT, 0);
     lv_obj_set_style_text_color(lbl_mpos_y, UITheme::AXIS_Y, 0);
     lv_obj_set_style_bg_color(lbl_mpos_y, UITheme::BG_BLACK, 0);
-    lv_obj_set_style_border_width(lbl_mpos_y, 0, 0);
+    // Same 2px border focused or not (invisible when unfocused) - a border that only
+    // appears on focus shrinks the content below the font height and makes the
+    // textarea keep scrolling to the cursor, so the number bounces while editing
+    lv_obj_set_style_border_width(lbl_mpos_y, 2, 0);
+    lv_obj_set_style_border_color(lbl_mpos_y, UITheme::BG_BLACK, 0);
     lv_obj_set_style_border_width(lbl_mpos_y, 2, LV_STATE_FOCUSED);
     lv_obj_set_style_border_color(lbl_mpos_y, UITheme::AXIS_Y, LV_STATE_FOCUSED);
     lv_obj_set_user_data(lbl_mpos_y, (void*)"MY");
@@ -366,13 +386,17 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_obj_set_pos(lbl_mpos_z, 260, 185);
     lv_obj_clear_flag(lbl_mpos_z, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_text_font(lbl_mpos_z, &lv_font_montserrat_32, 0);
-    lv_obj_set_style_pad_top(lbl_mpos_z, 2, 0);
-    lv_obj_set_style_pad_bottom(lbl_mpos_z, 2, 0);
-    lv_obj_set_style_pad_left(lbl_mpos_z, 5, 0);
+    lv_obj_set_style_pad_top(lbl_mpos_z, 0, 0);
+    lv_obj_set_style_pad_bottom(lbl_mpos_z, 0, 0);
+    lv_obj_set_style_pad_left(lbl_mpos_z, 3, 0);
     lv_obj_set_style_text_align(lbl_mpos_z, LV_TEXT_ALIGN_LEFT, 0);
     lv_obj_set_style_text_color(lbl_mpos_z, UITheme::AXIS_Z, 0);
     lv_obj_set_style_bg_color(lbl_mpos_z, UITheme::BG_BLACK, 0);
-    lv_obj_set_style_border_width(lbl_mpos_z, 0, 0);
+    // Same 2px border focused or not (invisible when unfocused) - a border that only
+    // appears on focus shrinks the content below the font height and makes the
+    // textarea keep scrolling to the cursor, so the number bounces while editing
+    lv_obj_set_style_border_width(lbl_mpos_z, 2, 0);
+    lv_obj_set_style_border_color(lbl_mpos_z, UITheme::BG_BLACK, 0);
     lv_obj_set_style_border_width(lbl_mpos_z, 2, LV_STATE_FOCUSED);
     lv_obj_set_style_border_color(lbl_mpos_z, UITheme::AXIS_Z, LV_STATE_FOCUSED);
     lv_obj_set_user_data(lbl_mpos_z, (void*)"MZ");
@@ -406,13 +430,17 @@ void UITabStatus::create(lv_obj_t *tab) {
         lv_obj_set_pos(lbl_wpos_a, 70, 230);
         lv_obj_clear_flag(lbl_wpos_a, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_set_style_text_font(lbl_wpos_a, &lv_font_montserrat_32, 0);
-        lv_obj_set_style_pad_top(lbl_wpos_a, 2, 0);
-        lv_obj_set_style_pad_bottom(lbl_wpos_a, 2, 0);
-        lv_obj_set_style_pad_left(lbl_wpos_a, 5, 0);
+        lv_obj_set_style_pad_top(lbl_wpos_a, 0, 0);
+        lv_obj_set_style_pad_bottom(lbl_wpos_a, 0, 0);
+        lv_obj_set_style_pad_left(lbl_wpos_a, 3, 0);
         lv_obj_set_style_text_align(lbl_wpos_a, LV_TEXT_ALIGN_LEFT, 0);
         lv_obj_set_style_text_color(lbl_wpos_a, UITheme::AXIS_A, 0);
         lv_obj_set_style_bg_color(lbl_wpos_a, UITheme::BG_BLACK, 0);
-        lv_obj_set_style_border_width(lbl_wpos_a, 0, 0);
+        // Same 2px border focused or not (invisible when unfocused) - a border that only
+        // appears on focus shrinks the content below the font height and makes the
+        // textarea keep scrolling to the cursor, so the number bounces while editing
+        lv_obj_set_style_border_width(lbl_wpos_a, 2, 0);
+        lv_obj_set_style_border_color(lbl_wpos_a, UITheme::BG_BLACK, 0);
         lv_obj_set_style_border_width(lbl_wpos_a, 2, LV_STATE_FOCUSED);
         lv_obj_set_style_border_color(lbl_wpos_a, UITheme::AXIS_A, LV_STATE_FOCUSED);
         lv_obj_set_user_data(lbl_wpos_a, (void*)"WA");
@@ -428,13 +456,17 @@ void UITabStatus::create(lv_obj_t *tab) {
         lv_obj_set_pos(lbl_mpos_a, 260, 230);
         lv_obj_clear_flag(lbl_mpos_a, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_set_style_text_font(lbl_mpos_a, &lv_font_montserrat_32, 0);
-        lv_obj_set_style_pad_top(lbl_mpos_a, 2, 0);
-        lv_obj_set_style_pad_bottom(lbl_mpos_a, 2, 0);
-        lv_obj_set_style_pad_left(lbl_mpos_a, 5, 0);
+        lv_obj_set_style_pad_top(lbl_mpos_a, 0, 0);
+        lv_obj_set_style_pad_bottom(lbl_mpos_a, 0, 0);
+        lv_obj_set_style_pad_left(lbl_mpos_a, 3, 0);
         lv_obj_set_style_text_align(lbl_mpos_a, LV_TEXT_ALIGN_LEFT, 0);
         lv_obj_set_style_text_color(lbl_mpos_a, UITheme::AXIS_A, 0);
         lv_obj_set_style_bg_color(lbl_mpos_a, UITheme::BG_BLACK, 0);
-        lv_obj_set_style_border_width(lbl_mpos_a, 0, 0);
+        // Same 2px border focused or not (invisible when unfocused) - a border that only
+        // appears on focus shrinks the content below the font height and makes the
+        // textarea keep scrolling to the cursor, so the number bounces while editing
+        lv_obj_set_style_border_width(lbl_mpos_a, 2, 0);
+        lv_obj_set_style_border_color(lbl_mpos_a, UITheme::BG_BLACK, 0);
         lv_obj_set_style_border_width(lbl_mpos_a, 2, LV_STATE_FOCUSED);
         lv_obj_set_style_border_color(lbl_mpos_a, UITheme::AXIS_A, LV_STATE_FOCUSED);
         lv_obj_set_user_data(lbl_mpos_a, (void*)"MA");
