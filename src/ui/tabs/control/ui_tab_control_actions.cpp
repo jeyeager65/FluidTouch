@@ -48,7 +48,7 @@ void UITabControlActions::create(lv_obj_t *tab) {
     lv_obj_t *btn_unlock = lv_button_create(tab);
     lv_obj_set_size(btn_unlock, col_width, btn_height);
     lv_obj_set_pos(btn_unlock, left_col_x, y_pos);
-    lv_obj_set_style_bg_color(btn_unlock, UITheme::ACCENT_PRIMARY, LV_PART_MAIN);  // Blue for unlock
+    lv_obj_set_style_bg_color(btn_unlock, UITheme::BTN_UNLOCK, LV_PART_MAIN);
     lv_obj_t *lbl_unlock = lv_label_create(btn_unlock);
     lv_label_set_text(lbl_unlock, LV_SYMBOL_OK " Unlock");
     lv_obj_set_style_text_font(lbl_unlock, &lv_font_montserrat_18, 0);
@@ -89,44 +89,50 @@ void UITabControlActions::create(lv_obj_t *tab) {
     
     y_pos = 40;
     
-    // Home X
-    btn_home_x = lv_button_create(tab);
-    lv_obj_set_size(btn_home_x, col_width, btn_height);
-    lv_obj_set_pos(btn_home_x, middle_col_x, y_pos);
-    lv_obj_set_style_bg_color(btn_home_x, UITheme::AXIS_X, LV_PART_MAIN);
-    lv_obj_t *lbl_home_x = lv_label_create(btn_home_x);
-    lv_label_set_text(lbl_home_x, LV_SYMBOL_HOME " X");
-    lv_obj_set_style_text_font(lbl_home_x, &lv_font_montserrat_18, 0);
-    lv_obj_center(lbl_home_x);
-    lv_obj_add_event_cb(btn_home_x, onHomeXClicked, LV_EVENT_CLICKED, nullptr);
+    // Home X (conditional on X-axis enabled)
+    if (UICommon::isXAxisEnabled()) {
+        btn_home_x = lv_button_create(tab);
+        lv_obj_set_size(btn_home_x, col_width, btn_height);
+        lv_obj_set_pos(btn_home_x, middle_col_x, y_pos);
+        lv_obj_set_style_bg_color(btn_home_x, UITheme::AXIS_X, LV_PART_MAIN);
+        lv_obj_t *lbl_home_x = lv_label_create(btn_home_x);
+        lv_label_set_text(lbl_home_x, LV_SYMBOL_HOME " X");
+        lv_obj_set_style_text_font(lbl_home_x, &lv_font_montserrat_18, 0);
+        lv_obj_center(lbl_home_x);
+        lv_obj_add_event_cb(btn_home_x, onHomeXClicked, LV_EVENT_CLICKED, nullptr);
+
+        y_pos += btn_height + spacing;
+    }
     
-    y_pos += btn_height + spacing;
-    
-    // Home Y
-    btn_home_y = lv_button_create(tab);
-    lv_obj_set_size(btn_home_y, col_width, btn_height);
-    lv_obj_set_pos(btn_home_y, middle_col_x, y_pos);
-    lv_obj_set_style_bg_color(btn_home_y, UITheme::AXIS_Y, LV_PART_MAIN);
-    lv_obj_t *lbl_home_y = lv_label_create(btn_home_y);
-    lv_label_set_text(lbl_home_y, LV_SYMBOL_HOME " Y");
-    lv_obj_set_style_text_font(lbl_home_y, &lv_font_montserrat_18, 0);
-    lv_obj_center(lbl_home_y);
-    lv_obj_add_event_cb(btn_home_y, onHomeYClicked, LV_EVENT_CLICKED, nullptr);
-    
-    y_pos += btn_height + spacing;
-    
-    // Home Z
-    btn_home_z = lv_button_create(tab);
-    lv_obj_set_size(btn_home_z, col_width, btn_height);
-    lv_obj_set_pos(btn_home_z, middle_col_x, y_pos);
-    lv_obj_set_style_bg_color(btn_home_z, UITheme::AXIS_Z, LV_PART_MAIN);
-    lv_obj_t *lbl_home_z = lv_label_create(btn_home_z);
-    lv_label_set_text(lbl_home_z, LV_SYMBOL_HOME " Z");
-    lv_obj_set_style_text_font(lbl_home_z, &lv_font_montserrat_18, 0);
-    lv_obj_center(lbl_home_z);
-    lv_obj_add_event_cb(btn_home_z, onHomeZClicked, LV_EVENT_CLICKED, nullptr);
-    
-    y_pos += btn_height + spacing;
+    // Home Y (conditional on Y-axis enabled)
+    if (UICommon::isYAxisEnabled()) {
+        btn_home_y = lv_button_create(tab);
+        lv_obj_set_size(btn_home_y, col_width, btn_height);
+        lv_obj_set_pos(btn_home_y, middle_col_x, y_pos);
+        lv_obj_set_style_bg_color(btn_home_y, UITheme::AXIS_Y, LV_PART_MAIN);
+        lv_obj_t *lbl_home_y = lv_label_create(btn_home_y);
+        lv_label_set_text(lbl_home_y, LV_SYMBOL_HOME " Y");
+        lv_obj_set_style_text_font(lbl_home_y, &lv_font_montserrat_18, 0);
+        lv_obj_center(lbl_home_y);
+        lv_obj_add_event_cb(btn_home_y, onHomeYClicked, LV_EVENT_CLICKED, nullptr);
+
+        y_pos += btn_height + spacing;
+    }
+
+    // Home Z (conditional on Z-axis enabled)
+    if (UICommon::isZAxisEnabled()) {
+        btn_home_z = lv_button_create(tab);
+        lv_obj_set_size(btn_home_z, col_width, btn_height);
+        lv_obj_set_pos(btn_home_z, middle_col_x, y_pos);
+        lv_obj_set_style_bg_color(btn_home_z, UITheme::AXIS_Z, LV_PART_MAIN);
+        lv_obj_t *lbl_home_z = lv_label_create(btn_home_z);
+        lv_label_set_text(lbl_home_z, LV_SYMBOL_HOME " Z");
+        lv_obj_set_style_text_font(lbl_home_z, &lv_font_montserrat_18, 0);
+        lv_obj_center(lbl_home_z);
+        lv_obj_add_event_cb(btn_home_z, onHomeZClicked, LV_EVENT_CLICKED, nullptr);
+
+        y_pos += btn_height + spacing;
+    }
     
     // Home All
     lv_obj_t *btn_home_all = lv_button_create(tab);
@@ -148,44 +154,50 @@ void UITabControlActions::create(lv_obj_t *tab) {
     
     y_pos = 40;
     
-    // Zero X
-    lv_obj_t *btn_zero_x = lv_button_create(tab);
-    lv_obj_set_size(btn_zero_x, col_width, btn_height);
-    lv_obj_set_pos(btn_zero_x, right_col_x, y_pos);
-    lv_obj_set_style_bg_color(btn_zero_x, UITheme::AXIS_X, LV_PART_MAIN);
-    lv_obj_t *lbl_zero_x = lv_label_create(btn_zero_x);
-    lv_label_set_text(lbl_zero_x, LV_SYMBOL_GPS " X");
-    lv_obj_set_style_text_font(lbl_zero_x, &lv_font_montserrat_18, 0);
-    lv_obj_center(lbl_zero_x);
-    lv_obj_add_event_cb(btn_zero_x, onZeroXClicked, LV_EVENT_CLICKED, nullptr);
-    
-    y_pos += btn_height + spacing;
-    
-    // Zero Y
-    lv_obj_t *btn_zero_y = lv_button_create(tab);
-    lv_obj_set_size(btn_zero_y, col_width, btn_height);
-    lv_obj_set_pos(btn_zero_y, right_col_x, y_pos);
-    lv_obj_set_style_bg_color(btn_zero_y, UITheme::AXIS_Y, LV_PART_MAIN);
-    lv_obj_t *lbl_zero_y = lv_label_create(btn_zero_y);
-    lv_label_set_text(lbl_zero_y, LV_SYMBOL_GPS " Y");
-    lv_obj_set_style_text_font(lbl_zero_y, &lv_font_montserrat_18, 0);
-    lv_obj_center(lbl_zero_y);
-    lv_obj_add_event_cb(btn_zero_y, onZeroYClicked, LV_EVENT_CLICKED, nullptr);
-    
-    y_pos += btn_height + spacing;
-    
-    // Zero Z
-    lv_obj_t *btn_zero_z = lv_button_create(tab);
-    lv_obj_set_size(btn_zero_z, col_width, btn_height);
-    lv_obj_set_pos(btn_zero_z, right_col_x, y_pos);
-    lv_obj_set_style_bg_color(btn_zero_z, UITheme::AXIS_Z, LV_PART_MAIN);
-    lv_obj_t *lbl_zero_z = lv_label_create(btn_zero_z);
-    lv_label_set_text(lbl_zero_z, LV_SYMBOL_GPS " Z");
-    lv_obj_set_style_text_font(lbl_zero_z, &lv_font_montserrat_18, 0);
-    lv_obj_center(lbl_zero_z);
-    lv_obj_add_event_cb(btn_zero_z, onZeroZClicked, LV_EVENT_CLICKED, nullptr);
+    // Zero X (conditional on X-axis enabled)
+    if (UICommon::isXAxisEnabled()) {
+        lv_obj_t *btn_zero_x = lv_button_create(tab);
+        lv_obj_set_size(btn_zero_x, col_width, btn_height);
+        lv_obj_set_pos(btn_zero_x, right_col_x, y_pos);
+        lv_obj_set_style_bg_color(btn_zero_x, UITheme::AXIS_X, LV_PART_MAIN);
+        lv_obj_t *lbl_zero_x = lv_label_create(btn_zero_x);
+        lv_label_set_text(lbl_zero_x, LV_SYMBOL_GPS " X");
+        lv_obj_set_style_text_font(lbl_zero_x, &lv_font_montserrat_18, 0);
+        lv_obj_center(lbl_zero_x);
+        lv_obj_add_event_cb(btn_zero_x, onZeroXClicked, LV_EVENT_CLICKED, nullptr);
 
-    y_pos += btn_height + spacing;
+        y_pos += btn_height + spacing;
+    }
+    
+    // Zero Y (conditional on Y-axis enabled)
+    if (UICommon::isYAxisEnabled()) {
+        lv_obj_t *btn_zero_y = lv_button_create(tab);
+        lv_obj_set_size(btn_zero_y, col_width, btn_height);
+        lv_obj_set_pos(btn_zero_y, right_col_x, y_pos);
+        lv_obj_set_style_bg_color(btn_zero_y, UITheme::AXIS_Y, LV_PART_MAIN);
+        lv_obj_t *lbl_zero_y = lv_label_create(btn_zero_y);
+        lv_label_set_text(lbl_zero_y, LV_SYMBOL_GPS " Y");
+        lv_obj_set_style_text_font(lbl_zero_y, &lv_font_montserrat_18, 0);
+        lv_obj_center(lbl_zero_y);
+        lv_obj_add_event_cb(btn_zero_y, onZeroYClicked, LV_EVENT_CLICKED, nullptr);
+
+        y_pos += btn_height + spacing;
+    }
+
+    // Zero Z (conditional on Z-axis enabled)
+    if (UICommon::isZAxisEnabled()) {
+        lv_obj_t *btn_zero_z = lv_button_create(tab);
+        lv_obj_set_size(btn_zero_z, col_width, btn_height);
+        lv_obj_set_pos(btn_zero_z, right_col_x, y_pos);
+        lv_obj_set_style_bg_color(btn_zero_z, UITheme::AXIS_Z, LV_PART_MAIN);
+        lv_obj_t *lbl_zero_z = lv_label_create(btn_zero_z);
+        lv_label_set_text(lbl_zero_z, LV_SYMBOL_GPS " Z");
+        lv_obj_set_style_text_font(lbl_zero_z, &lv_font_montserrat_18, 0);
+        lv_obj_center(lbl_zero_z);
+        lv_obj_add_event_cb(btn_zero_z, onZeroZClicked, LV_EVENT_CLICKED, nullptr);
+
+        y_pos += btn_height + spacing;
+    }
 
     // Zero A (conditional on A-axis enabled)
     if (UICommon::isAAxisEnabled()) {

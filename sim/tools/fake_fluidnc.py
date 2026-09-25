@@ -17,6 +17,7 @@ Test helpers (type them in the simulator's Terminal tab or console):
     $sim/msg=<text>  send [MSG:<text>]
     $sim/limit=XYZA  set limit pins (e.g. $sim/limit=X, or $sim/limit= to clear)
     $sim/probe=1|0   set probe pin
+    $sim/state=Door:0  report any state string (e.g. Door:0, Sleep, Bogus)
 """
 
 import argparse
@@ -213,6 +214,9 @@ class Session:
         elif up.startswith("$SIM/ALARM="):
             m.state = "Alarm"
             self.send(f"ALARM:{line.split('=', 1)[1]}")
+        elif up.startswith("$SIM/STATE="):
+            m.state = line.split("=", 1)[1].strip() or "Idle"
+            self.send("ok")
         elif up.startswith("$SIM/MSG="):
             self.send(f"[MSG:{line.split('=', 1)[1]}]")
         elif up.startswith("$SIM/LIMIT="):

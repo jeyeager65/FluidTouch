@@ -48,6 +48,16 @@ public:
     static bool isAAxisEnabled();
     static void setAAxisEnabled(bool enabled);
 
+    // General per-axis enabled check: X/Y/Z reflect the selected machine's
+    // reduced-axis config, 'A' delegates to isAAxisEnabled().
+    static bool isAxisEnabled(char axis);
+    static bool isXAxisEnabled();
+    static void setXAxisEnabled(bool enabled);
+    static bool isYAxisEnabled();
+    static void setYAxisEnabled(bool enabled);
+    static bool isZAxisEnabled();
+    static void setZAxisEnabled(bool enabled);
+
     // Getters for shared objects
     static lv_obj_t* getStatusBar() { return status_bar; }
     static lv_display_t* getDisplay() { return display; }
@@ -106,7 +116,10 @@ private:
     static float last_mpos_x, last_mpos_y, last_mpos_z;
 
     // Cached system preferences (loaded once at startup)
-    static bool enable_a_axis;
+    static bool axis_a_enabled;
+    static bool axis_x_enabled;
+    static bool axis_y_enabled;
+    static bool axis_z_enabled;
 };
 
 #endif // UI_COMMON_H

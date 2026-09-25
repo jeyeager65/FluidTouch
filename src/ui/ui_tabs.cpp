@@ -1,6 +1,8 @@
 #include "ui/ui_tabs.h"
 #include "ui/ui_theme.h"
+#include "ui/ui_common.h"
 #include "ui/tabs/ui_tab_status.h"
+#include "ui/tabs/ui_tab_main.h"
 #include "ui/tabs/ui_tab_control.h"
 #include "ui/tabs/ui_tab_files.h"
 #include "ui/tabs/ui_tab_macros.h"
@@ -43,8 +45,10 @@ void UITabs::createTabs() {
     lv_obj_set_style_bg_color(tabview, UITheme::ACCENT_PRIMARY, (lv_state_t)(LV_PART_ITEMS | LV_STATE_CHECKED));
     lv_obj_set_style_text_color(tabview, lv_color_white(), (lv_state_t)(LV_PART_ITEMS | LV_STATE_CHECKED));
     
-    // Add tabs
-    tab_status = lv_tabview_add_tab(tabview, "Status");
+    // Add tabs - reduced-axis machines (Y and Z both disabled, e.g. a miter
+    // saw fence) get a consolidated "Main" tab instead of "Status".
+    bool reduced_axis_mode = !UICommon::isYAxisEnabled() && !UICommon::isZAxisEnabled();
+    tab_status = lv_tabview_add_tab(tabview, reduced_axis_mode ? "Main" : "Status");
     tab_control = lv_tabview_add_tab(tabview, "Control");
     tab_files = lv_tabview_add_tab(tabview, "Files");
     tab_macros = lv_tabview_add_tab(tabview, "Macros");
@@ -83,9 +87,14 @@ void UITabs::tab_changed_event_cb(lv_event_t *e) {
     }
 }
 
-// Create Status tab content (delegated to UITabStatus module)
+// Create Status tab content (delegated to UITabStatus, or UITabMain for
+// reduced-axis machines - see the reduced_axis_mode check in createTabs())
 void UITabs::createStatusTab(lv_obj_t *tab) {
-    UITabStatus::create(tab);
+    if (!UICommon::isYAxisEnabled() && !UICommon::isZAxisEnabled()) {
+        UITabMain::create(tab);
+    } else {
+        UITabStatus::create(tab);
+    }
 }
 
 // Create Control tab content (delegated to UITabControl module)

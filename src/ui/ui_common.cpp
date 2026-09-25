@@ -71,7 +71,10 @@ float UICommon::last_mpos_y = -9999.0f;
 float UICommon::last_mpos_z = -9999.0f;
 
 // Cached system preferences (loaded once at startup)
-bool UICommon::enable_a_axis = false;
+bool UICommon::axis_a_enabled = false;
+bool UICommon::axis_x_enabled = true;
+bool UICommon::axis_y_enabled = true;
+bool UICommon::axis_z_enabled = true;
 
 static char last_machine_state[16] = "";  // Cached state to avoid unnecessary updates
 static bool last_machine_connected = false;  // Cached connection status
@@ -420,23 +423,37 @@ void UICommon::createStatusBar() {
     lv_obj_set_width(lbl_wpos_label, 60);  // Fixed width for right alignment
     lv_obj_set_pos(lbl_wpos_label, 200, 3);  // Top line
 
-    lbl_wpos_x = lv_label_create(status_bar);
-    lv_label_set_text(lbl_wpos_x, "X ----.---");
-    lv_obj_set_style_text_font(lbl_wpos_x, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_text_color(lbl_wpos_x, UITheme::AXIS_X, 0);
-    lv_obj_set_pos(lbl_wpos_x, 270, 3);
+    // X, Y and Z labels are only created when their axis is enabled for this
+    // machine (reduced-axis machines, e.g. a miter saw fence, disable some).
+    // Remaining enabled axes shift left to fill the gap rather than leaving
+    // blank space where a disabled axis would have been.
+    int wpos_x_cursor = 270;
+    if (isXAxisEnabled()) {
+        lbl_wpos_x = lv_label_create(status_bar);
+        lv_label_set_text(lbl_wpos_x, "X ----.---");
+        lv_obj_set_style_text_font(lbl_wpos_x, &lv_font_montserrat_18, 0);
+        lv_obj_set_style_text_color(lbl_wpos_x, UITheme::AXIS_X, 0);
+        lv_obj_set_pos(lbl_wpos_x, wpos_x_cursor, 3);
+        wpos_x_cursor += 110;
+    }
 
-    lbl_wpos_y = lv_label_create(status_bar);
-    lv_label_set_text(lbl_wpos_y, "Y ----.---");
-    lv_obj_set_style_text_font(lbl_wpos_y, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_text_color(lbl_wpos_y, UITheme::AXIS_Y, 0);
-    lv_obj_set_pos(lbl_wpos_y, 380, 3);
+    if (isYAxisEnabled()) {
+        lbl_wpos_y = lv_label_create(status_bar);
+        lv_label_set_text(lbl_wpos_y, "Y ----.---");
+        lv_obj_set_style_text_font(lbl_wpos_y, &lv_font_montserrat_18, 0);
+        lv_obj_set_style_text_color(lbl_wpos_y, UITheme::AXIS_Y, 0);
+        lv_obj_set_pos(lbl_wpos_y, wpos_x_cursor, 3);
+        wpos_x_cursor += 110;
+    }
 
-    lbl_wpos_z = lv_label_create(status_bar);
-    lv_label_set_text(lbl_wpos_z, "Z ----.---");
-    lv_obj_set_style_text_font(lbl_wpos_z, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_text_color(lbl_wpos_z, UITheme::AXIS_Z, 0);
-    lv_obj_set_pos(lbl_wpos_z, 490, 3);
+    if (isZAxisEnabled()) {
+        lbl_wpos_z = lv_label_create(status_bar);
+        lv_label_set_text(lbl_wpos_z, "Z ----.---");
+        lv_obj_set_style_text_font(lbl_wpos_z, &lv_font_montserrat_18, 0);
+        lv_obj_set_style_text_color(lbl_wpos_z, UITheme::AXIS_Z, 0);
+        lv_obj_set_pos(lbl_wpos_z, wpos_x_cursor, 3);
+        wpos_x_cursor += 110;
+    }
 
     // A-axis position label (conditionally shown when A-axis is enabled)
     // Position at MPos X location (line 2) when A-axis is enabled
@@ -460,23 +477,33 @@ void UICommon::createStatusBar() {
         lv_obj_set_width(lbl_mpos_label, 60);  // Fixed width for right alignment
         lv_obj_set_pos(lbl_mpos_label, 200, 27);  // Bottom line, aligned with WiFi name
 
-        lbl_mpos_x = lv_label_create(status_bar);
-        lv_label_set_text(lbl_mpos_x, "X ----.---");
-        lv_obj_set_style_text_font(lbl_mpos_x, &lv_font_montserrat_18, 0);
-        lv_obj_set_style_text_color(lbl_mpos_x, UITheme::AXIS_X, 0);
-        lv_obj_set_pos(lbl_mpos_x, 270, 27);
+        int mpos_x_cursor = 270;
+        if (isXAxisEnabled()) {
+            lbl_mpos_x = lv_label_create(status_bar);
+            lv_label_set_text(lbl_mpos_x, "X ----.---");
+            lv_obj_set_style_text_font(lbl_mpos_x, &lv_font_montserrat_18, 0);
+            lv_obj_set_style_text_color(lbl_mpos_x, UITheme::AXIS_X, 0);
+            lv_obj_set_pos(lbl_mpos_x, mpos_x_cursor, 27);
+            mpos_x_cursor += 110;
+        }
 
-        lbl_mpos_y = lv_label_create(status_bar);
-        lv_label_set_text(lbl_mpos_y, "Y ----.---");
-        lv_obj_set_style_text_font(lbl_mpos_y, &lv_font_montserrat_18, 0);
-        lv_obj_set_style_text_color(lbl_mpos_y, UITheme::AXIS_Y, 0);
-        lv_obj_set_pos(lbl_mpos_y, 380, 27);
+        if (isYAxisEnabled()) {
+            lbl_mpos_y = lv_label_create(status_bar);
+            lv_label_set_text(lbl_mpos_y, "Y ----.---");
+            lv_obj_set_style_text_font(lbl_mpos_y, &lv_font_montserrat_18, 0);
+            lv_obj_set_style_text_color(lbl_mpos_y, UITheme::AXIS_Y, 0);
+            lv_obj_set_pos(lbl_mpos_y, mpos_x_cursor, 27);
+            mpos_x_cursor += 110;
+        }
 
-        lbl_mpos_z = lv_label_create(status_bar);
-        lv_label_set_text(lbl_mpos_z, "Z ----.---");
-        lv_obj_set_style_text_font(lbl_mpos_z, &lv_font_montserrat_18, 0);
-        lv_obj_set_style_text_color(lbl_mpos_z, UITheme::AXIS_Z, 0);
-        lv_obj_set_pos(lbl_mpos_z, 490, 27);
+        if (isZAxisEnabled()) {
+            lbl_mpos_z = lv_label_create(status_bar);
+            lv_label_set_text(lbl_mpos_z, "Z ----.---");
+            lv_obj_set_style_text_font(lbl_mpos_z, &lv_font_montserrat_18, 0);
+            lv_obj_set_style_text_color(lbl_mpos_z, UITheme::AXIS_Z, 0);
+            lv_obj_set_pos(lbl_mpos_z, mpos_x_cursor, 27);
+            mpos_x_cursor += 110;
+        }
 
         Serial.println("[StatusBar] Created MPos labels (A-axis disabled)");
     } else {
@@ -1640,24 +1667,76 @@ void UICommon::showWCSLockDialog(const char *wcs_code, const char *wcs_name, voi
 
 // Load system preferences once at startup
 void UICommon::loadSystemPreferences() {
-    // Load enable_a_axis from the selected machine's config (it's machine-specific)
-    enable_a_axis = false;
+    // Load axis config from the selected machine's config (it's machine-specific)
+    axis_a_enabled = false;
+    axis_x_enabled = true;
+    axis_y_enabled = true;
+    axis_z_enabled = true;
     MachineConfig config;
     if (MachineConfigManager::getSelectedMachine(config)) {
-        enable_a_axis = config.enable_a_axis;
+        axis_a_enabled = config.axis_a_enabled;
+        axis_x_enabled = config.axis_x_enabled;
+        axis_y_enabled = config.axis_y_enabled;
+        axis_z_enabled = config.axis_z_enabled;
     }
 
-    Serial.printf("UICommon: Loaded system preferences - enable_a_axis=%d\n", enable_a_axis);
+    Serial.printf("UICommon: Loaded system preferences - axis_x_enabled=%d, axis_y_enabled=%d, axis_z_enabled=%d, axis_a_enabled=%d\n",
+                  axis_x_enabled, axis_y_enabled, axis_z_enabled, axis_a_enabled);
 }
 
 // Get cached A-axis enabled preference
 bool UICommon::isAAxisEnabled() {
-    return enable_a_axis;
+    return axis_a_enabled;
 }
 
 // Set cached A-axis enabled preference (call after saving to preferences)
 void UICommon::setAAxisEnabled(bool enabled) {
-    enable_a_axis = enabled;
-    Serial.printf("UICommon: Updated enable_a_axis to %d\n", enabled);
+    axis_a_enabled = enabled;
+    Serial.printf("UICommon: Updated axis_a_enabled to %d\n", enabled);
+}
+
+// Get cached X-axis enabled preference
+bool UICommon::isXAxisEnabled() {
+    return axis_x_enabled;
+}
+
+// Set cached X-axis enabled preference (call after saving to preferences)
+void UICommon::setXAxisEnabled(bool enabled) {
+    axis_x_enabled = enabled;
+    Serial.printf("UICommon: Updated axis_x_enabled to %d\n", enabled);
+}
+
+// Get cached Y-axis enabled preference
+bool UICommon::isYAxisEnabled() {
+    return axis_y_enabled;
+}
+
+// Set cached Y-axis enabled preference (call after saving to preferences)
+void UICommon::setYAxisEnabled(bool enabled) {
+    axis_y_enabled = enabled;
+    Serial.printf("UICommon: Updated axis_y_enabled to %d\n", enabled);
+}
+
+// Get cached Z-axis enabled preference
+bool UICommon::isZAxisEnabled() {
+    return axis_z_enabled;
+}
+
+// Set cached Z-axis enabled preference (call after saving to preferences)
+void UICommon::setZAxisEnabled(bool enabled) {
+    axis_z_enabled = enabled;
+    Serial.printf("UICommon: Updated axis_z_enabled to %d\n", enabled);
+}
+
+// General per-axis enabled check. X/Y/Z reflect the selected machine's
+// reduced-axis config; A delegates to isAAxisEnabled().
+bool UICommon::isAxisEnabled(char axis) {
+    switch (axis) {
+        case 'X': case 'x': return axis_x_enabled;
+        case 'Y': case 'y': return axis_y_enabled;
+        case 'Z': case 'z': return axis_z_enabled;
+        case 'A': case 'a': return axis_a_enabled;
+        default: return true;
+    }
 }
 

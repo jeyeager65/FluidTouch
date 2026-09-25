@@ -65,7 +65,7 @@ void UITabSettingsBackup::create(lv_obj_t *tab) {
     lv_obj_t *export_list = lv_label_create(tab);
     lv_label_set_text(export_list, 
         "The following items are saved to the backup file:\n"
-        "• Machine configurations (name, connection, hostname/IP, port)\n"
+        "• Machine configurations (name, connection, hostname/IP, port, axes)\n"
         "• WiFi network names (passwords NOT included)\n"
         "• Jog settings (XY/Z feed rates)\n"
         "• Probe settings (feed rate, distances, thickness)\n"

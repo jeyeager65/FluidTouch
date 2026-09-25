@@ -39,8 +39,11 @@ struct MachineConfig {
     int probe_retract;       // Default retract distance (mm)
     float probe_thickness;   // Default probe thickness (mm, 1 decimal place)
 
-    // Axis configuration
-    bool enable_a_axis;      // Enable 4th axis (rotary) support
+    // Axis configuration - consistent axis_<letter>_enabled naming for X/Y/Z/A
+    bool axis_x_enabled;     // X axis present (disable for reduced-axis machines, e.g. Y/Z-only gantry)
+    bool axis_y_enabled;     // Y axis present (disable for reduced-axis machines, e.g. miter saw fence)
+    bool axis_z_enabled;     // Z axis present (disable for reduced-axis machines)
+    bool axis_a_enabled;     // Enable 4th axis (rotary) support
     
     // Constructor with defaults
     MachineConfig() : connection_type(CONN_WIRELESS), websocket_port(81), is_configured(false),
@@ -49,7 +52,7 @@ struct MachineConfig {
                       jog_max_xy_feed(3000), jog_max_z_feed(1000), jog_max_a_feed(1000),
                       probe_feed_rate(100), probe_max_distance(10),
                       probe_retract(2), probe_thickness(0.0f),
-                      enable_a_axis(false) {
+                      axis_x_enabled(true), axis_y_enabled(true), axis_z_enabled(true), axis_a_enabled(false) {
         name[0] = '\0';
         ssid[0] = '\0';
         password[0] = '\0';
