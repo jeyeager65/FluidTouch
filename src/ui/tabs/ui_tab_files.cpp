@@ -243,27 +243,43 @@ void UITabFiles::refreshFileList(const std::string &path) {
             return;
         }
         
-        // Skip PING messages during JSON collection
-        if (msg.startsWith("PING:")) {
+        // Skip PING messages during JSON collection ("PING:..." or bare "PING" depending on FluidNC version)
+        if (msg == "PING" || msg.startsWith("PING:")) {
             return;
         }
-        
-        // Detect end of JSON response (ok line) - check this BEFORE printing/processing
-        if (msg.equalsIgnoreCase("ok")) {
-            if (collecting) {
-                Serial.printf("[Files] Received 'ok', parsing %d bytes\n", jsonBuffer.length());
-                parseFileList(jsonBuffer.c_str());
-                jsonBuffer = "";
-                collecting = false;
-                FluidNCClient::clearMessageCallback();
+
+        // Detect end of JSON response (ok line) - check this BEFORE printing/processing.
+        // FluidNC v4 (port 80) sends the response in ~100 byte chunks and appends the
+        // terminating "ok" to the last chunk ("...}\nok") rather than sending it on its
+        // own - split it off so the list is parsed immediately instead of on the timeout.
+        bool response_complete = msg.equalsIgnoreCase("ok");
+        if (!response_complete) {
+            int last_newline = msg.lastIndexOf('\n');
+            if (last_newline >= 0) {
+                String last_line = msg.substring(last_newline + 1);
+                last_line.trim();
+                if (last_line.equalsIgnoreCase("ok")) {
+                    response_complete = true;
+                    msg = msg.substring(0, last_newline);
+                    while (msg.endsWith("\r")) {
+                        msg.remove(msg.length() - 1);
+                    }
+                }
             }
-            return;  // Always return early for "ok" messages
         }
-        
-        Serial.printf("[Files] Received line: %s\n", msg.c_str());
-        
+
+        if (response_complete && msg.equalsIgnoreCase("ok")) {
+            msg = "";  // Nothing to collect - just the terminator
+        }
+
+        if (msg.length() > 0) {
+            Serial.printf("[Files] Received line: %s\n", msg.c_str());
+        }
+
         // Start collecting when we see JSON start (either [JSON: wrapper or raw JSON with {"files")
-        if (msg.startsWith("[JSON:") || msg.startsWith("{\"files")) {
+        if (msg.length() == 0) {
+            // Terminator only
+        } else if (msg.startsWith("[JSON:") || msg.startsWith("{\"files")) {
             if (!collecting) {
                 Serial.println("[Files] Starting to collect JSON response");
                 collecting = true;
@@ -283,6 +299,14 @@ void UITabFiles::refreshFileList(const std::string &path) {
             // Continue collecting any other lines while in collection mode
             jsonBuffer += msg;
             Serial.printf("[Files] JSON buffer now: %d bytes\n", jsonBuffer.length());
+        }
+
+        if (response_complete && collecting) {
+            Serial.printf("[Files] Received 'ok', parsing %d bytes\n", jsonBuffer.length());
+            parseFileList(jsonBuffer.c_str());
+            jsonBuffer = "";
+            collecting = false;
+            FluidNCClient::clearMessageCallback();
         }
     });
     

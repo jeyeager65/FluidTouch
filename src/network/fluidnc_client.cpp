@@ -22,6 +22,14 @@ uint32_t FluidNCClient::lastGCodePollMs = 0;
 uint32_t FluidNCClient::lastAutoReportAttemptMs = 0;
 bool FluidNCClient::everConnectedSuccessfully = false;
 bool FluidNCClient::isHandlingDisconnect = false;
+String FluidNCClient::rxLineBuffer = "";
+uint32_t FluidNCClient::rxLineBufferMs = 0;
+
+// A partial line with no '\n' after this long is handled as-is, in case a
+// firmware version sends binary frames without line endings
+static const uint32_t RX_PARTIAL_LINE_TIMEOUT_MS = 100;
+// Guard against unbounded growth if a '\n' never arrives
+static const size_t RX_LINE_BUFFER_MAX = 32768;
 
 void FluidNCClient::init() {
     if (initialized) return;
@@ -150,7 +158,12 @@ void FluidNCClient::loop() {
     
     // Handle WebSocket events - ArduinoWebsockets handles polling internally
     webSocket.poll();
-    
+
+    // Handle a trailing partial line that never got its '\n'
+    if (rxLineBuffer.length() > 0 && millis() - rxLineBufferMs >= RX_PARTIAL_LINE_TIMEOUT_MS) {
+        flushLineBuffer();
+    }
+
     // Only check auto-reporting and polling if WebSocket is connected
     if (!webSocket.available()) {
         return;
@@ -282,8 +295,51 @@ void FluidNCClient::clearTerminalCallback() {
 }
 
 void FluidNCClient::onMessageCallback(WebsocketsMessage message) {
-    const char* payload = message.c_str();
-    
+    // Text frames (e.g. "CURRENT_ID:2", "PING") are single messages.
+    if (!message.isBinary()) {
+        String text = message.data();
+        while (text.endsWith("\n") || text.endsWith("\r")) {
+            text.remove(text.length() - 1);
+        }
+        if (text.length() > 0) {
+            handleLine(text.c_str());
+        }
+        return;
+    }
+
+    // Binary frames carry controller output as '\n'-terminated lines. FluidNC can
+    // pack several lines into one frame (e.g. "[MSG:...]\n<Hold:0|...>\n[GC:...]\n")
+    // or split a long line (e.g. a $Files/ListGcode JSON response) across frames,
+    // so reassemble and hand each complete line on separately.
+    rxLineBuffer += message.c_str();
+    rxLineBufferMs = millis();
+
+    int newline;
+    while ((newline = rxLineBuffer.indexOf('\n')) >= 0) {
+        String line = rxLineBuffer.substring(0, newline);
+        rxLineBuffer.remove(0, newline + 1);
+        while (line.endsWith("\r")) {
+            line.remove(line.length() - 1);
+        }
+        if (line.length() > 0) {
+            handleLine(line.c_str());
+        }
+    }
+
+    if (rxLineBuffer.length() > RX_LINE_BUFFER_MAX) {
+        Serial.printf("[FluidNC] Line buffer exceeded %d bytes without newline - flushing\n", RX_LINE_BUFFER_MAX);
+        flushLineBuffer();
+    }
+}
+
+void FluidNCClient::flushLineBuffer() {
+    if (rxLineBuffer.length() == 0) return;
+    String line = rxLineBuffer;
+    rxLineBuffer = "";
+    handleLine(line.c_str());
+}
+
+void FluidNCClient::handleLine(const char* payload) {
     // Only log non-status messages to reduce serial spam
     if (payload[0] != '<') {
         Serial.printf("[FluidNC] Received: %s\n", payload);
@@ -337,6 +393,7 @@ void FluidNCClient::onEventsCallback(WebsocketsEvent event, String data) {
     switch(event) {
         case WebsocketsEvent::ConnectionOpened:
             Serial.println("[FluidNC] WebSocket connected");
+            rxLineBuffer = "";
             // Don't set is_connected yet - wait for first status report
             currentStatus.state = STATE_IDLE;
             currentStatus.last_update_ms = millis();
@@ -354,7 +411,8 @@ void FluidNCClient::onEventsCallback(WebsocketsEvent event, String data) {
             
         case WebsocketsEvent::ConnectionClosed:
             Serial.println("[FluidNC] WebSocket disconnected");
-            
+            rxLineBuffer = "";
+
             // Set flag to prevent re-entrant close() calls
             isHandlingDisconnect = true;
             
