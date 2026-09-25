@@ -24,6 +24,9 @@ char UITabMain::original_value[32] = "";
 void UITabMain::create(lv_obj_t *tab) {
     lv_obj_set_style_bg_color(tab, UITheme::BG_BLACK, LV_PART_MAIN);
     lv_obj_clear_flag(tab, LV_OBJ_FLAG_SCROLLABLE);
+    // No theme padding - positions below are absolute within the 800x360 tab
+    // area and include their own 10px margins
+    lv_obj_set_style_pad_all(tab, 0, 0);
 
     // ========== MACHINE STATE (top left) ==========
     lv_obj_t *state_label = lv_label_create(tab);
@@ -36,24 +39,24 @@ void UITabMain::create(lv_obj_t *tab) {
     lv_label_set_text(lbl_state, "OFFLINE");
     lv_obj_set_style_text_font(lbl_state, &lv_font_montserrat_32, 0);
     lv_obj_set_style_text_color(lbl_state, UITheme::STATE_ALARM, 0);
-    lv_obj_set_pos(lbl_state, 10, 30);
+    lv_obj_set_pos(lbl_state, 10, 28);
 
     // ========== WORK POSITION (editable X) ==========
     lv_obj_t *wpos_header = lv_label_create(tab);
     lv_label_set_text(wpos_header, "WORK POSITION");
     lv_obj_set_style_text_font(wpos_header, &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_color(wpos_header, UITheme::TEXT_DISABLED, 0);
-    lv_obj_set_pos(wpos_header, 10, 110);
+    lv_obj_set_pos(wpos_header, 10, 80);
 
     lv_obj_t *wpos_x_label = lv_label_create(tab);
     lv_label_set_text(wpos_x_label, "X");
     lv_obj_set_style_text_font(wpos_x_label, &lv_font_montserrat_32, 0);
     lv_obj_set_style_text_color(wpos_x_label, UITheme::AXIS_X, 0);
-    lv_obj_set_pos(wpos_x_label, 10, 145);
+    lv_obj_set_pos(wpos_x_label, 10, 108);
 
     ind_limit_x = lv_obj_create(tab);
     lv_obj_set_size(ind_limit_x, 16, 16);
-    lv_obj_set_pos(ind_limit_x, 10, 195);
+    lv_obj_set_pos(ind_limit_x, 16, 148);
     lv_obj_set_style_radius(ind_limit_x, 8, 0);
     lv_obj_set_style_bg_color(ind_limit_x, UITheme::BG_BUTTON, 0);
     lv_obj_set_style_border_width(ind_limit_x, 1, 0);
@@ -64,8 +67,8 @@ void UITabMain::create(lv_obj_t *tab) {
     lv_textarea_set_text(lbl_wpos_x, "----.---");
     lv_textarea_set_one_line(lbl_wpos_x, true);
     lv_textarea_set_max_length(lbl_wpos_x, 10);
-    lv_obj_set_size(lbl_wpos_x, 300, 65);
-    lv_obj_set_pos(lbl_wpos_x, 60, 135);
+    lv_obj_set_size(lbl_wpos_x, 330, 55);
+    lv_obj_set_pos(lbl_wpos_x, 50, 100);
     lv_obj_clear_flag(lbl_wpos_x, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_text_font(lbl_wpos_x, &lv_font_montserrat_32, 0);
     lv_obj_set_style_pad_top(lbl_wpos_x, 4, 0);
@@ -85,20 +88,20 @@ void UITabMain::create(lv_obj_t *tab) {
     lv_label_set_text(mpos_header, "MACHINE POSITION");
     lv_obj_set_style_text_font(mpos_header, &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_color(mpos_header, UITheme::TEXT_DISABLED, 0);
-    lv_obj_set_pos(mpos_header, 10, 215);
+    lv_obj_set_pos(mpos_header, 10, 170);
 
     lv_obj_t *mpos_x_label = lv_label_create(tab);
     lv_label_set_text(mpos_x_label, "X");
     lv_obj_set_style_text_font(mpos_x_label, &lv_font_montserrat_32, 0);
     lv_obj_set_style_text_color(mpos_x_label, UITheme::POS_MACHINE, 0);
-    lv_obj_set_pos(mpos_x_label, 10, 250);
+    lv_obj_set_pos(mpos_x_label, 10, 198);
 
     lbl_mpos_x = lv_textarea_create(tab);
     lv_textarea_set_text(lbl_mpos_x, "----.---");
     lv_textarea_set_one_line(lbl_mpos_x, true);
     lv_textarea_set_max_length(lbl_mpos_x, 10);
-    lv_obj_set_size(lbl_mpos_x, 300, 65);
-    lv_obj_set_pos(lbl_mpos_x, 60, 240);
+    lv_obj_set_size(lbl_mpos_x, 330, 55);
+    lv_obj_set_pos(lbl_mpos_x, 50, 190);
     lv_obj_clear_flag(lbl_mpos_x, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_text_font(lbl_mpos_x, &lv_font_montserrat_32, 0);
     lv_obj_set_style_pad_top(lbl_mpos_x, 4, 0);
@@ -113,12 +116,13 @@ void UITabMain::create(lv_obj_t *tab) {
     lv_obj_add_event_cb(lbl_mpos_x, position_field_event_handler, LV_EVENT_FOCUSED, NULL);
     lv_obj_add_event_cb(lbl_mpos_x, position_field_event_handler, LV_EVENT_DEFOCUSED, NULL);
 
-    // ========== ACTION BUTTONS (right column) ==========
+    // ========== ACTION BUTTONS (right column, full height) ==========
+    // 4 x 75px + 3 x 12px spacing = 336px, fits the 360px tab with 10px margins
     const int btn_x = 440;
-    const int btn_width = 220;
-    const int btn_height = 55;
+    const int btn_width = 340;
+    const int btn_height = 75;
     const int btn_spacing = 12;
-    int btn_y = 110;
+    int btn_y = 10;
 
     btn_home_x = lv_button_create(tab);
     lv_obj_set_size(btn_home_x, btn_width, btn_height);
@@ -168,15 +172,15 @@ void UITabMain::create(lv_obj_t *tab) {
     lv_label_set_text(message_header, "MESSAGE");
     lv_obj_set_style_text_font(message_header, &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_color(message_header, UITheme::TEXT_DISABLED, 0);
-    lv_obj_set_pos(message_header, 10, 320);
+    lv_obj_set_pos(message_header, 10, 262);
 
     lbl_message = lv_label_create(tab);
     lv_label_set_text(lbl_message, "No messages.");
-    lv_obj_set_size(lbl_message, 650, 30);
+    lv_obj_set_size(lbl_message, 410, 60);  // Left column, up to 2 lines
     lv_label_set_long_mode(lbl_message, LV_LABEL_LONG_DOT);
     lv_obj_set_style_text_font(lbl_message, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_message, UITheme::TEXT_LIGHT, 0);
-    lv_obj_set_pos(lbl_message, 10, 340);
+    lv_obj_set_pos(lbl_message, 10, 282);
 }
 
 // ========== UPDATE METHODS ==========

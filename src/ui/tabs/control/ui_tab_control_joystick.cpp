@@ -1079,31 +1079,35 @@ void UITabControlJoystick::create(lv_obj_t *parent) {
     lv_obj_set_style_text_font(xy_max_label, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(xy_max_label, UITheme::UI_INFO, 0);
     
-    // Spacer between XY and Z info
-    lv_obj_t *spacer = lv_obj_create(info_container);
-    lv_obj_set_size(spacer, 1, 20);
-    lv_obj_set_style_bg_opa(spacer, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_width(spacer, 0, 0);
-    
-    // Z Percentage
-    z_percent_label = lv_label_create(info_container);
-    lv_label_set_text(z_percent_label, "Z: 0%");
-    lv_obj_set_style_text_font(z_percent_label, &lv_font_montserrat_20, 0);
-    lv_obj_set_style_text_color(z_percent_label, UITheme::AXIS_Z, 0);
-    
-    // Z Feedrate
-    z_feedrate_label = lv_label_create(info_container);
-    lv_label_set_text(z_feedrate_label, "0 mm/min");
-    lv_obj_set_style_text_font(z_feedrate_label, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_text_color(z_feedrate_label, UITheme::TEXT_LIGHT, 0);
-    
-    // Z Max Feedrate (from settings)
-    z_max_label = lv_label_create(info_container);
-    char z_max_text[32];
-    snprintf(z_max_text, sizeof(z_max_text), "Max: %d mm/min", UITabSettingsJog::getMaxZFeed());
-    lv_label_set_text(z_max_label, z_max_text);
-    lv_obj_set_style_text_font(z_max_label, &lv_font_montserrat_14, 0);
-    lv_obj_set_style_text_color(z_max_label, UITheme::UI_INFO, 0);
+    // Z info - only when the machine has a Z axis (the Z/A slider section below
+    // is skipped otherwise, so these would show a Z readout with no Z control)
+    if (UICommon::isZAxisEnabled()) {
+        // Spacer between XY and Z info
+        lv_obj_t *spacer = lv_obj_create(info_container);
+        lv_obj_set_size(spacer, 1, 20);
+        lv_obj_set_style_bg_opa(spacer, LV_OPA_TRANSP, 0);
+        lv_obj_set_style_border_width(spacer, 0, 0);
+
+        // Z Percentage
+        z_percent_label = lv_label_create(info_container);
+        lv_label_set_text(z_percent_label, "Z: 0%");
+        lv_obj_set_style_text_font(z_percent_label, &lv_font_montserrat_20, 0);
+        lv_obj_set_style_text_color(z_percent_label, UITheme::AXIS_Z, 0);
+
+        // Z Feedrate
+        z_feedrate_label = lv_label_create(info_container);
+        lv_label_set_text(z_feedrate_label, "0 mm/min");
+        lv_obj_set_style_text_font(z_feedrate_label, &lv_font_montserrat_18, 0);
+        lv_obj_set_style_text_color(z_feedrate_label, UITheme::TEXT_LIGHT, 0);
+
+        // Z Max Feedrate (from settings)
+        z_max_label = lv_label_create(info_container);
+        char z_max_text[32];
+        snprintf(z_max_text, sizeof(z_max_text), "Max: %d mm/min", UITabSettingsJog::getMaxZFeed());
+        lv_label_set_text(z_max_label, z_max_text);
+        lv_obj_set_style_text_font(z_max_label, &lv_font_montserrat_14, 0);
+        lv_obj_set_style_text_color(z_max_label, UITheme::UI_INFO, 0);
+    }
 
     // A-axis info (conditional, hidden by default)
     if (UICommon::isAAxisEnabled()) {

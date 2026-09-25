@@ -101,6 +101,11 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_color_t xy_header_color = (xy_x_enabled && xy_y_enabled) ? UITheme::AXIS_XY :
                                  xy_x_enabled ? UITheme::AXIS_X :
                                  xy_y_enabled ? UITheme::AXIS_Y : UITheme::TEXT_DISABLED;
+    // Same idea for the step/feed labels ("XY Step" -> "X Step" on an X-only machine)
+    const char *xy_step_text = (xy_x_enabled && !xy_y_enabled) ? "X Step" :
+                               (!xy_x_enabled && xy_y_enabled) ? "Y Step" : "XY Step";
+    const char *xy_feed_text = (xy_x_enabled && !xy_y_enabled) ? "X Feed:" :
+                               (!xy_x_enabled && xy_y_enabled) ? "Y Feed:" : "XY Feed:";
     lv_obj_t *xy_jog_header = lv_label_create(tab);
     lv_label_set_text(xy_jog_header, xy_header_text);
     lv_obj_set_style_text_font(xy_jog_header, &lv_font_montserrat_18, 0);
@@ -109,7 +114,7 @@ void UITabControlJog::create(lv_obj_t *tab) {
     
     // XY Step size selection - VERTICAL buttons on left
     lv_obj_t *xy_step_label = lv_label_create(tab);
-    lv_label_set_text(xy_step_label, "XY Step");
+    lv_label_set_text(xy_step_label, xy_step_text);
     lv_obj_set_style_text_font(xy_step_label, &lv_font_montserrat_14, 0);
     lv_obj_set_pos(xy_step_label, 5, 9);  // Moved down 4px total
     
@@ -226,7 +231,7 @@ void UITabControlJog::create(lv_obj_t *tab) {
     
     // XY Feed rate control
     lv_obj_t *xy_feed_label = lv_label_create(tab);
-    lv_label_set_text(xy_feed_label, "XY Feed:");
+    lv_label_set_text(xy_feed_label, xy_feed_text);
     lv_obj_set_style_text_font(xy_feed_label, &lv_font_montserrat_14, 0);
     lv_obj_set_pos(xy_feed_label, 85, 280);
     

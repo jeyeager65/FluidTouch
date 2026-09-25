@@ -138,17 +138,20 @@ void UITabSettingsGeneral::create(lv_obj_t *tab) {
     lv_label_set_text(axis_section_title, "AXIS CONFIGURATION");
     lv_obj_set_style_text_font(axis_section_title, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(axis_section_title, UITheme::TEXT_DISABLED, 0);
-    lv_obj_set_pos(axis_section_title, 400, 155);  // Right column, below Display
+    lv_obj_set_pos(axis_section_title, 400, 175);  // Right column, below Display's 3-line description
+
+    // Axis toggles in a 2x2 grid (X Y / Z A) - the settings content area is only
+    // ~680px wide, so four switches in one row would run off the right edge
 
     // X-Axis toggle
     lv_obj_t *axis_x_label = lv_label_create(tab);
     lv_label_set_text(axis_x_label, "X");
     lv_obj_set_style_text_font(axis_x_label, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(axis_x_label, UITheme::AXIS_X, 0);
-    lv_obj_set_pos(axis_x_label, 400, 210);
+    lv_obj_set_pos(axis_x_label, 400, 220);
 
     axis_x_switch = lv_switch_create(tab);
-    lv_obj_set_pos(axis_x_switch, 425, 200);
+    lv_obj_set_pos(axis_x_switch, 425, 215);
     if (axis_x_enabled) {
         lv_obj_add_state(axis_x_switch, LV_STATE_CHECKED);
     }
@@ -158,10 +161,10 @@ void UITabSettingsGeneral::create(lv_obj_t *tab) {
     lv_label_set_text(axis_y_label, "Y");
     lv_obj_set_style_text_font(axis_y_label, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(axis_y_label, UITheme::AXIS_Y, 0);
-    lv_obj_set_pos(axis_y_label, 490, 210);
+    lv_obj_set_pos(axis_y_label, 540, 220);
 
     axis_y_switch = lv_switch_create(tab);
-    lv_obj_set_pos(axis_y_switch, 515, 200);
+    lv_obj_set_pos(axis_y_switch, 565, 215);
     if (axis_y_enabled) {
         lv_obj_add_state(axis_y_switch, LV_STATE_CHECKED);
     }
@@ -171,10 +174,10 @@ void UITabSettingsGeneral::create(lv_obj_t *tab) {
     lv_label_set_text(axis_z_label, "Z");
     lv_obj_set_style_text_font(axis_z_label, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(axis_z_label, UITheme::AXIS_Z, 0);
-    lv_obj_set_pos(axis_z_label, 580, 210);
+    lv_obj_set_pos(axis_z_label, 400, 260);
 
     axis_z_switch = lv_switch_create(tab);
-    lv_obj_set_pos(axis_z_switch, 605, 200);
+    lv_obj_set_pos(axis_z_switch, 425, 255);
     if (axis_z_enabled) {
         lv_obj_add_state(axis_z_switch, LV_STATE_CHECKED);
     }
@@ -184,20 +187,20 @@ void UITabSettingsGeneral::create(lv_obj_t *tab) {
     lv_label_set_text(axis_a_label, "A");
     lv_obj_set_style_text_font(axis_a_label, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(axis_a_label, UITheme::AXIS_A, 0);
-    lv_obj_set_pos(axis_a_label, 670, 210);
+    lv_obj_set_pos(axis_a_label, 540, 260);
 
     axis_a_switch = lv_switch_create(tab);
-    lv_obj_set_pos(axis_a_switch, 695, 200);
+    lv_obj_set_pos(axis_a_switch, 565, 255);
     if (axis_a_enabled) {
         lv_obj_add_state(axis_a_switch, LV_STATE_CHECKED);
     }
 
     // Description text for axis configuration (X/Y/Z default on, A default off)
     lv_obj_t *axis_desc_label = lv_label_create(tab);
-    lv_label_set_text(axis_desc_label, "Disable X/Y/Z for reduced-axis machines (e.g. a\nmiter saw fence). Enable A for 4th-axis (rotary)\nsupport. Requires restart.");
+    lv_label_set_text(axis_desc_label, "Turn off unused axes (e.g. a\nmiter saw fence). Turn on A for\na rotary axis. Requires restart.");
     lv_obj_set_style_text_font(axis_desc_label, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(axis_desc_label, UITheme::TEXT_DISABLED, 0);
-    lv_obj_set_pos(axis_desc_label, 400, 242);  // Right column
+    lv_obj_set_pos(axis_desc_label, 400, 295);  // Right column
 
     // === Action Buttons (positioned at bottom with 20px margins) ===
     // Save button
