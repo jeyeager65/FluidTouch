@@ -65,41 +65,46 @@ void UITabMain::create(lv_obj_t *tab) {
     lv_obj_set_style_line_width(hline, 1, 0);
     lv_obj_set_pos(hline, 10, 280);
 
-    // ========== LEFT: STATE + X POSITION ==========
-    lv_obj_t *state_label = lv_label_create(tab);
-    lv_label_set_text(state_label, "STATE");
-    lv_obj_set_style_text_font(state_label, &lv_font_montserrat_16, 0);
-    lv_obj_set_style_text_color(state_label, UITheme::TEXT_DISABLED, 0);
-    lv_obj_set_pos(state_label, left_x, 8);
+    // ========== LEFT: WORK POSITION ==========
+    // (Machine state isn't repeated here - it's always in the status bar)
+    lv_obj_t *wpos_header = lv_label_create(tab);
+    lv_label_set_text(wpos_header, "WORK POSITION");
+    lv_obj_set_style_text_font(wpos_header, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_color(wpos_header, UITheme::TEXT_DISABLED, 0);
+    lv_obj_set_pos(wpos_header, left_x, 8);
 
-    lbl_state = lv_label_create(tab);
-    lv_label_set_text(lbl_state, "OFFLINE");
-    lv_obj_set_style_text_font(lbl_state, &lv_font_montserrat_32, 0);
-    lv_obj_set_style_text_color(lbl_state, UITheme::STATE_ALARM, 0);
-    lv_obj_set_pos(lbl_state, left_x, 26);
-    fitStateLabel("OFFLINE");
+    // Limit indicator at the right of the caption row, styled like the Status
+    // tab's "PRB" probe indicator
+    lv_obj_t *limit_label = lv_label_create(tab);
+    lv_label_set_text(limit_label, "LIMIT");
+    lv_obj_set_style_text_font(limit_label, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_color(limit_label, UITheme::ACCENT_SECONDARY, 0);
+    lv_obj_update_layout(limit_label);
+    const int limit_label_x = left_x + left_w - lv_obj_get_width(limit_label);
+    lv_obj_set_pos(limit_label, limit_label_x, 8);
 
     ind_limit_x = lv_obj_create(tab);
     lv_obj_set_size(ind_limit_x, 14, 14);
-    lv_obj_set_pos(ind_limit_x, 196, 33);  // Left of the X label, like the Status tab
+    lv_obj_set_pos(ind_limit_x, limit_label_x - 20, 10);
     lv_obj_set_style_radius(ind_limit_x, 7, 0);
     lv_obj_set_style_bg_color(ind_limit_x, UITheme::BG_BUTTON, 0);
     lv_obj_set_style_border_width(ind_limit_x, 1, 0);
     lv_obj_set_style_border_color(ind_limit_x, UITheme::BORDER_MEDIUM, 0);
     lv_obj_clear_flag(ind_limit_x, LV_OBJ_FLAG_SCROLLABLE);
 
-    lv_obj_t *wpos_x_label = lv_label_create(tab);
-    lv_label_set_text(wpos_x_label, "X");
-    lv_obj_set_style_text_font(wpos_x_label, &lv_font_montserrat_32, 0);
-    lv_obj_set_style_text_color(wpos_x_label, UITheme::AXIS_X, 0);
-    lv_obj_set_pos(wpos_x_label, 216, 21);
-
     lbl_wpos_x = lv_textarea_create(tab);
     lv_textarea_set_text(lbl_wpos_x, "----.---");
     lv_textarea_set_one_line(lbl_wpos_x, true);
     lv_textarea_set_max_length(lbl_wpos_x, 10);
-    lv_obj_set_size(lbl_wpos_x, 200, 55);
-    lv_obj_set_pos(lbl_wpos_x, left_x + left_w - 200, 12);
+    // Position row: [X-] [position] [X+] across the panel - jog buttons flank
+    // the field like a DRO with nudge buttons; the field fits "-1234.567" at 32px
+    const int row_y = 30;
+    const int jog_w = 110;
+    const int row_gap = 8;
+    const int field_x = left_x + jog_w + row_gap;
+    const int field_w = left_w - 2 * (jog_w + row_gap);
+    lv_obj_set_size(lbl_wpos_x, field_w, 55);
+    lv_obj_set_pos(lbl_wpos_x, field_x, row_y);
     lv_obj_clear_flag(lbl_wpos_x, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_text_font(lbl_wpos_x, &lv_font_montserrat_32, 0);
     // Explicit paddings and the same 2px border focused or not, so the content
@@ -118,12 +123,6 @@ void UITabMain::create(lv_obj_t *tab) {
     lv_obj_add_event_cb(lbl_wpos_x, position_field_event_handler, LV_EVENT_FOCUSED, NULL);
     lv_obj_add_event_cb(lbl_wpos_x, position_field_event_handler, LV_EVENT_DEFOCUSED, NULL);
 
-    lv_obj_t *goto_hint = lv_label_create(tab);
-    lv_label_set_text(goto_hint, "Tap position to go to");
-    lv_obj_set_style_text_font(goto_hint, &lv_font_montserrat_12, 0);
-    lv_obj_set_style_text_color(goto_hint, UITheme::TEXT_DISABLED, 0);
-    lv_obj_set_pos(goto_hint, left_x + left_w - 198, 70);
-
     // ========== LEFT: JOG ==========
     loadStepValues();
 
@@ -131,7 +130,7 @@ void UITabMain::create(lv_obj_t *tab) {
     lv_label_set_text(jog_label, "JOG STEP (mm)");
     lv_obj_set_style_text_font(jog_label, &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_color(jog_label, UITheme::TEXT_DISABLED, 0);
-    lv_obj_set_pos(jog_label, left_x, 90);
+    lv_obj_set_pos(jog_label, left_x, 100);
 
     // Up to 5 step buttons spread across the panel width
     const int step_gap = 10;
@@ -141,7 +140,7 @@ void UITabMain::create(lv_obj_t *tab) {
         if (i >= step_count) continue;
         lv_obj_t *btn = lv_button_create(tab);
         lv_obj_set_size(btn, step_w, 44);
-        lv_obj_set_pos(btn, left_x + i * (step_w + step_gap), 112);
+        lv_obj_set_pos(btn, left_x + i * (step_w + step_gap), 122);
         lv_obj_t *lbl = lv_label_create(btn);
         char buf[16];
         snprintf(buf, sizeof(buf), "%g", step_values[i]);
@@ -153,32 +152,37 @@ void UITabMain::create(lv_obj_t *tab) {
     }
     updateStepButtonStyles();
 
-    const int jog_w = (left_w - step_gap) / 2;
     lv_obj_t *btn_minus = lv_button_create(tab);
-    lv_obj_set_size(btn_minus, jog_w, 50);
-    lv_obj_set_pos(btn_minus, left_x, 166);
+    lv_obj_set_size(btn_minus, jog_w, 55);
+    lv_obj_set_pos(btn_minus, left_x, row_y);
     lv_obj_set_style_bg_color(btn_minus, UITheme::AXIS_X, LV_PART_MAIN);
     lv_obj_t *lbl_minus = lv_label_create(btn_minus);
-    lv_label_set_text(lbl_minus, LV_SYMBOL_LEFT "  X-");
+    lv_label_set_text(lbl_minus, LV_SYMBOL_LEFT " X-");
     lv_obj_set_style_text_font(lbl_minus, &lv_font_montserrat_20, 0);
     lv_obj_center(lbl_minus);
     lv_obj_add_event_cb(btn_minus, onJogClicked, LV_EVENT_CLICKED, (void*)(intptr_t)-1);
 
     lv_obj_t *btn_plus = lv_button_create(tab);
-    lv_obj_set_size(btn_plus, jog_w, 50);
-    lv_obj_set_pos(btn_plus, left_x + jog_w + step_gap, 166);
+    lv_obj_set_size(btn_plus, jog_w, 55);
+    lv_obj_set_pos(btn_plus, field_x + field_w + row_gap, row_y);
     lv_obj_set_style_bg_color(btn_plus, UITheme::AXIS_X, LV_PART_MAIN);
     lv_obj_t *lbl_plus = lv_label_create(btn_plus);
-    lv_label_set_text(lbl_plus, "X+  " LV_SYMBOL_RIGHT);
+    lv_label_set_text(lbl_plus, "X+ " LV_SYMBOL_RIGHT);
     lv_obj_set_style_text_font(lbl_plus, &lv_font_montserrat_20, 0);
     lv_obj_center(lbl_plus);
     lv_obj_add_event_cb(btn_plus, onJogClicked, LV_EVENT_CLICKED, (void*)(intptr_t)1);
 
-    // ========== LEFT: MESSAGE (same box styling as the Status tab) ==========
+    // ========== LEFT: MESSAGE (same label + box styling as the Status tab) ==========
+    lv_obj_t *message_header = lv_label_create(tab);
+    lv_label_set_text(message_header, "MESSAGE");
+    lv_obj_set_style_text_font(message_header, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_color(message_header, UITheme::TEXT_DISABLED, 0);
+    lv_obj_set_pos(message_header, left_x, 178);
+
     lbl_message = lv_label_create(tab);
     lv_label_set_text(lbl_message, "No messages.");
-    lv_obj_set_size(lbl_message, left_w, 46);
-    lv_label_set_long_mode(lbl_message, LV_LABEL_LONG_DOT);
+    lv_obj_set_size(lbl_message, left_w, 74);
+    lv_label_set_long_mode(lbl_message, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_font(lbl_message, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_message, UITheme::TEXT_LIGHT, 0);
     lv_obj_set_style_bg_color(lbl_message, UITheme::BG_MEDIUM, 0);
@@ -187,7 +191,7 @@ void UITabMain::create(lv_obj_t *tab) {
     lv_obj_set_style_border_color(lbl_message, UITheme::BORDER_MEDIUM, 0);
     lv_obj_set_style_radius(lbl_message, 5, 0);
     lv_obj_set_style_pad_all(lbl_message, 10, 0);
-    lv_obj_set_pos(lbl_message, left_x, 226);
+    lv_obj_set_pos(lbl_message, left_x, 198);
 
     // ========== RIGHT: SAVED POSITIONS ==========
     lv_obj_t *saved_label = lv_label_create(tab);
@@ -389,23 +393,6 @@ void UITabMain::updateSavedHighlight() {
     }
 }
 
-void UITabMain::fitStateLabel(const char *state) {
-    if (!lbl_state) return;
-    // Largest font that fits the column left of the X position, keeping the
-    // text vertically centred on the 32px baseline row
-    const lv_font_t *fonts[] = {&lv_font_montserrat_32, &lv_font_montserrat_24, &lv_font_montserrat_20};
-    const lv_font_t *chosen = fonts[2];
-    for (const lv_font_t *font : fonts) {
-        lv_point_t size;
-        lv_text_get_size(&size, state, font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
-        if (size.x <= STATE_MAX_WIDTH) {
-            chosen = font;
-            break;
-        }
-    }
-    lv_obj_set_style_text_font(lbl_state, chosen, 0);
-    lv_obj_set_y(lbl_state, 26 + (lv_font_get_line_height(&lv_font_montserrat_32) - lv_font_get_line_height(chosen)) / 2);
-}
 
 void UITabMain::goToWorkX(float x) {
     if (!FluidNCClient::isConnected()) return;
@@ -549,7 +536,6 @@ void UITabMain::updateState(const char *state) {
     if (strcmp(state, last_state) == 0) return;
 
     lv_label_set_text(lbl_state, state);
-    fitStateLabel(state);
     strncpy(last_state, state, sizeof(last_state) - 1);
     last_state[sizeof(last_state) - 1] = '\0';
 
@@ -598,7 +584,7 @@ void UITabMain::updateLimitSwitches(bool x, bool y, bool z, bool a) {
     if (x) last_limit_trigger_x_ms = now;
     bool vis_x = x || (now - last_limit_trigger_x_ms < LIMIT_SWITCH_HOLD_MS);
 
-    lv_obj_set_style_bg_color(ind_limit_x, vis_x ? UITheme::STATE_ALARM : UITheme::BG_BUTTON, 0);
+    lv_obj_set_style_bg_color(ind_limit_x, vis_x ? UITheme::BTN_PLAY : UITheme::BG_BUTTON, 0);  // Same as the Status tab
 }
 
 // ========== POSITION EDITING (Go To), same pattern as UITabStatus ==========

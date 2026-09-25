@@ -83,10 +83,6 @@ private:
     static void showDeleteDialog(int index);
     static void updateSavedHighlight();  // Border on the saved position matching the current X
 
-    // State label shrinks its font to fit long states ("DISCONNECTED") in its column
-    static const int STATE_MAX_WIDTH = 176;
-    static void fitStateLabel(const char *state);
-
     // Short-lived notices from this tab, held so status updates don't overwrite them
     static const uint32_t NOTICE_HOLD_MS = 3000;
     static uint32_t notice_until_ms;
