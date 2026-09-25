@@ -125,6 +125,7 @@ simulator's **Terminal** tab:
 | `$sim/msg=Hello` | Send `[MSG:Hello]` |
 | `$sim/limit=XZ` | Trigger the X and Z limit pins. `$sim/limit=` clears them |
 | `$sim/probe=1` | Trigger the probe pin (`0` to clear) |
+| `$sim/state=Door:0` | Report any state string, e.g. `Door:0`, `Sleep`, or an unknown one to test "DISCONNECTED" |
 
 The fake server doesn't implement uploads (HTTP) or running jobs.
 
