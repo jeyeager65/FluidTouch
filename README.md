@@ -84,6 +84,7 @@ Detailed documentation is available in the [`docs/`](./docs/) folder:
 - **[Usage Instructions](./docs/usage.md)** - Operating instructions and workflows
 - **[Configuration](./docs/configuration.md)** - WiFi setup, machine configuration, and settings
 - **[Development Guide](./docs/development.md)** - Building, debugging, and contributing
+- **[Desktop Simulator](./sim/README.md)** - Run and develop the UI on your PC, connected to a real FluidNC controller
 
 ---
 
