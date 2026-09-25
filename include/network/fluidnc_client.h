@@ -174,10 +174,19 @@ private:
     // Connection tracking
     static bool everConnectedSuccessfully; // True once first status report received, never reset
     static bool isHandlingDisconnect;     // Guard to prevent re-entrant close() calls
-    
+
+    // Line reassembly for binary frames: FluidNC may pack several lines into one
+    // frame, or split one long line across frames
+    static String rxLineBuffer;           // Partial line waiting for its '\n'
+    static uint32_t rxLineBufferMs;       // When rxLineBuffer last received data
+
     // WebSocket event handlers
     static void onMessageCallback(websockets::WebsocketsMessage message);
     static void onEventsCallback(websockets::WebsocketsEvent event, String data);
+
+    // Handle one complete line from FluidNC (callbacks + parsing)
+    static void handleLine(const char* line);
+    static void flushLineBuffer();
     
     // Parse status report message
     static void parseStatusReport(const char* message);
