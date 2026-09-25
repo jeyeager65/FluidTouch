@@ -59,6 +59,7 @@ namespace UITheme {
     static constexpr lv_color_t BTN_CONNECT = LV_COLOR_MAKE(0x21, 0x96, 0xF3);  // Connect button (blue)
     static constexpr lv_color_t BTN_DISCONNECT = LV_COLOR_MAKE(0xFF, 0x57, 0x22); // Disconnect button (orange-red)
     static constexpr lv_color_t BTN_ESTOP = LV_COLOR_MAKE(0xB7, 0x1C, 0x1C);    // Emergency stop (dark red)
+    static constexpr lv_color_t BTN_UNLOCK = LV_COLOR_MAKE(0xC2, 0x18, 0x5B);   // Unlock/alarm clear (magenta) - not blue, which is the X axis color
     
     // Metric Card Colors
     static constexpr lv_color_t METRIC_UPTIME = LV_COLOR_MAKE(0x21, 0x96, 0xF3);    // Uptime metric (blue)

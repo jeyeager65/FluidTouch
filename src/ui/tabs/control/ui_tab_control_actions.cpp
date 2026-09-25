@@ -48,7 +48,7 @@ void UITabControlActions::create(lv_obj_t *tab) {
     lv_obj_t *btn_unlock = lv_button_create(tab);
     lv_obj_set_size(btn_unlock, col_width, btn_height);
     lv_obj_set_pos(btn_unlock, left_col_x, y_pos);
-    lv_obj_set_style_bg_color(btn_unlock, UITheme::ACCENT_PRIMARY, LV_PART_MAIN);  // Blue for unlock
+    lv_obj_set_style_bg_color(btn_unlock, UITheme::BTN_UNLOCK, LV_PART_MAIN);
     lv_obj_t *lbl_unlock = lv_label_create(btn_unlock);
     lv_label_set_text(lbl_unlock, LV_SYMBOL_OK " Unlock");
     lv_obj_set_style_text_font(lbl_unlock, &lv_font_montserrat_18, 0);
