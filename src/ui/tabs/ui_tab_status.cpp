@@ -380,9 +380,10 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_obj_add_event_cb(lbl_mpos_z, position_field_event_handler, LV_EVENT_DEFOCUSED, NULL);
 
     // A-AXIS POSITIONS (Conditional, only if A-axis enabled)
+    lv_obj_t *wpos_a_label = nullptr;
     if (UICommon::isAAxisEnabled()) {
         // Work Position A
-        lv_obj_t *wpos_a_label = lv_label_create(tab);
+        wpos_a_label = lv_label_create(tab);
         lv_label_set_text(wpos_a_label, "A");
         lv_obj_set_style_text_font(wpos_a_label, &lv_font_montserrat_32, 0);
         lv_obj_set_style_text_color(wpos_a_label, UITheme::AXIS_A, 0);
@@ -439,6 +440,36 @@ void UITabStatus::create(lv_obj_t *tab) {
         lv_obj_set_user_data(lbl_mpos_a, (void*)"MA");
         lv_obj_add_event_cb(lbl_mpos_a, position_field_event_handler, LV_EVENT_FOCUSED, NULL);
         lv_obj_add_event_cb(lbl_mpos_a, position_field_event_handler, LV_EVENT_DEFOCUSED, NULL);
+    }
+
+    // REDUCED-AXIS MACHINES - hide the rows of disabled X/Y/Z axes and move the
+    // rows below them up (rows are 45px apart) so there are no gaps. The hidden
+    // widgets still exist, so the update methods need no changes.
+    struct AxisRow {
+        bool enabled;
+        lv_obj_t *objs[4];  // axis label, limit indicator, work pos, machine pos
+    };
+    AxisRow axis_rows[] = {
+        {UICommon::isXAxisEnabled(), {wpos_x_label, ind_limit_x, lbl_wpos_x, lbl_mpos_x}},
+        {UICommon::isYAxisEnabled(), {wpos_y_label, ind_limit_y, lbl_wpos_y, lbl_mpos_y}},
+        {UICommon::isZAxisEnabled(), {wpos_z_label, ind_limit_z, lbl_wpos_z, lbl_mpos_z}},
+        {UICommon::isAAxisEnabled(), {wpos_a_label, ind_limit_a, lbl_wpos_a, lbl_mpos_a}},
+    };
+    int visible_axis_rows = 0;
+    for (int row = 0; row < 4; row++) {
+        if (!axis_rows[row].enabled) {
+            for (lv_obj_t *obj : axis_rows[row].objs) {
+                if (obj) lv_obj_add_flag(obj, LV_OBJ_FLAG_HIDDEN);
+            }
+            continue;
+        }
+        int shift = (visible_axis_rows - row) * 45;
+        if (shift != 0) {
+            for (lv_obj_t *obj : axis_rows[row].objs) {
+                if (obj) lv_obj_set_y(obj, lv_obj_get_style_y(obj, LV_PART_MAIN) + shift);
+            }
+        }
+        visible_axis_rows++;
     }
 
     // MODAL STATES - Right column (labels at x=615, values at x=735)
@@ -636,10 +667,15 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_obj_set_pos(lbl_spindle_units, 455, 222);  // Second line
 
     // MESSAGE - Bottom section spanning columns 1-3
-    // Position depends on whether A-axis is enabled
-    int message_label_y = UICommon::isAAxisEnabled() ? 255 : 235;  // Label position
-    int message_y = UICommon::isAAxisEnabled() ? 280 : 260;  // Field position
-    int message_height = UICommon::isAAxisEnabled() ? 60 : 80;
+    // Position depends on how many axis rows are shown (4 rows = XYZA leaves
+    // room for a shorter box only; fewer rows give the message more space)
+    bool four_axis_rows = visible_axis_rows >= 4;
+    int message_label_y = four_axis_rows ? 255 : 95 + visible_axis_rows * 45 + 5;  // Label position
+    int message_y = four_axis_rows ? 280 : message_label_y + 25;  // Field position
+    int message_height = four_axis_rows ? 60 : 340 - message_y;
+    // With fewer than 3 rows the box moves up beside the feed/spindle column,
+    // so keep it to the width of the two position columns
+    int message_width = visible_axis_rows < 3 ? 440 : 600;
 
     lv_obj_t *message_header = lv_label_create(tab);
     lv_label_set_text(message_header, "MESSAGE");
@@ -647,14 +683,14 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_obj_set_style_text_color(message_header, UITheme::TEXT_DISABLED, 0);
     lv_obj_set_pos(message_header, 0, message_label_y);
 
-    // Hide MESSAGE label when A-axis is enabled to avoid interference with A position fields
-    if (UICommon::isAAxisEnabled()) {
+    // Hide MESSAGE label with 4 axis rows to avoid interference with the A position fields
+    if (four_axis_rows) {
         lv_obj_add_flag(message_header, LV_OBJ_FLAG_HIDDEN);
     }
 
     lbl_message = lv_label_create(tab);
     lv_label_set_text(lbl_message, "No messages.");
-    lv_obj_set_size(lbl_message, 600, message_height);
+    lv_obj_set_size(lbl_message, message_width, message_height);
     lv_label_set_long_mode(lbl_message, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_font(lbl_message, &lv_font_montserrat_20, 0);
     lv_obj_set_style_text_color(lbl_message, UITheme::TEXT_LIGHT, 0);

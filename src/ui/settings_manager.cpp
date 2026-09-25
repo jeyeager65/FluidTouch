@@ -70,7 +70,14 @@ bool SettingsManager::exportSettings(const char* filepath) {
         probe["max_distance"] = machine_configs[i].probe_max_distance;
         probe["retract"] = machine_configs[i].probe_retract;
         probe["thickness"] = machine_configs[i].probe_thickness;
-        
+
+        // Axis configuration
+        JsonObject axes = machine["axes"].to<JsonObject>();
+        axes["x"] = machine_configs[i].axis_x_enabled;
+        axes["y"] = machine_configs[i].axis_y_enabled;
+        axes["z"] = machine_configs[i].axis_z_enabled;
+        axes["a"] = machine_configs[i].axis_a_enabled;
+
         // Macros (read from preferences for this machine)
         Preferences prefs;
         prefs.begin(PREFS_NAMESPACE, true);  // Read-only
@@ -249,7 +256,14 @@ bool SettingsManager::importSettings(const char* filepath) {
             machine_configs[machine_index].probe_max_distance = probe["max_distance"] | 50.0f;
             machine_configs[machine_index].probe_retract = probe["retract"] | 2.0f;
             machine_configs[machine_index].probe_thickness = probe["thickness"] | 0.0f;
-            
+
+            // Axis configuration (older exports have no "axes" - default to X/Y/Z on, A off)
+            JsonObject axes = machine["axes"];
+            machine_configs[machine_index].axis_x_enabled = axes["x"] | true;
+            machine_configs[machine_index].axis_y_enabled = axes["y"] | true;
+            machine_configs[machine_index].axis_z_enabled = axes["z"] | true;
+            machine_configs[machine_index].axis_a_enabled = axes["a"] | false;
+
             // Macros
             JsonArray macrosArray = machine["macros"];
             if (macrosArray.size() > 0) {
