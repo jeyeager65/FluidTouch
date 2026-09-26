@@ -2,6 +2,7 @@
 #include <lvgl.h>
 #include <WiFi.h>
 #include <Preferences.h>
+#include "config.h"                  // PREFS_NAMESPACE
 #include "debug_log.h"               // Global serial-debug mute (LOG_* macros)
 #include "core/display_driver.h"     // Display driver module
 #include "core/touch_driver.h"       // Touch driver module
@@ -26,16 +27,43 @@
 #include "ui/machine_config.h"  // Machine configuration manager
 
 // Global serial-debug mute flag (declared extern in debug_log.h).
-// Set true by FluidNCClient while a USB CDC connection owns UART0.
+// Set true by FluidNCClient while a UART / USB CDC connection owns UART0.
 bool g_serialMuted = false;
+
+// True if the last machine used connects to FluidNC over UART0 (the UART0
+// header or USB CDC). The debug console is UART0 too, so anything it printed
+// would go straight into FluidNC, and bytes such as '!' (feed hold) or
+// 0x80-0xBF (overrides) are realtime commands to it.
+static bool lastMachineUsesUart0() {
+#ifdef HARDWARE_ADVANCE
+    Preferences prefs;
+    prefs.begin(PREFS_NAMESPACE, true);
+    int index = prefs.getInt("sel_machine", -1);
+    uint8_t type = CONN_WIFI;
+    if (index >= 0 && index < MAX_MACHINES) {
+        String key = "m" + String(index) + "_type";
+        type = prefs.getUChar(key.c_str(), CONN_WIFI);
+    }
+    prefs.end();
+    return type == CONN_UART || type == CONN_USB_CDC;
+#else
+    return false;
+#endif
+}
 
 void setup()
 {
-    // Enlarge RX buffer before begin so a controller already pumping status
-    // reports into UART0 (e.g. CH340 jack tied to FluidNC USB host) can't
-    // overflow the default 256 B buffer during boot.
-    Serial.setRxBufferSize(2048);
-    Serial.begin(115200);
+    if (lastMachineUsesUart0()) {
+        // Leave the debug console off: Serial.print() does nothing until
+        // Serial.begin(), and FluidNCClient::connect() opens UART0 for FluidNC
+        g_serialMuted = true;
+        stopUart0Logging();
+    } else {
+        // Enlarge RX buffer before begin so a controller already pumping status
+        // reports into UART0 can't overflow the default 256 B buffer during boot.
+        Serial.setRxBufferSize(2048);
+        Serial.begin(115200);
+    }
     delay(1000);
     Serial.println("\n\n=== FluidTouch - LVGL 9 with LovyanGFX ===");
     Serial.printf("Free heap: %d bytes\n", ESP.getFreeHeap());
@@ -143,8 +171,8 @@ void setup()
 void loop()
 {
     // Forward any Serial input to FluidNC (for debugging via Serial Monitor)
-    // Skip in serial modes: the FluidNC link uses UART1 or native USB CDC, both
-    // of which share GPIO19/20 with the USB-C connector that drives `Serial`.
+    // Skip in serial modes: the FluidNC link (UART0 header or USB CDC) is UART0,
+    // the same UART as `Serial`.
     if (!FluidNCClient::isSerialMode()) {
         static char serial_buf[128];
         static uint8_t serial_buf_pos = 0;

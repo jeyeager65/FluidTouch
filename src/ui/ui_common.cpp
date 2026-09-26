@@ -109,33 +109,38 @@ static void status_bar_left_click_handler(lv_event_t *e) {
 static void status_bar_right_click_handler(lv_event_t *e) {
     lv_event_code_t code = lv_event_get_code(e);
     if (code == LV_EVENT_CLICKED) {
-        // Check if both WiFi and WebSocket are connected
-        bool wifi_connected = (WiFi.status() == WL_CONNECTED);
-        bool ws_connected = FluidNCClient::isConnected();
-        
-        if (wifi_connected && ws_connected) {
-            // Both connected - show restart confirmation dialog
+        // WiFi only matters for WiFi machines; UART, USB CDC and ESP-NOW
+        // machines don't join a network
+        MachineConfig config;
+        bool has_config = MachineConfigManager::getSelectedMachine(config);
+        bool uses_wifi = has_config && config.connection_type == CONN_WIFI;
+        bool wifi_connected = !uses_wifi || (WiFi.status() == WL_CONNECTED);
+        bool machine_connected = FluidNCClient::isConnected();
+
+        if (wifi_connected && machine_connected) {
+            // Connected - show restart confirmation dialog
             UICommon::showMachineSelectConfirmDialog();
-        } else {
-            // One or both disconnected - show connection error dialog
-            MachineConfig config;
-            if (MachineConfigManager::getSelectedMachine(config)) {
-                char error_msg[300];
-                if (!wifi_connected && !ws_connected) {
-                    snprintf(error_msg, sizeof(error_msg), 
-                            "WiFi and machine are disconnected.\n\n%s\n\nClick Connect to reconnect.",
-                            config.name);
-                } else if (!wifi_connected) {
-                    snprintf(error_msg, sizeof(error_msg), 
-                            "WiFi is disconnected.\n\n%s\n\nClick Connect to reconnect.",
-                            config.name);
-                } else {
-                    snprintf(error_msg, sizeof(error_msg), 
-                            "Machine is disconnected.\n\n%s\nURL: %s:%d\n\nClick Connect to reconnect.",
-                            config.name, config.fluidnc_url, config.websocket_port);
-                }
-                UICommon::showConnectionErrorDialog("Connection Lost", error_msg);
+        } else if (has_config) {
+            // Disconnected - show connection error dialog
+            char error_msg[300];
+            if (!wifi_connected && !machine_connected) {
+                snprintf(error_msg, sizeof(error_msg),
+                        "WiFi and machine are disconnected.\n\n%s\n\nClick Connect to reconnect.",
+                        config.name);
+            } else if (!wifi_connected) {
+                snprintf(error_msg, sizeof(error_msg),
+                        "WiFi is disconnected.\n\n%s\n\nClick Connect to reconnect.",
+                        config.name);
+            } else if (uses_wifi) {
+                snprintf(error_msg, sizeof(error_msg),
+                        "Machine is disconnected.\n\n%s\nURL: %s:%d\n\nClick Connect to reconnect.",
+                        config.name, config.fluidnc_url, config.websocket_port);
+            } else {
+                snprintf(error_msg, sizeof(error_msg),
+                        "Machine is disconnected.\n\n%s\n\nClick Connect to reconnect.",
+                        config.name);
             }
+            UICommon::showConnectionErrorDialog("Connection Lost", error_msg);
         }
     }
 }
@@ -1255,9 +1260,10 @@ void UICommon::checkConnectionTimeout() {
             if (config.connection_type == CONN_UART) {
                 uint32_t rxBytes = FluidNCClient::getUartBytesReceived();
                 snprintf(error_msg, sizeof(error_msg),
-                        "Could not connect to machine:\n%s\n\nUART1: RX=19, TX=20 @ %d baud\n"
+                        "Could not connect to machine:\n%s\n\nUART0 header: TX=43, RX=44 @ %d baud\n"
                         "Bytes received: %d\n\n"
-                        "Check wiring (TX>RX cross) and baud rate.",
+                        "Check wiring (TX>RX cross) and baud rate,\n"
+                        "and that USB-C is unplugged.",
                         config.name, (int)config.uart_baud_rate, (int)rxBytes);
             } else if (config.connection_type == CONN_USB_CDC) {
                 uint32_t rxBytes = FluidNCClient::getUartBytesReceived();

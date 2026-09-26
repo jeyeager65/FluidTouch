@@ -26,4 +26,18 @@ extern bool g_serialMuted;
 #define LOG_PRINTLN(...)  do { if (!g_serialMuted) Serial.println(__VA_ARGS__); } while (0)
 #define LOG_PRINTF(...)   do { if (!g_serialMuted) Serial.printf(__VA_ARGS__);  } while (0)
 
+// Stop the logging that writes to UART0 without going through Serial: the
+// Arduino core's log_e()/log_w() (via ets_printf) and ESP-IDF's ESP_LOGx.
+// Needed when FluidNC is wired to UART0, where any such line would arrive as
+// a command (e.g. "[E][Preferences.cpp...]" -> "Bad GCode number format").
+#ifndef FLUIDTOUCH_SIM
+#include <esp_log.h>
+#endif
+inline void stopUart0Logging() {
+#ifndef FLUIDTOUCH_SIM
+    uartSetDebug(NULL);
+    esp_log_level_set("*", ESP_LOG_NONE);
+#endif
+}
+
 #endif // DEBUG_LOG_H

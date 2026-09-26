@@ -6,18 +6,21 @@
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #ifdef HARDWARE_ADVANCE
-#include <HardwareSerial.h>
 #include <SD.h>
-static HardwareSerial wiredSerial(2);  // UART1 (board label): RX=GPIO19, TX=GPIO20
-// "USB CDC" mode on the Elecrow CrowPanel actually uses UART0 (GPIO43 TX / GPIO44 RX)
-// routed through the on-board CH340 USB-UART bridge to the USB-C jack. FluidNC's USB
-// host sees the CH340 as a USB CDC ACM device. The ESP32-S3's native USB peripheral
-// on GPIO19/20 is NOT connected to the USB-C jack on this board, so we use Serial
-// (UART0) for this mode rather than the USBCDC class.
+// Both serial modes use UART0 (GPIO43 TX / GPIO44 RX), which is also the debug
+// console (`Serial`):
+// - "UART": FluidNC wired to the board's UART0 header, which can also supply
+//   the display's 5 V.
+// - "USB CDC": UART0 routed through the on-board CH340 USB-UART bridge to the
+//   USB-C jack. FluidNC's USB host sees the CH340 as a USB CDC ACM device. The
+//   ESP32-S3's native USB peripheral (GPIO19/20) is NOT connected to the USB-C
+//   jack on this board, so this uses Serial rather than the USBCDC class.
 //
-// While USB CDC mode is active, the global `g_serialMuted` flag (declared in
-// debug_log.h) silences LOG_PRINT/LOG_PRINTLN/LOG_PRINTF across the firmware so
-// stray debug bytes never reach FluidNC as garbage commands.
+// While either is active, the link uses its own HardwareSerial object on UART0
+// and `Serial` (the debug console) stays stopped, so Serial.print() debug calls
+// do nothing. The global `g_serialMuted` flag (declared in debug_log.h) also
+// silences the LOG_* macros, and stopUart0Logging() the core/IDF logging.
+static HardwareSerial fluidncUart(0);
 //
 // Currently-active serial stream (set on connect, used by all read/write paths).
 // nullptr means no serial connection is active (WebSocket mode or disconnected).
@@ -81,59 +84,45 @@ bool FluidNCClient::connect(const MachineConfig &config) {
     currentConfig = config;
     
 #ifdef HARDWARE_ADVANCE
-    if (config.connection_type == CONN_UART) {
-        LOG_PRINTF("[FluidNC] Connecting via UART1 (RX=19, TX=20) at %d baud\n", config.uart_baud_rate);
-        activeSerialMode = CONN_UART;
-        uartRxPos = 0;
-        autoReportingEnabled = false;
-        autoReportingAttempted = false;
-        everConnectedSuccessfully = false;
-        uartBytesReceived = 0;
-        wiredSerial.begin(config.uart_baud_rate, SERIAL_8N1, 19, 20);  // RX=19, TX=20
-        activeStream = &wiredSerial;
-        // Request firmware version and enable auto-reporting
-        wiredSerial.print("$Build/Info\n");
-        wiredSerial.print("$Report/Interval=250\n");
-        autoReportingAttempted = true;
-        autoReportingEnabled = false;
-        lastAutoReportAttemptMs = millis();
-        lastPollingMs = millis() - 1000;
-        lastGCodePollMs = millis() - 10000;
-        currentStatus.is_connected = false;  // Set true on first status report
-        LOG_PRINTLN("[FluidNC] UART1 opened, waiting for status reports...");
-        return true;
-    }
-    if (config.connection_type == CONN_USB_CDC) {
-        // USB CDC over the on-board USB-C jack goes through a CH340 USB-UART
-        // bridge to ESP32 UART0. The baud rate here must match what FluidNC's
-        // `uart3: usb_host: baud:` is set to in config.yaml. Default 115200.
+    if (config.connection_type == CONN_UART || config.connection_type == CONN_USB_CDC) {
+        // Both modes are ESP32 UART0 (GPIO43 TX / GPIO44 RX), the debug console:
+        // UART wires FluidNC to the board's UART0 header (which can also power
+        // the display), USB CDC reaches it through the CH340 on the USB-C jack.
+        // The baud rate must match FluidNC's uart for that channel (for USB CDC,
+        // `uart3: usb_host: baud:`). Don't plug USB-C in while using the UART0
+        // header: the CH340 drives the same RX pin.
+        bool usb = config.connection_type == CONN_USB_CDC;
         uint32_t baud = (config.uart_baud_rate > 0) ? config.uart_baud_rate : 115200;
 
         // Pre-mute *before* touching Serial so any LOG_* call from a concurrent
         // task (or from Serial.end() / Serial.begin() internals) can't escape
         // onto the wire as garbage to FluidNC.
-        LOG_PRINTF("[FluidNC] Connecting via USB CDC (UART0 / on-board USB-UART bridge) at %u baud\n",
+        LOG_PRINTF("[FluidNC] Connecting via %s at %u baud\n",
+                   usb ? "USB CDC (UART0 / on-board USB-UART bridge)" : "UART0 header (TX=43, RX=44)",
                    (unsigned)baud);
         LOG_PRINTLN("[FluidNC] NOTE: Serial debug output is suppressed until disconnect");
         Serial.flush();
         delay(50);          // Let the last debug bytes drain physically
         g_serialMuted = true;
+        stopUart0Logging();
 
-        // Re-open UART0 at the FluidNC USB CDC baud rate with a larger RX buffer
-        // so back-to-back status reports + WCO + GCode state don't overflow the
-        // default 256-byte ring at 115200.
+        // Stop the debug console and re-open UART0 for FluidNC through its own
+        // object. With `Serial` stopped, the hundreds of Serial.print() debug
+        // calls across the firmware do nothing instead of reaching FluidNC as
+        // commands. The larger RX buffer keeps back-to-back status reports +
+        // WCO + GCode state from overflowing the default 256-byte ring.
         Serial.end();
         delay(100);          // Brief gap so FluidNC's USB host sees a clean re-enumeration
-        Serial.setRxBufferSize(2048);
-        Serial.begin(baud);
+        fluidncUart.setRxBufferSize(2048);
+        fluidncUart.begin(baud);
 
-        activeSerialMode = CONN_USB_CDC;
+        activeSerialMode = config.connection_type;
         uartRxPos = 0;
         autoReportingEnabled = false;
         autoReportingAttempted = false;
         everConnectedSuccessfully = false;
         uartBytesReceived = 0;
-        activeStream = &Serial;
+        activeStream = &fluidncUart;
 
         // FluidNC's USB host typically needs ~500-1500 ms to enumerate the CH340
         // and mount its CDC endpoint. Sending commands before that is just throwing
@@ -141,11 +130,12 @@ bool FluidNCClient::connect(const MachineConfig &config) {
         // (the CH340 emits a break on open and FluidNC echoes a welcome banner),
         // then send the report-interval request. The auto-report attempt timer
         // doesn't start until after this settle, so the 2 s fallback-polling timeout
-        // is measured from a meaningful baseline.
-        uint32_t settleEnd = millis() + 1500;
+        // is measured from a meaningful baseline. A direct UART only needs a
+        // moment to drain whatever FluidNC was already sending.
+        uint32_t settleEnd = millis() + (usb ? 1500 : 200);
         while (millis() < settleEnd) {
-            while (Serial.available()) {
-                (void)Serial.read();
+            while (fluidncUart.available()) {
+                (void)fluidncUart.read();
                 uartBytesReceived++;
             }
             delay(10);
@@ -154,9 +144,9 @@ bool FluidNCClient::connect(const MachineConfig &config) {
         // Send a soft "are you there" then enable auto-reporting. If FluidNC
         // missed the first $Report/Interval (still mid-mount), we'll resend
         // it from loop() on a state change or via fallback polling.
-        Serial.print("\n");                       // Flush any partial line
-        Serial.print("$Build/Info\n");
-        Serial.print("$Report/Interval=250\n");
+        fluidncUart.print("\n");                       // Flush any partial line
+        fluidncUart.print("$Build/Info\n");
+        fluidncUart.print("$Report/Interval=250\n");
         autoReportingAttempted = true;
         autoReportingEnabled = false;
         lastAutoReportAttemptMs = millis();
@@ -283,23 +273,14 @@ void FluidNCClient::disconnect() {
         rxLineBuffer = "";
     } else
 #ifdef HARDWARE_ADVANCE
-    if (activeSerialMode == CONN_UART) {
-        wiredSerial.end();
+    if (activeSerialMode == CONN_UART || activeSerialMode == CONN_USB_CDC) {
+        // Close UART0 but leave the debug console off (and muted) until the
+        // next boot: FluidNC is still wired to it, so anything printed would
+        // arrive there as commands, including on the way to a reconnect.
+        fluidncUart.end();
         activeSerialMode = CONN_WIFI;
         activeStream = nullptr;
         uartRxPos = 0;
-    } else if (activeSerialMode == CONN_USB_CDC) {
-        // Re-open Serial at the default debug baud so the console comes back to life.
-        Serial.end();
-        delay(50);
-        Serial.begin(115200);
-        activeSerialMode = CONN_WIFI;
-        activeStream = nullptr;
-        uartRxPos = 0;
-        // Unmute *after* Serial is back at the debug baud so the first print lands
-        // on the host terminal cleanly.
-        g_serialMuted = false;
-        Serial.println("[FluidNC] USB CDC disconnected, debug console restored");
     } else
 #endif
     if (webSocket.available()) {
@@ -1377,6 +1358,16 @@ void FluidNCClient::extractString(const char* str, const char* key, char* dest, 
 #ifdef HARDWARE_ADVANCE
 void FluidNCClient::processUartLine(char* line) {
     const char* payload = line;
+
+    // FluidNC (4.1.1+) repeats [MSG:RST] once a second after it starts, until
+    // the pendant sends a complete line. Our setup commands may have gone out
+    // before FluidNC was listening (display and FluidNC powered up together),
+    // or FluidNC was reset and forgot the report interval: send them again.
+    if (strcmp(payload, "[MSG:RST]") == 0) {
+        LOG_PRINTLN("[FluidNC] FluidNC (re)started - re-sending setup commands");
+        attemptEnableAutoReporting();
+        sendRaw("$Build/Info\n");
+    }
 
     // Fire callbacks
     if (messageCallback) {
