@@ -140,3 +140,10 @@ fluidtouch/
 # Desktop simulator build output and local data
 sim/build/
 sim/data/
+
+# Generated when custom_sdkconfig makes the platform rebuild the framework libraries
+/CMakeLists.txt
+/sdkconfig.*
+/dependencies.lock
+/managed_components/
+/.dummy/
