@@ -932,20 +932,24 @@ void UITabFiles::updateFileListUI() {
             lv_obj_set_style_text_color(lbl_size, UITheme::TEXT_MEDIUM, 0);
             lv_obj_align(lbl_size, LV_ALIGN_LEFT_MID, 420, 0);
             
-            // Show upload button for Display SD, or play/delete for FluidNC storage
+            // Show upload button for Display SD, or play/delete for FluidNC storage.
+            // No upload over ESP-NOW: FluidNC can't receive XModem on that
+            // channel, and there's no WiFi for an HTTP upload.
             if (current_storage == StorageSource::DISPLAY_SD) {
-                // Upload button (for Display SD files)
-                lv_obj_t *btn_upload = lv_button_create(file_row);
-                lv_obj_set_size(btn_upload, 120, 38);
-                lv_obj_align(btn_upload, LV_ALIGN_RIGHT_MID, -5, 0);
-                lv_obj_set_style_bg_color(btn_upload, UITheme::ACCENT_PRIMARY, 0);
-                lv_obj_set_style_radius(btn_upload, 3, 0);
-                lv_obj_add_event_cb(btn_upload, upload_button_event_cb, LV_EVENT_CLICKED, filenames_storage[i]);
+                if (!FluidNCClient::isEspNowMode()) {
+                    // Upload button (for Display SD files)
+                    lv_obj_t *btn_upload = lv_button_create(file_row);
+                    lv_obj_set_size(btn_upload, 120, 38);
+                    lv_obj_align(btn_upload, LV_ALIGN_RIGHT_MID, -5, 0);
+                    lv_obj_set_style_bg_color(btn_upload, UITheme::ACCENT_PRIMARY, 0);
+                    lv_obj_set_style_radius(btn_upload, 3, 0);
+                    lv_obj_add_event_cb(btn_upload, upload_button_event_cb, LV_EVENT_CLICKED, filenames_storage[i]);
                 
-                lv_obj_t *lbl_upload = lv_label_create(btn_upload);
-                lv_label_set_text(lbl_upload, LV_SYMBOL_UPLOAD " Upload");
-                lv_obj_set_style_text_font(lbl_upload, &lv_font_montserrat_18, 0);
-                lv_obj_center(lbl_upload);
+                    lv_obj_t *lbl_upload = lv_label_create(btn_upload);
+                    lv_label_set_text(lbl_upload, LV_SYMBOL_UPLOAD " Upload");
+                    lv_obj_set_style_text_font(lbl_upload, &lv_font_montserrat_18, 0);
+                    lv_obj_center(lbl_upload);
+                }
             } else {
                 // Delete button (for FluidNC files)
                 lv_obj_t *btn_delete = lv_button_create(file_row);
