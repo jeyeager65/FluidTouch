@@ -40,7 +40,8 @@ struct MachineConfig {
     char password[64];       // WiFi password (max 63 chars + null)
     char fluidnc_url[128];   // FluidNC URL (e.g., "192.168.1.100" or "fluidnc.local")
     uint16_t websocket_port; // WebSocket port (default 81)
-    uint32_t uart_baud_rate; // UART baud rate for CONN_UART (default 115200; unused for USB CDC)
+    uint32_t uart_baud_rate; // CONN_UART: must match FluidNC's uartN baud. CONN_USB_CDC: must match
+                             // FluidNC's `usb_host: baud:`, which sets the Advance's CH340 bridge speed
     EspNowPairing espnow_pairing;  // CONN_ESPNOW: FluidNC's MAC, key and channel (all zero = not paired)
     bool is_configured;      // Whether this slot has a valid machine
     
