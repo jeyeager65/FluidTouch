@@ -12,13 +12,16 @@ static lv_obj_t *status_label = NULL;
 static lv_obj_t *show_machine_select_switch = NULL;
 static lv_obj_t *folders_on_top_switch = NULL;
 static lv_obj_t *rotate_display_switch = NULL;
-static lv_obj_t *enable_a_axis_switch = NULL;
+static lv_obj_t *axis_x_switch = NULL;
+static lv_obj_t *axis_y_switch = NULL;
+static lv_obj_t *axis_z_switch = NULL;
+static lv_obj_t *axis_a_switch = NULL;
 
 // Forward declarations for event handlers
 static void btn_save_general_event_handler(lv_event_t *e);
 static void btn_reset_event_handler(lv_event_t *e);
 static void showRotationRestartDialog();
-static void showAAxisRestartDialog();
+static void showAxisRestartDialog();
 
 void UITabSettingsGeneral::create(lv_obj_t *tab) {
     // Set dark background
@@ -34,14 +37,20 @@ void UITabSettingsGeneral::create(lv_obj_t *tab) {
     uint8_t display_rotation = prefs.getUChar("display_rot", 0);  // Default to 0 (normal)
     prefs.end();
 
-    // Load enable_a_axis from the selected machine config (it's machine-specific)
-    bool enable_a_axis = false;
+    // Load axis configuration from the selected machine config (it's machine-specific)
+    bool axis_x_enabled = true;
+    bool axis_y_enabled = true;
+    bool axis_z_enabled = true;
+    bool axis_a_enabled = false;
     MachineConfig mc;
     if (MachineConfigManager::getSelectedMachine(mc)) {
-        enable_a_axis = mc.enable_a_axis;
+        axis_x_enabled = mc.axis_x_enabled;
+        axis_y_enabled = mc.axis_y_enabled;
+        axis_z_enabled = mc.axis_z_enabled;
+        axis_a_enabled = mc.axis_a_enabled;
     }
 
-    Serial.printf("UITabSettingsGeneral: Loaded show_mach_sel=%d, folders_on_top=%d, display_rot=%d, enable_a_axis=%d\n", show_machine_select, folders_on_top, display_rotation, enable_a_axis);
+    Serial.printf("UITabSettingsGeneral: Loaded show_mach_sel=%d, folders_on_top=%d, display_rot=%d, axis_x_enabled=%d, axis_y_enabled=%d, axis_z_enabled=%d, axis_a_enabled=%d\n", show_machine_select, folders_on_top, display_rotation, axis_x_enabled, axis_y_enabled, axis_z_enabled, axis_a_enabled);
     
     // === Machine Selection Section ===
     lv_obj_t *section_title = lv_label_create(tab);
@@ -124,25 +133,74 @@ void UITabSettingsGeneral::create(lv_obj_t *tab) {
     lv_obj_set_style_text_color(folders_desc_label, UITheme::TEXT_DISABLED, 0);
     lv_obj_set_pos(folders_desc_label, 20, 242);  // First column
 
-    // Enable A-Axis label and switch (Right column, below Display)
-    lv_obj_t *enable_a_axis_label = lv_label_create(tab);
-    lv_label_set_text(enable_a_axis_label, "Enable A-Axis:");
-    lv_obj_set_style_text_font(enable_a_axis_label, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_text_color(enable_a_axis_label, UITheme::TEXT_LIGHT, 0);
-    lv_obj_set_pos(enable_a_axis_label, 400, 205);  // Right column
+    // === Axis Configuration section (Right column, below Display) ===
+    lv_obj_t *axis_section_title = lv_label_create(tab);
+    lv_label_set_text(axis_section_title, "AXIS CONFIGURATION");
+    lv_obj_set_style_text_font(axis_section_title, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(axis_section_title, UITheme::TEXT_DISABLED, 0);
+    lv_obj_set_pos(axis_section_title, 400, 175);  // Right column, below Display's 3-line description
 
-    enable_a_axis_switch = lv_switch_create(tab);
-    lv_obj_set_pos(enable_a_axis_switch, 560, 200);  // Aligned with label
-    if (enable_a_axis) {
-        lv_obj_add_state(enable_a_axis_switch, LV_STATE_CHECKED);
+    // Axis toggles in a 2x2 grid (X Y / Z A) - the settings content area is only
+    // ~680px wide, so four switches in one row would run off the right edge
+
+    // X-Axis toggle
+    lv_obj_t *axis_x_label = lv_label_create(tab);
+    lv_label_set_text(axis_x_label, "X");
+    lv_obj_set_style_text_font(axis_x_label, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(axis_x_label, UITheme::AXIS_X, 0);
+    lv_obj_set_pos(axis_x_label, 400, 220);
+
+    axis_x_switch = lv_switch_create(tab);
+    lv_obj_set_pos(axis_x_switch, 425, 215);
+    if (axis_x_enabled) {
+        lv_obj_add_state(axis_x_switch, LV_STATE_CHECKED);
     }
 
-    // Description text for A-axis setting
-    lv_obj_t *a_axis_desc_label = lv_label_create(tab);
-    lv_label_set_text(a_axis_desc_label, "Enables 4th axis (rotary) support.\nAdds A-axis controls and display.");
-    lv_obj_set_style_text_font(a_axis_desc_label, &lv_font_montserrat_14, 0);
-    lv_obj_set_style_text_color(a_axis_desc_label, UITheme::TEXT_DISABLED, 0);
-    lv_obj_set_pos(a_axis_desc_label, 400, 242);  // Right column
+    // Y-Axis toggle
+    lv_obj_t *axis_y_label = lv_label_create(tab);
+    lv_label_set_text(axis_y_label, "Y");
+    lv_obj_set_style_text_font(axis_y_label, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(axis_y_label, UITheme::AXIS_Y, 0);
+    lv_obj_set_pos(axis_y_label, 540, 220);
+
+    axis_y_switch = lv_switch_create(tab);
+    lv_obj_set_pos(axis_y_switch, 565, 215);
+    if (axis_y_enabled) {
+        lv_obj_add_state(axis_y_switch, LV_STATE_CHECKED);
+    }
+
+    // Z-Axis toggle
+    lv_obj_t *axis_z_label = lv_label_create(tab);
+    lv_label_set_text(axis_z_label, "Z");
+    lv_obj_set_style_text_font(axis_z_label, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(axis_z_label, UITheme::AXIS_Z, 0);
+    lv_obj_set_pos(axis_z_label, 400, 260);
+
+    axis_z_switch = lv_switch_create(tab);
+    lv_obj_set_pos(axis_z_switch, 425, 255);
+    if (axis_z_enabled) {
+        lv_obj_add_state(axis_z_switch, LV_STATE_CHECKED);
+    }
+
+    // A-Axis toggle
+    lv_obj_t *axis_a_label = lv_label_create(tab);
+    lv_label_set_text(axis_a_label, "A");
+    lv_obj_set_style_text_font(axis_a_label, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(axis_a_label, UITheme::AXIS_A, 0);
+    lv_obj_set_pos(axis_a_label, 540, 260);
+
+    axis_a_switch = lv_switch_create(tab);
+    lv_obj_set_pos(axis_a_switch, 565, 255);
+    if (axis_a_enabled) {
+        lv_obj_add_state(axis_a_switch, LV_STATE_CHECKED);
+    }
+
+    // Description text for axis configuration (X/Y/Z default on, A default off)
+    lv_obj_t *axis_desc_label = lv_label_create(tab);
+    lv_label_set_text(axis_desc_label, "Turn off unused axes (e.g. a\nmiter saw fence). Turn on A for\na rotary axis. Requires restart.");
+    lv_obj_set_style_text_font(axis_desc_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(axis_desc_label, UITheme::TEXT_DISABLED, 0);
+    lv_obj_set_pos(axis_desc_label, 400, 295);  // Right column
 
     // === Action Buttons (positioned at bottom with 20px margins) ===
     // Save button
@@ -183,10 +241,13 @@ static void btn_save_general_event_handler(lv_event_t *e) {
         bool show_machine_select = lv_obj_has_state(show_machine_select_switch, LV_STATE_CHECKED);
         bool folders_on_top = lv_obj_has_state(folders_on_top_switch, LV_STATE_CHECKED);
         bool rotate_display = lv_obj_has_state(rotate_display_switch, LV_STATE_CHECKED);
-        bool enable_a_axis = lv_obj_has_state(enable_a_axis_switch, LV_STATE_CHECKED);
+        bool axis_x_enabled = lv_obj_has_state(axis_x_switch, LV_STATE_CHECKED);
+        bool axis_y_enabled = lv_obj_has_state(axis_y_switch, LV_STATE_CHECKED);
+        bool axis_z_enabled = lv_obj_has_state(axis_z_switch, LV_STATE_CHECKED);
+        bool axis_a_enabled = lv_obj_has_state(axis_a_switch, LV_STATE_CHECKED);
         uint8_t rotation = rotate_display ? 2 : 0;  // 2 = 180 degrees, 0 = normal
 
-        Serial.printf("UITabSettingsGeneral: Saving show_mach_sel=%d, folders_on_top=%d, display_rot=%d, enable_a_axis=%d\n", show_machine_select, folders_on_top, rotation, enable_a_axis);
+        Serial.printf("UITabSettingsGeneral: Saving show_mach_sel=%d, folders_on_top=%d, display_rot=%d, axis_x_enabled=%d, axis_y_enabled=%d, axis_z_enabled=%d, axis_a_enabled=%d\n", show_machine_select, folders_on_top, rotation, axis_x_enabled, axis_y_enabled, axis_z_enabled, axis_a_enabled);
         
         Preferences prefs;
         if (!prefs.begin(PREFS_SYSTEM_NAMESPACE, false)) {  // Read-write
@@ -208,20 +269,30 @@ static void btn_save_general_event_handler(lv_event_t *e) {
         prefs.putUChar("display_rot", rotation);
         prefs.end();
 
-        // Save enable_a_axis to the selected machine config
-        bool a_axis_changed = false;
+        // Save axis configuration to the selected machine config
+        bool axis_config_changed = false;
         {
             MachineConfig mc;
             int sel_idx = MachineConfigManager::getSelectedMachineIndex();
             if (sel_idx >= 0 && MachineConfigManager::getMachine(sel_idx, mc)) {
-                a_axis_changed = (enable_a_axis != mc.enable_a_axis);
-                mc.enable_a_axis = enable_a_axis;
+                axis_config_changed = (axis_x_enabled != mc.axis_x_enabled) ||
+                                       (axis_y_enabled != mc.axis_y_enabled) ||
+                                       (axis_z_enabled != mc.axis_z_enabled) ||
+                                       (axis_a_enabled != mc.axis_a_enabled);
+                mc.axis_x_enabled = axis_x_enabled;
+                mc.axis_y_enabled = axis_y_enabled;
+                mc.axis_z_enabled = axis_z_enabled;
+                mc.axis_a_enabled = axis_a_enabled;
                 MachineConfigManager::saveMachine(sel_idx, mc);
             }
         }
 
-        // Update cached A-axis setting immediately (no restart needed)
-        UICommon::setAAxisEnabled(enable_a_axis);
+        // Update cached axis settings immediately (no restart needed for the cache itself,
+        // but tabs built at boot won't reflect the change until restart)
+        UICommon::setXAxisEnabled(axis_x_enabled);
+        UICommon::setYAxisEnabled(axis_y_enabled);
+        UICommon::setZAxisEnabled(axis_z_enabled);
+        UICommon::setAAxisEnabled(axis_a_enabled);
 
         // Verify system prefs were saved
         prefs.begin(PREFS_SYSTEM_NAMESPACE, true);
@@ -230,7 +301,7 @@ static void btn_save_general_event_handler(lv_event_t *e) {
         uint8_t verified_rotation = prefs.getUChar("display_rot", 0);
         prefs.end();
 
-        Serial.printf("UITabSettingsGeneral: Verified show_mach_sel=%d, folders_on_top=%d, display_rot=%d, enable_a_axis=%d\n", verified_machine, verified_folders, verified_rotation, enable_a_axis);
+        Serial.printf("UITabSettingsGeneral: Verified show_mach_sel=%d, folders_on_top=%d, display_rot=%d, axis_x_enabled=%d, axis_y_enabled=%d, axis_z_enabled=%d, axis_a_enabled=%d\n", verified_machine, verified_folders, verified_rotation, axis_x_enabled, axis_y_enabled, axis_z_enabled, axis_a_enabled);
 
         if (status_label != NULL) {
             lv_label_set_text(status_label, "Settings saved!");
@@ -241,9 +312,9 @@ static void btn_save_general_event_handler(lv_event_t *e) {
         if (rotation_changed) {
             showRotationRestartDialog();
         }
-        // If A-axis setting changed, show restart confirmation dialog
-        else if (a_axis_changed) {
-            showAAxisRestartDialog();
+        // If axis configuration changed, show restart confirmation dialog
+        else if (axis_config_changed) {
+            showAxisRestartDialog();
         }
     }
 }
@@ -252,11 +323,14 @@ static void btn_save_general_event_handler(lv_event_t *e) {
 static void btn_reset_event_handler(lv_event_t *e) {
     lv_event_code_t code = lv_event_get_code(e);
     if (code == LV_EVENT_CLICKED) {
-        // Reset to defaults (show machine selection enabled, folders at bottom, rotation 0, A-axis disabled)
+        // Reset to defaults (show machine selection enabled, folders at bottom, rotation 0, X/Y/Z enabled, A disabled)
         lv_obj_add_state(show_machine_select_switch, LV_STATE_CHECKED);
         lv_obj_clear_state(folders_on_top_switch, LV_STATE_CHECKED);  // Default: folders at bottom
         lv_obj_clear_state(rotate_display_switch, LV_STATE_CHECKED);  // Default: rotation 0 (normal)
-        lv_obj_clear_state(enable_a_axis_switch, LV_STATE_CHECKED);  // Default: A-axis disabled
+        lv_obj_add_state(axis_x_switch, LV_STATE_CHECKED);  // Default: X-axis enabled
+        lv_obj_add_state(axis_y_switch, LV_STATE_CHECKED);  // Default: Y-axis enabled
+        lv_obj_add_state(axis_z_switch, LV_STATE_CHECKED);  // Default: Z-axis enabled
+        lv_obj_clear_state(axis_a_switch, LV_STATE_CHECKED);  // Default: A-axis disabled
         
         if (status_label != NULL) {
             lv_label_set_text(status_label, "Reset to defaults");
@@ -364,9 +438,9 @@ static void showRotationRestartDialog() {
     }, LV_EVENT_CLICKED, backdrop);
 }
 
-// Show A-axis restart confirmation dialog
-static void showAAxisRestartDialog() {
-    Serial.println("[SettingsGeneral] Showing A-axis restart dialog");
+// Show axis configuration restart confirmation dialog
+static void showAxisRestartDialog() {
+    Serial.println("[SettingsGeneral] Showing axis configuration restart dialog");
 
     // Create modal backdrop
     lv_obj_t *backdrop = lv_obj_create(lv_layer_top());
@@ -396,7 +470,7 @@ static void showAAxisRestartDialog() {
 
     // Message
     lv_obj_t *message = lv_label_create(dialog);
-    lv_label_set_text(message, "A-axis setting requires a restart\nto take effect.\n\nRestart now?");
+    lv_label_set_text(message, "Axis configuration requires a restart\nto take effect.\n\nRestart now?");
     lv_obj_set_style_text_font(message, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(message, UITheme::TEXT_LIGHT, 0);
     lv_obj_set_style_text_align(message, LV_TEXT_ALIGN_CENTER, 0);
@@ -456,7 +530,7 @@ static void showAAxisRestartDialog() {
     lv_obj_center(lbl_later);
     lv_obj_add_event_cb(btn_later, [](lv_event_t *e) {
         if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-            Serial.println("[SettingsGeneral] Later button clicked - A-axis will apply on next restart");
+            Serial.println("[SettingsGeneral] Later button clicked - axis configuration will apply on next restart");
             lv_obj_del((lv_obj_t*)lv_event_get_user_data(e));
         }
     }, LV_EVENT_CLICKED, backdrop);

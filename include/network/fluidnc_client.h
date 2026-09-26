@@ -66,6 +66,7 @@ struct FluidNCStatus {
     
     // Last message from FluidNC
     char last_message[128]; // Store last [MSG:...] or feedback message
+    char alarm_message[128]; // Translated alarm description, set only from ALARM:<code> lines
     
     // SD card file progress (when running from SD)
     bool is_sd_printing;        // True if running a file from SD card
@@ -107,6 +108,7 @@ struct FluidNCStatus {
         strcpy(modal_coolant, "M9");
         strcpy(modal_tool, "T0");
         last_message[0] = '\0';  // Empty message initially
+        alarm_message[0] = '\0'; // Empty until an ALARM:<code> line is received
         sd_filename[0] = '\0';   // No file initially
         fluidnc_version[0] = '\0';  // Unknown until $Build/Info response received
     }
@@ -172,6 +174,9 @@ public:
     // Clear the stored last message
     static void clearLastMessage();
     
+    // Clear the stored alarm message
+    static void clearAlarmMessage();
+    
     // Request status report (sends "?")
     static void requestStatusReport();
     
@@ -194,6 +199,7 @@ private:
     static websockets::WebsocketsClient webSocket;
     static FluidNCStatus currentStatus;
     static MachineConfig currentConfig;
+    static String resolvedIP;         // IP address resolved (DNS/mDNS) during connect()
     static uint32_t lastStatusRequestMs;
     static bool initialized;
     static FluidNCMessageCallback messageCallback;  // Optional callback for raw messages
@@ -223,9 +229,18 @@ private:
     static TaskHandle_t xmodemTaskHandle;
     static void xmodemUploadTask(void* pvParams);
     
+    // Line reassembly for binary frames: FluidNC may pack several lines into one
+    // frame, or split one long line across frames
+    static String rxLineBuffer;           // Partial line waiting for its '\n'
+    static uint32_t rxLineBufferMs;       // When rxLineBuffer last received data
+
     // WebSocket event handlers
     static void onMessageCallback(websockets::WebsocketsMessage message);
     static void onEventsCallback(websockets::WebsocketsEvent event, String data);
+
+    // Handle one complete line from FluidNC (callbacks + parsing)
+    static void handleLine(const char* line);
+    static void flushLineBuffer();
     
     // Parse status report message
     static void parseStatusReport(const char* message);

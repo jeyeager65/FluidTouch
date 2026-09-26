@@ -30,6 +30,7 @@ using namespace websockets;
 WebsocketsClient FluidNCClient::webSocket;
 FluidNCStatus FluidNCClient::currentStatus;
 MachineConfig FluidNCClient::currentConfig;
+String FluidNCClient::resolvedIP = "";
 uint32_t FluidNCClient::lastStatusRequestMs = 0;
 bool FluidNCClient::initialized = false;
 FluidNCMessageCallback FluidNCClient::messageCallback = nullptr;
@@ -48,6 +49,14 @@ uint32_t FluidNCClient::uartBytesReceived = 0;
 XModemTransferState FluidNCClient::xmodemTransferState = {};
 bool FluidNCClient::isXModemTransfer = false;
 TaskHandle_t FluidNCClient::xmodemTaskHandle = nullptr;
+String FluidNCClient::rxLineBuffer = "";
+uint32_t FluidNCClient::rxLineBufferMs = 0;
+
+// A partial line with no '\n' after this long is handled as-is, in case a
+// firmware version sends binary frames without line endings
+static const uint32_t RX_PARTIAL_LINE_TIMEOUT_MS = 100;
+// Guard against unbounded growth if a '\n' never arrives
+static const size_t RX_LINE_BUFFER_MAX = 32768;
 
 void FluidNCClient::init() {
     if (initialized) return;
@@ -210,6 +219,10 @@ bool FluidNCClient::connect(const MachineConfig &config) {
         LOG_PRINTF("[FluidNC] Using resolved IP: %s\n", resolvedHost.c_str());
     }
     
+    // Cache the resolved IP so other modules (e.g. UploadManager) don't need to
+    // re-resolve hostnames/mDNS names themselves - just call getMachineIP()
+    resolvedIP = resolvedHost;
+    
     // Set up event callbacks
     webSocket.onMessage(onMessageCallback);
     webSocket.onEvent(onEventsCallback);
@@ -260,6 +273,7 @@ void FluidNCClient::disconnect() {
     currentStatus.state = STATE_DISCONNECTED;
     autoReportingEnabled = false;
     autoReportingAttempted = false;
+    resolvedIP = "";
 }
 
 void FluidNCClient::stopReconnectionAttempts() {
@@ -530,7 +544,12 @@ void FluidNCClient::loop() {
     
     // Handle WebSocket events - ArduinoWebsockets handles polling internally
     webSocket.poll();
-    
+
+    // Handle a trailing partial line that never got its '\n'
+    if (rxLineBuffer.length() > 0 && millis() - rxLineBufferMs >= RX_PARTIAL_LINE_TIMEOUT_MS) {
+        flushLineBuffer();
+    }
+
     // Only check auto-reporting and polling if WebSocket is connected
     if (!webSocket.available()) {
         return;
@@ -560,6 +579,33 @@ const FluidNCStatus& FluidNCClient::getStatus() {
 
 void FluidNCClient::clearLastMessage() {
     currentStatus.last_message[0] = '\0';
+}
+
+void FluidNCClient::clearAlarmMessage() {
+    currentStatus.alarm_message[0] = '\0';
+}
+
+// Translate FluidNC alarm codes into human-readable descriptions.
+// Reference: http://wiki.fluidnc.com/en/support/alarm_and_error_codes
+static const char* alarmCodeToDescription(int code) {
+    switch (code) {
+        case 1:  return "Hard Limit - reset required. Machine position may be lost; re-homing is recommended.";
+        case 2:  return "Soft Limit - G-code motion exceeds machine travel.";
+        case 3:  return "Abort During Cycle - reset while in motion. Re-homing is recommended.";
+        case 4:  return "Probe Fail - probe was not in the expected initial state.";
+        case 5:  return "Probe Fail - no workpiece contact detected during probing.";
+        case 6:  return "Homing Fail - homing cycle was reset.";
+        case 7:  return "Homing Fail - safety door opened during homing.";
+        case 8:  return "Homing Fail - pull-off failed to clear the limit switch.";
+        case 9:  return "Homing Fail - could not find a limit switch.";
+        case 10: return "Spindle Control Error.";
+        case 11: return "Control Pin Error.";
+        case 12: return "Ambiguous Limit Switch - unable to determine which switch is active.";
+        case 13: return "Hard Stop.";
+        case 14: return "Unhomed - machine needs to be homed ($H).";
+        case 15: return "Initialization Alarm.";
+        default: return nullptr;
+    }
 }
 
 void FluidNCClient::sendCommand(const char* command) {
@@ -594,7 +640,14 @@ void FluidNCClient::requestStatusReport() {
 String FluidNCClient::getMachineIP() {
     if (!currentStatus.is_connected) return "";
     
-    // Get URL from config
+    // Return the IP address resolved during connect() (handles hostnames and
+    // .local mDNS names) so callers never need to re-resolve it themselves.
+    if (resolvedIP.length() > 0) {
+        return resolvedIP;
+    }
+    
+    // Fallback: derive from the configured URL directly (shouldn't normally
+    // be needed since connect() always sets resolvedIP on success)
     String url = String(currentConfig.fluidnc_url);
     
     // Extract IP from URL (may already be just an IP address)
@@ -640,8 +693,51 @@ void FluidNCClient::clearTerminalCallback() {
 }
 
 void FluidNCClient::onMessageCallback(WebsocketsMessage message) {
-    const char* payload = message.c_str();
-    
+    // Text frames (e.g. "CURRENT_ID:2", "PING") are single messages.
+    if (!message.isBinary()) {
+        String text = message.data();
+        while (text.endsWith("\n") || text.endsWith("\r")) {
+            text.remove(text.length() - 1);
+        }
+        if (text.length() > 0) {
+            handleLine(text.c_str());
+        }
+        return;
+    }
+
+    // Binary frames carry controller output as '\n'-terminated lines. FluidNC can
+    // pack several lines into one frame (e.g. "[MSG:...]\n<Hold:0|...>\n[GC:...]\n")
+    // or split a long line (e.g. a $Files/ListGcode JSON response) across frames,
+    // so reassemble and hand each complete line on separately.
+    rxLineBuffer += message.c_str();
+    rxLineBufferMs = millis();
+
+    int newline;
+    while ((newline = rxLineBuffer.indexOf('\n')) >= 0) {
+        String line = rxLineBuffer.substring(0, newline);
+        rxLineBuffer.remove(0, newline + 1);
+        while (line.endsWith("\r")) {
+            line.remove(line.length() - 1);
+        }
+        if (line.length() > 0) {
+            handleLine(line.c_str());
+        }
+    }
+
+    if (rxLineBuffer.length() > RX_LINE_BUFFER_MAX) {
+        Serial.printf("[FluidNC] Line buffer exceeded %d bytes without newline - flushing\n", RX_LINE_BUFFER_MAX);
+        flushLineBuffer();
+    }
+}
+
+void FluidNCClient::flushLineBuffer() {
+    if (rxLineBuffer.length() == 0) return;
+    String line = rxLineBuffer;
+    rxLineBuffer = "";
+    handleLine(line.c_str());
+}
+
+void FluidNCClient::handleLine(const char* payload) {
     // Only log non-status messages to reduce serial spam
     if (payload[0] != '<') {
         LOG_PRINTF("[FluidNC] Received: %s\n", payload);
@@ -672,6 +768,22 @@ void FluidNCClient::onMessageCallback(WebsocketsMessage message) {
         // Plain-text error/alarm lines, e.g. "error:9" or "ALARM:2"
         strncpy(currentStatus.last_message, payload, sizeof(currentStatus.last_message) - 1);
         currentStatus.last_message[sizeof(currentStatus.last_message) - 1] = '\0';
+        
+        // For ALARM lines, also populate a dedicated, translated alarm_message so
+        // the ALARM popup always shows the actual alarm reason - not whatever
+        // unrelated message (e.g. auto-report confirmation) happened to arrive last.
+        if (strncmp(payload, "ALARM:", 6) == 0) {
+            int code = atoi(payload + 6);
+            const char* description = alarmCodeToDescription(code);
+            if (description) {
+                snprintf(currentStatus.alarm_message, sizeof(currentStatus.alarm_message),
+                         "Alarm %d: %s", code, description);
+            } else {
+                snprintf(currentStatus.alarm_message, sizeof(currentStatus.alarm_message),
+                         "Alarm %d", code);
+            }
+            Serial.printf("[FluidNC] Alarm message: %s\n", currentStatus.alarm_message);
+        }
     }
 }
 
@@ -679,6 +791,7 @@ void FluidNCClient::onEventsCallback(WebsocketsEvent event, String data) {
     switch(event) {
         case WebsocketsEvent::ConnectionOpened:
             LOG_PRINTLN("[FluidNC] WebSocket connected");
+            rxLineBuffer = "";
             // Don't set is_connected yet - wait for first status report
             currentStatus.state = STATE_IDLE;
             currentStatus.last_update_ms = millis();
@@ -696,6 +809,7 @@ void FluidNCClient::onEventsCallback(WebsocketsEvent event, String data) {
             
         case WebsocketsEvent::ConnectionClosed:
             LOG_PRINTLN("[FluidNC] WebSocket disconnected");
+            rxLineBuffer = "";
             
             // Set flag to prevent re-entrant close() calls
             isHandlingDisconnect = true;

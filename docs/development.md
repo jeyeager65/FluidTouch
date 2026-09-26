@@ -6,6 +6,7 @@
 
 - [Development Environment](#development-environment)
 - [Building from Source](#building-from-source)
+- [Desktop Simulator](#desktop-simulator)
 - [Project Architecture](#project-architecture)
 - [Code Style Guidelines](#code-style-guidelines)
 - [Debugging](#debugging)
@@ -141,6 +142,26 @@ platformio device monitor -b 115200
 - Basic Firmware: `.pio/build/elecrow-crowpanel-7-basic/firmware.bin`
 - Advance v1.2 Firmware: `.pio/build/elecrow-crowpanel-7-advance-v12/firmware.bin`
 - Advance v1.3 Firmware: `.pio/build/elecrow-crowpanel-7-advance-v13/firmware.bin`
+
+---
+
+## Desktop Simulator
+
+The `sim/` folder builds the firmware UI as a Windows desktop app (SDL2
+window, mouse = touch) that connects to a **real FluidNC controller** over
+your PC's network. The UI code, `main.cpp` and the FluidNC client are
+compiled unchanged, so most UI work can be done without flashing hardware.
+
+```powershell
+.\sim\build.ps1 -Run
+```
+
+One-time setup (MSYS2 + GCC + SDL2), usage, the fake FluidNC server for
+offline testing, scripted screenshots and how the simulator works are all in
+**[sim/README.md](../sim/README.md)**.
+
+Still check performance, touch feel and display colors on the device before
+releasing. See the simulator's limitations list.
 
 ---
 
@@ -395,6 +416,7 @@ Serial.printf("LVGL used: %d KB\n", mon.total_size - mon.free_size);
 ### Testing Checklist
 
 - [ ] Compiles without warnings
+- [ ] Simulator still builds (`.\sim\build.ps1`)
 - [ ] Flash usage acceptable
 - [ ] UI responsive on hardware
 - [ ] Touch input works correctly

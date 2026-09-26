@@ -135,4 +135,8 @@ web/firmware/*/
 web/versions.json
 
 webui/
-fluidtouch/*
+fluidtouch/
+
+# Desktop simulator build output and local data
+sim/build/
+sim/data/

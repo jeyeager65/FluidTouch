@@ -145,7 +145,7 @@ bool UploadManager::uploadFile(const char* localPath,
         return false;
     }
     
-    // Get FluidNC IP and construct URL
+    // Get FluidNC IP (already resolved from hostname/mDNS during connect())
     String machineIP = FluidNCClient::getMachineIP();
     if (machineIP.isEmpty()) {
         Serial.println("[UploadManager] FluidNC not connected");
@@ -154,22 +154,6 @@ bool UploadManager::uploadFile(const char* localPath,
         _uploading = false;
         if (onComplete) onComplete(false, "FluidNC not connected");
         return false;
-    }
-    
-    // Resolve hostname if needed
-    IPAddress serverIP;
-    if (machineIP.indexOf('.') == -1) {
-        // It's a hostname, try to resolve it
-        if (!WiFi.hostByName(machineIP.c_str(), serverIP)) {
-            Serial.printf("[UploadManager] Failed to resolve hostname: %s\n", machineIP.c_str());
-            heap_caps_free(buffer);
-            file.close();
-            _uploading = false;
-            if (onComplete) onComplete(false, "Failed to resolve hostname");
-            return false;
-        }
-        machineIP = serverIP.toString();
-        Serial.printf("[UploadManager] Resolved to IP: %s\n", machineIP.c_str());
     }
     
     // Build remote path - remove leading slash from filename if present

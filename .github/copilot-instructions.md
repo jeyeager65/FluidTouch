@@ -308,6 +308,25 @@ The codebase follows a **strict modular pattern** with clear separation:
 
 **Windows PowerShell Note**: The call operator `&` and quotes around the path are REQUIRED because the path contains environment variables and backslashes. Without quotes, PowerShell will throw a parser error. If `platformio.exe` shortcut works in your PATH, you can use it directly without the full path.
 
+### Desktop Simulator (`sim/`)
+The firmware UI also builds as a Windows desktop app (SDL2 window) that connects to a real FluidNC controller. Full docs: `sim/README.md`.
+
+```powershell
+.\sim\build.ps1          # build (MSYS2 UCRT64 gcc + SDL2, see sim/README.md)
+.\sim\build.ps1 -Run     # build and launch
+# Verify UI changes without a human: scripted input + BMP screenshot, then view it
+sim\build\fluidtouch_sim.exe --script "wait 4000; click 215 170; wait 5000; shot status.bmp; exit"
+python sim\tools\fake_fluidnc.py --port 81   # fake controller (machine URL 127.0.0.1, port 81)
+```
+
+Rules for keeping it working:
+- **Don't modify firmware code for the simulator.** `src/**` compiles unchanged. Desktop versions of Arduino/ESP32 headers live in `sim/include/` (searched before `include/`), and implementations live in `sim/src/`.
+- **A new Arduino/ESP32 API used in `src/`** needs a matching addition to the `sim/include/` shim. Hardware-only calls can be no-ops.
+- **A new hardware-only `.cpp`** (driver, peripheral) needs a replacement in `sim/src/`, or a `list(FILTER ...)` exclusion in `sim/CMakeLists.txt`.
+- **Library version bumps in `platformio.ini`** must be mirrored in the `GIT_TAG`s in `sim/CMakeLists.txt`.
+- The simulator's Preferences warn on NVS type mismatches and keys over 15 chars (`[SIM] Preferences:` in the log). Treat these as real bugs.
+- The simulator doesn't reproduce performance, touch feel, or display colors. Still verify those on hardware.
+
 ### Screenshot Debugging
 - WiFi credentials stored in ESP32 Preferences (`PREFS_NAMESPACE "fluidtouch"`)
 - When connected, access via browser at `http://<ESP32-IP>/screenshot`

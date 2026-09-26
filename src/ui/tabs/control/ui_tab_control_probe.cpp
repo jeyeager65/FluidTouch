@@ -41,17 +41,19 @@ void UITabControlProbe::create(lv_obj_t *parent) {
     // Disable scrolling initially - will be enabled when keyboard appears
     lv_obj_clear_flag(parent, LV_OBJ_FLAG_SCROLLABLE);
     
-    // === X-AXIS SECTION ===
+    // === X-AXIS SECTION (skipped when X-axis disabled) ===
+    int section_y = 10;
+    if (UICommon::isXAxisEnabled()) {
     lv_obj_t* x_header = lv_label_create(parent);
     lv_label_set_text(x_header, "X-AXIS");
     lv_obj_set_style_text_font(x_header, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(x_header, UITheme::TEXT_DISABLED, 0);  // Same as parameters header
-    lv_obj_set_pos(x_header, 10, 10);
+    lv_obj_set_pos(x_header, 10, section_y);
     
     // X- button (colored with axis color)
     lv_obj_t* x_minus_btn = lv_button_create(parent);
     lv_obj_set_size(x_minus_btn, 100, 50);  // Narrower buttons
-    lv_obj_set_pos(x_minus_btn, 10, 45);
+    lv_obj_set_pos(x_minus_btn, 10, section_y + 35);
     lv_obj_set_style_bg_color(x_minus_btn, UITheme::AXIS_X, 0);  // Cyan for X-axis
     lv_obj_add_event_cb(x_minus_btn, probe_x_minus_handler, LV_EVENT_CLICKED, NULL);
     lv_obj_t* x_minus_lbl = lv_label_create(x_minus_btn);
@@ -62,25 +64,28 @@ void UITabControlProbe::create(lv_obj_t *parent) {
     // X+ button (colored with axis color)
     lv_obj_t* x_plus_btn = lv_button_create(parent);
     lv_obj_set_size(x_plus_btn, 100, 50);  // Narrower buttons
-    lv_obj_set_pos(x_plus_btn, 120, 45);  // Adjusted position
+    lv_obj_set_pos(x_plus_btn, 120, section_y + 35);  // Adjusted position
     lv_obj_set_style_bg_color(x_plus_btn, UITheme::AXIS_X, 0);  // Cyan for X-axis
     lv_obj_add_event_cb(x_plus_btn, probe_x_plus_handler, LV_EVENT_CLICKED, NULL);
     lv_obj_t* x_plus_lbl = lv_label_create(x_plus_btn);
     lv_label_set_text(x_plus_lbl, "X+");
     lv_obj_set_style_text_font(x_plus_lbl, &lv_font_montserrat_20, 0);
     lv_obj_center(x_plus_lbl);
+    section_y += 105;
+    }
     
-    // === Y-AXIS SECTION ===
+    // === Y-AXIS SECTION (skipped when Y-axis disabled) ===
+    if (UICommon::isYAxisEnabled()) {
     lv_obj_t* y_header = lv_label_create(parent);
     lv_label_set_text(y_header, "Y-AXIS");
     lv_obj_set_style_text_font(y_header, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(y_header, UITheme::TEXT_DISABLED, 0);  // Same as parameters header
-    lv_obj_set_pos(y_header, 10, 115);
+    lv_obj_set_pos(y_header, 10, section_y);
     
     // Y- button (colored with axis color)
     lv_obj_t* y_minus_btn = lv_button_create(parent);
     lv_obj_set_size(y_minus_btn, 100, 50);  // Narrower buttons
-    lv_obj_set_pos(y_minus_btn, 10, 150);
+    lv_obj_set_pos(y_minus_btn, 10, section_y + 35);
     lv_obj_set_style_bg_color(y_minus_btn, UITheme::AXIS_Y, 0);  // Green for Y-axis
     lv_obj_add_event_cb(y_minus_btn, probe_y_minus_handler, LV_EVENT_CLICKED, NULL);
     lv_obj_t* y_minus_lbl = lv_label_create(y_minus_btn);
@@ -91,31 +96,36 @@ void UITabControlProbe::create(lv_obj_t *parent) {
     // Y+ button (colored with axis color)
     lv_obj_t* y_plus_btn = lv_button_create(parent);
     lv_obj_set_size(y_plus_btn, 100, 50);  // Narrower buttons
-    lv_obj_set_pos(y_plus_btn, 120, 150);  // Adjusted position
+    lv_obj_set_pos(y_plus_btn, 120, section_y + 35);  // Adjusted position
     lv_obj_set_style_bg_color(y_plus_btn, UITheme::AXIS_Y, 0);  // Green for Y-axis
     lv_obj_add_event_cb(y_plus_btn, probe_y_plus_handler, LV_EVENT_CLICKED, NULL);
     lv_obj_t* y_plus_lbl = lv_label_create(y_plus_btn);
     lv_label_set_text(y_plus_lbl, "Y+");
     lv_obj_set_style_text_font(y_plus_lbl, &lv_font_montserrat_20, 0);
     lv_obj_center(y_plus_lbl);
+    section_y += 105;
+    }
     
-    // === Z-AXIS SECTION ===
+    // === Z-AXIS SECTION (skipped when Z-axis disabled) ===
+    if (UICommon::isZAxisEnabled()) {
     lv_obj_t* z_header = lv_label_create(parent);
     lv_label_set_text(z_header, "Z-AXIS");
     lv_obj_set_style_text_font(z_header, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(z_header, UITheme::TEXT_DISABLED, 0);  // Same as parameters header
-    lv_obj_set_pos(z_header, 10, 220);
+    lv_obj_set_pos(z_header, 10, section_y);
     
     // Z- button (only downward probing makes sense, colored with axis color)
     lv_obj_t* z_minus_btn = lv_button_create(parent);
     lv_obj_set_size(z_minus_btn, 100, 50);  // Narrower button
-    lv_obj_set_pos(z_minus_btn, 10, 255);
+    lv_obj_set_pos(z_minus_btn, 10, section_y + 35);
     lv_obj_set_style_bg_color(z_minus_btn, UITheme::AXIS_Z, 0);  // Magenta for Z-axis
     lv_obj_add_event_cb(z_minus_btn, probe_z_minus_handler, LV_EVENT_CLICKED, NULL);
     lv_obj_t* z_minus_lbl = lv_label_create(z_minus_btn);
     lv_label_set_text(z_minus_lbl, "Z-");
     lv_obj_set_style_text_font(z_minus_lbl, &lv_font_montserrat_20, 0);
     lv_obj_center(z_minus_lbl);
+    section_y += 105;
+    }
     
     // === PARAMETERS SECTION (Right Side) ===
     lv_obj_t* params_header = lv_label_create(parent);
