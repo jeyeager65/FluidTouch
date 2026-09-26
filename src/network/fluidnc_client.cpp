@@ -51,6 +51,12 @@ bool FluidNCClient::isXModemTransfer = false;
 TaskHandle_t FluidNCClient::xmodemTaskHandle = nullptr;
 String FluidNCClient::rxLineBuffer = "";
 uint32_t FluidNCClient::rxLineBufferMs = 0;
+bool FluidNCClient::espnowLinkUp = false;
+
+EspNowLink& FluidNCClient::espnowLink() {
+    static EspNowLink link(espnowPlatformRadio());
+    return link;
+}
 
 // A partial line with no '\n' after this long is handled as-is, in case a
 // firmware version sends binary frames without line endings
@@ -161,11 +167,34 @@ bool FluidNCClient::connect(const MachineConfig &config) {
     }
 #endif
 
-    // Reset serial-mode flag for WebSocket connections
-    activeSerialMode = CONN_WIFI;
 #ifdef HARDWARE_ADVANCE
     activeStream = nullptr;
 #endif
+
+    if (config.connection_type == CONN_ESPNOW) {
+        activeSerialMode = CONN_ESPNOW;
+        autoReportingEnabled = false;
+        autoReportingAttempted = false;
+        everConnectedSuccessfully = false;
+        espnowLinkUp = false;
+        rxLineBuffer = "";
+        currentStatus.is_connected = false;
+        if (!espnowIsPaired(config.espnow_pairing)) {
+            LOG_PRINTLN("[FluidNC] ESP-NOW machine has not been paired with FluidNC");
+            return false;
+        }
+        EspNowLink& link = espnowLink();
+        if (!link.begin()) {
+            return false;
+        }
+        // The link searches for FluidNC; loop() finishes the connection
+        LOG_PRINTF("[FluidNC] Connecting to %s over ESP-NOW\n", config.espnow_pairing.hostname);
+        link.setPairing(config.espnow_pairing);
+        return true;
+    }
+
+    // Reset serial-mode flag for WebSocket connections
+    activeSerialMode = CONN_WIFI;
 
     // Check WiFi connection first
     if (WiFi.status() != WL_CONNECTED) {
@@ -246,6 +275,13 @@ bool FluidNCClient::connect(const MachineConfig &config) {
 
 void FluidNCClient::disconnect() {
     LOG_PRINTLN("[FluidNC] Disconnecting");
+    if (activeSerialMode == CONN_ESPNOW) {
+        // Stops keepalives; FluidNC drops the pendant after 10 s of silence
+        espnowLink().clearPairing();
+        activeSerialMode = CONN_WIFI;
+        espnowLinkUp = false;
+        rxLineBuffer = "";
+    } else
 #ifdef HARDWARE_ADVANCE
     if (activeSerialMode == CONN_UART) {
         wiredSerial.end();
@@ -288,6 +324,9 @@ void FluidNCClient::stopReconnectionAttempts() {
 }
 
 bool FluidNCClient::isConnected() {
+    if (activeSerialMode == CONN_ESPNOW) {
+        return currentStatus.is_connected && espnowLink().connected();
+    }
 #ifdef HARDWARE_ADVANCE
     if (activeSerialMode == CONN_UART || activeSerialMode == CONN_USB_CDC) {
         return currentStatus.is_connected;
@@ -325,14 +364,14 @@ bool FluidNCClient::isSerialMode() {
 }
 
 bool FluidNCClient::isWiFiMode() {
-#ifdef HARDWARE_ADVANCE
-    // On Advance, "WiFi mode" means no serial stream is active. activeSerialMode
+    // "WiFi mode" means no serial or ESP-NOW link is active. activeSerialMode
     // is the runtime source of truth (currentConfig may not match what's actually
     // open, e.g. after disconnect()).
     return activeSerialMode == CONN_WIFI;
-#else
-    return true;  // Basic hardware has only WiFi
-#endif
+}
+
+bool FluidNCClient::isEspNowMode() {
+    return activeSerialMode == CONN_ESPNOW;
 }
 
 uint32_t FluidNCClient::getUartBytesReceived() {
@@ -497,6 +536,13 @@ const XModemTransferState& FluidNCClient::getXModemState() {
 void FluidNCClient::loop() {
     if (!initialized) return;
 
+    // Polled even when not connected in ESP-NOW mode, so pairing can run
+    espnowLink().poll(millis());
+    if (activeSerialMode == CONN_ESPNOW) {
+        espnowLoop();
+        return;
+    }
+
 #ifdef HARDWARE_ADVANCE
     if (activeStream != nullptr) {
         // While an XModem transfer task is running, skip normal line parsing
@@ -573,6 +619,80 @@ void FluidNCClient::loop() {
     }
 }
 
+void FluidNCClient::espnowLoop() {
+    EspNowLink& link = espnowLink();
+    if (link.pairingChanged()) {
+        saveEspNowPairing(link.pairing());  // FluidNC moved to another channel
+    }
+
+    bool up = link.connected();
+    if (up && !espnowLinkUp) {
+        // Same start-up as a new WebSocket connection; is_connected is set
+        // when the first status report arrives
+        LOG_PRINTLN("[FluidNC] ESP-NOW link up");
+        rxLineBuffer = "";
+        currentStatus.last_update_ms = millis();
+        lastPollingMs = millis() - 1000;
+        lastGCodePollMs = millis() - 10000;
+        attemptEnableAutoReporting();
+        sendRaw("$Build/Info\n");
+    } else if (!up && espnowLinkUp) {
+        LOG_PRINTLN("[FluidNC] ESP-NOW link down");
+        currentStatus.is_connected = false;
+        currentStatus.state = STATE_DISCONNECTED;
+        autoReportingEnabled = false;
+        autoReportingAttempted = false;
+    }
+    espnowLinkUp = up;
+
+    // The link delivers '\n'-terminated lines with '\r' already removed
+    for (int c; (c = link.read()) >= 0;) {
+        if (c != '\n') {
+            rxLineBuffer += (char)c;
+        } else if (rxLineBuffer.length() > 0) {
+            String line = rxLineBuffer;
+            rxLineBuffer = "";
+            handleLine(line.c_str());
+        }
+    }
+
+    if (!up) {
+        return;
+    }
+    if (autoReportingAttempted && !autoReportingEnabled && millis() - lastAutoReportAttemptMs >= 2000) {
+        LOG_PRINTLN("[FluidNC] Auto-reporting timeout - switching to fallback polling");
+        autoReportingAttempted = false;
+    }
+    if (!autoReportingAttempted && !autoReportingEnabled) {
+        performFallbackPolling();
+    }
+}
+
+void FluidNCClient::saveEspNowPairing(const EspNowPairing& pairing) {
+    currentConfig.espnow_pairing = pairing;
+    int index = MachineConfigManager::getSelectedMachineIndex();
+    MachineConfig config;
+    if (index >= 0 && MachineConfigManager::getMachine(index, config) && config.connection_type == CONN_ESPNOW) {
+        config.espnow_pairing = pairing;
+        MachineConfigManager::saveMachine(index, config);
+        LOG_PRINTF("[FluidNC] Saved ESP-NOW channel %u for %s\n", pairing.channel, config.name);
+    }
+}
+
+void FluidNCClient::sendRaw(const char* data) {
+    if (activeSerialMode == CONN_ESPNOW) {
+        espnowLink().write((const uint8_t*)data, strlen(data));
+        return;
+    }
+#ifdef HARDWARE_ADVANCE
+    if (activeStream != nullptr) {
+        activeStream->print(data);
+        return;
+    }
+#endif
+    webSocket.send(data);
+}
+
 const FluidNCStatus& FluidNCClient::getStatus() {
     return currentStatus;
 }
@@ -615,26 +735,12 @@ void FluidNCClient::sendCommand(const char* command) {
     }
     
     LOG_PRINTF("[FluidNC] Sending command: %s\n", command);
-#ifdef HARDWARE_ADVANCE
-    if (activeStream != nullptr) {
-        activeStream->print(command);
-        return;
-    }
-#endif
-    webSocket.send(command);
+    sendRaw(command);
 }
 
 void FluidNCClient::requestStatusReport() {
     if (!currentStatus.is_connected) return;
-    
-#ifdef HARDWARE_ADVANCE
-    if (activeStream != nullptr) {
-        activeStream->print("?");
-        return;
-    }
-#endif
-    // Send status query command (realtime command)
-    webSocket.send("?");
+    sendRaw("?");  // Realtime status query
 }
 
 String FluidNCClient::getMachineIP() {
@@ -1298,14 +1404,7 @@ void FluidNCClient::processUartLine(char* line) { (void)line; }
 
 void FluidNCClient::attemptEnableAutoReporting() {
     LOG_PRINTLN("[FluidNC] Attempting to enable automatic reporting (250ms)");
-#ifdef HARDWARE_ADVANCE
-    if (activeStream != nullptr) {
-        activeStream->print("$Report/Interval=250\n");
-    } else
-#endif
-    {
-        webSocket.send("$Report/Interval=250\n");
-    }
+    sendRaw("$Report/Interval=250\n");
     
     autoReportingAttempted = true;
     autoReportingEnabled = false;  // Will be set true when we receive status
@@ -1323,14 +1422,14 @@ void FluidNCClient::performFallbackPolling() {
     // Send status poll ("?") every 1 second
     if (now - lastPollingMs >= 1000) {
         LOG_PRINTLN("[FluidNC] Fallback polling: sending '?'");
-        webSocket.send("?");
+        sendRaw("?");
         lastPollingMs = now;
     }
     
     // Send GCode parser state poll ("$G") every 10 seconds
     if (now - lastGCodePollMs >= 10000) {
         LOG_PRINTLN("[FluidNC] Fallback polling: sending '$G'");
-        webSocket.send("$G\n");
+        sendRaw("$G\n");
         lastGCodePollMs = now;
     }
 }

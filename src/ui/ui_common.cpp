@@ -262,7 +262,7 @@ void UICommon::createMainUI() {
     if (config.connection_type == CONN_WIFI && strlen(config.ssid) > 0) {
         showConnectingPopup(config.name, config.ssid);
         lv_refr_now(nullptr);  // Force immediate display update
-    } else if (connectionIsSerial(config.connection_type)) {
+    } else if (config.connection_type != CONN_WIFI) {
         showConnectingPopup(config.name, nullptr);
         lv_refr_now(nullptr);  // Force immediate display update
     }
@@ -351,7 +351,7 @@ void UICommon::createMainUI() {
             return;  // Don't attempt machine connection without WiFi config
         }
     } else {
-        Serial.println("UICommon: Wired connection selected, skipping WiFi initialization");
+        Serial.println("UICommon: Serial or ESP-NOW connection selected, skipping WiFi initialization");
         // Popup already shown at start
     }
     
@@ -619,9 +619,13 @@ void UICommon::createStatusBar() {
     bool has_config = MachineConfigManager::getSelectedMachine(wifi_config);
     bool is_serial  = has_config && connectionIsSerial(wifi_config.connection_type);
 
+    bool is_espnow = has_config && wifi_config.connection_type == CONN_ESPNOW;
+
     String wifi_ssid;
     if (is_serial) {
         wifi_ssid = (wifi_config.connection_type == CONN_USB_CDC) ? "USB CDC" : "UART";
+    } else if (is_espnow) {
+        wifi_ssid = "ESP-NOW";
     } else if (WiFi.isConnected()) {
         wifi_ssid = WiFi.SSID();
     } else {
@@ -645,9 +649,9 @@ void UICommon::createStatusBar() {
     lv_label_set_text(lbl_wifi_symbol, is_serial ? LV_SYMBOL_USB : LV_SYMBOL_WIFI);
     lv_obj_set_style_text_font(lbl_wifi_symbol, &lv_font_montserrat_18, 0);
     // Serial (UART / USB CDC): always green (connection is physical, not network-dependent)
-    // Wireless: green if connected, red if not
+    // Wireless: green if connected, red if not (ESP-NOW starts red until the link is up)
     lv_obj_set_style_text_color(lbl_wifi_symbol,
-        (is_serial || WiFi.isConnected()) ? UITheme::STATE_IDLE : UITheme::STATE_ALARM, 0);
+        (is_serial || (!is_espnow && WiFi.isConnected())) ? UITheme::STATE_IDLE : UITheme::STATE_ALARM, 0);
     lv_obj_align(lbl_wifi_symbol, LV_ALIGN_BOTTOM_RIGHT, -5, -3);
 }
 
@@ -1047,9 +1051,9 @@ static void on_connection_error_connect(lv_event_t *e) {
     delay(100);
     lv_timer_handler();
     
-    if (connectionIsSerial(config.connection_type)) {
-        // Serial (UART or USB CDC): just reconnect the link
-        Serial.println("UICommon: Reconnecting serial link...");
+    if (config.connection_type != CONN_WIFI) {
+        // Serial (UART or USB CDC) or ESP-NOW: just reconnect the link
+        Serial.println("UICommon: Reconnecting serial / ESP-NOW link...");
         FluidNCClient::connect(config);
         connection_timeout_start = millis();
         connection_timeout_active = true;
@@ -1235,9 +1239,11 @@ void UICommon::checkConnectionTimeout() {
         return;
     }
     
-    // Check if timeout exceeded (10 seconds)
+    // Check if timeout exceeded (10 seconds; 20 for ESP-NOW, whose channel
+    // search can take ~16 s when FluidNC has moved to another channel)
     uint32_t elapsed = millis() - connection_timeout_start;
-    if (elapsed >= 10000 && !connection_error_shown && !ever_connected_successfully) {
+    uint32_t timeout = FluidNCClient::isEspNowMode() ? 20000 : 10000;
+    if (elapsed >= timeout && !connection_error_shown && !ever_connected_successfully) {
         // Only show error if we've never connected successfully (prevents popup on brief disconnects after initial connection)
         connection_error_shown = true;
         
@@ -1261,6 +1267,13 @@ void UICommon::checkConnectionTimeout() {
                         "Check that the baud rate matches FluidNC's\n"
                         "uart3: usb_host: baud: setting in config.yaml.",
                         config.name, (int)config.uart_baud_rate, (int)rxBytes);
+            } else if (config.connection_type == CONN_ESPNOW) {
+                snprintf(error_msg, sizeof(error_msg),
+                        "Could not reach machine over ESP-NOW:\n%s\n\n"
+                        "Check that FluidNC (v4.0.4 or later) is powered on.\n"
+                        "If FluidNC was unpaired or switched between\n"
+                        "AP and STA WiFi mode, pair it again.",
+                        config.name);
             } else {
                 snprintf(error_msg, sizeof(error_msg), 
                         "Could not connect to machine:\n%s\n\nURL: %s:%d\n\nCheck that the machine is powered on\nand network connection is available.",

@@ -157,6 +157,9 @@ const char* EspNowLink::stateName(State state) {
 }
 
 bool EspNowLink::begin() {
+    if (_started) {
+        return true;
+    }
     uint8_t pmk[16];
     EspNowCrypto::keyFromLabel(PMK_LABEL, pmk);
     _started = _radio.begin(pmk);

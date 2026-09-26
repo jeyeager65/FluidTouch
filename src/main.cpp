@@ -186,7 +186,9 @@ void loop()
         lastUIUpdate = currentMillis;
         
         bool machine_connected = FluidNCClient::isConnected();
-        bool wifi_connected = (WiFi.status() == WL_CONNECTED);
+        // In ESP-NOW mode the radio symbol shows the ESP-NOW link instead of WiFi
+        bool wifi_connected = FluidNCClient::isEspNowMode() ? FluidNCClient::espnowLink().connected()
+                                                            : (WiFi.status() == WL_CONNECTED);
         
         // Update connection status symbols (always update, even if not connected)
         UICommon::updateConnectionStatus(machine_connected, wifi_connected);

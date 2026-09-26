@@ -297,6 +297,8 @@ void UIMachineSelect::refreshMachineList() {
                     connection_text = String(LV_SYMBOL_USB) + " UART";
                 } else if (machines[i].connection_type == CONN_USB_CDC) {
                     connection_text = String(LV_SYMBOL_USB) + " USB CDC";
+                } else if (machines[i].connection_type == CONN_ESPNOW) {
+                    connection_text = String(LV_SYMBOL_WIFI) + " ESP-NOW";
                 } else {
                     connection_text = String(LV_SYMBOL_USB) + " Wired";
                 }
@@ -570,8 +572,12 @@ void UIMachineSelect::onConfigSave(lv_event_t *e) {
         return;
     }
     
-    // Create config
+    // Start from the saved machine when editing, so settings this dialog
+    // doesn't show (jog, probe, axes, ESP-NOW pairing) are kept
     MachineConfig config;
+    if (editing_index >= 0 && editing_index < MAX_MACHINES && machines[editing_index].is_configured) {
+        config = machines[editing_index];
+    }
     strncpy(config.name, name, sizeof(config.name) - 1);
     // Dropdown order: 0=WiFi, 1=UART, 2=USB CDC (Basic only has option 0)
     switch (sel) {

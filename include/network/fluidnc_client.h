@@ -143,6 +143,10 @@ public:
     static bool isUsbCdcMode();  // CONN_USB_CDC (native USB CDC device)
     static bool isSerialMode();  // UART or USB CDC (any byte-stream mode)
     static bool isWiFiMode();    // CONN_WIFI (WebSocket)
+    static bool isEspNowMode();  // CONN_ESPNOW (direct radio link to FluidNC)
+
+    // The ESP-NOW link, also used by the pairing screen before connecting
+    static EspNowLink& espnowLink();
 
     // Backwards-compat alias - prefer isUartMode() in new code
     static inline bool isWiredMode() { return isUartMode(); }
@@ -220,9 +224,14 @@ private:
     static bool everConnectedSuccessfully; // True once first status report received, never reset
     static bool isHandlingDisconnect;     // Guard to prevent re-entrant close() calls
 
-    // Active serial connection state - Advance hardware only.
-    // activeSerialMode is CONN_UART, CONN_USB_CDC, or CONN_WIFI (for "neither").
+    // Active non-WebSocket connection: CONN_UART or CONN_USB_CDC (Advance
+    // hardware only), CONN_ESPNOW, or CONN_WIFI (for "none of these").
     static ConnectionType activeSerialMode;
+    static bool espnowLinkUp;  // ESP-NOW link was connected at the last loop()
+    static void espnowLoop();
+    static void saveEspNowPairing(const EspNowPairing& pairing);
+    // Send raw bytes over whichever link is active
+    static void sendRaw(const char* data);
     static char uartRxBuffer[512];
     static uint16_t uartRxPos;
     static uint32_t uartBytesReceived;  // Total bytes received over serial stream (debug counter)
