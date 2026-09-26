@@ -335,13 +335,17 @@ void UIMachineSelect::refreshMachineList() {
                 lv_obj_set_style_text_color(connection_label, UITheme::UI_INFO, 0);
                 lv_obj_align(connection_label, LV_ALIGN_BOTTOM_LEFT, 0, -30);  // 30px from bottom
                 
-                // Line 3: FluidNC URL:Port (bottom area)
+                // Line 3: where FluidNC is (bottom area): URL:Port for WiFi,
+                // the paired hostname for ESP-NOW, the baud rate for UART / USB CDC
                 lv_obj_t *url_label = lv_label_create(machine_buttons[i]);
                 char url_text[128];
                 if (machines[i].connection_type == CONN_ESPNOW) {
                     const EspNowPairing &pairing = machines[i].espnow_pairing;
                     snprintf(url_text, sizeof(url_text), "%s",
                              espnowIsPaired(pairing) ? pairing.hostname : "Not paired");
+                } else if (connectionIsSerial(machines[i].connection_type)) {
+                    snprintf(url_text, sizeof(url_text), "%lu baud",
+                             (unsigned long)machines[i].uart_baud_rate);
                 } else {
                     snprintf(url_text, sizeof(url_text), "%s:%d",
                             machines[i].fluidnc_url, machines[i].websocket_port);
