@@ -166,12 +166,14 @@ void startStdinReader() {
 HardwareSerial Serial;
 
 int HardwareSerial::available() {
+    if (port_ != 0) return 0;
     startStdinReader();
     std::lock_guard<std::mutex> lock(g_stdin_mutex);
     return (int)g_stdin_buf.size();
 }
 
 int HardwareSerial::read() {
+    if (port_ != 0) return -1;
     std::lock_guard<std::mutex> lock(g_stdin_mutex);
     if (g_stdin_buf.empty()) return -1;
     char c = g_stdin_buf.front();
@@ -180,17 +182,20 @@ int HardwareSerial::read() {
 }
 
 int HardwareSerial::peek() {
+    if (port_ != 0) return -1;
     std::lock_guard<std::mutex> lock(g_stdin_mutex);
     return g_stdin_buf.empty() ? -1 : (unsigned char)g_stdin_buf.front();
 }
 
 size_t HardwareSerial::write(uint8_t c) {
+    if (port_ != 0) return 1;
     // Firmware uses "\r\n" (println); drop the \r so console output is clean
     if (c != '\r') fputc(c, stdout);
     return 1;
 }
 
 size_t HardwareSerial::write(const uint8_t *buf, size_t size) {
+    if (port_ != 0) return size;
     for (size_t i = 0; i < size; i++) {
         if (buf[i] != '\r') fputc(buf[i], stdout);
     }
@@ -198,6 +203,16 @@ size_t HardwareSerial::write(const uint8_t *buf, size_t size) {
 }
 
 void HardwareSerial::flush() { fflush(stdout); }
+
+// ---------------------------------------------------------------------------
+// FreeRTOS tasks
+// ---------------------------------------------------------------------------
+BaseType_t xTaskCreatePinnedToCore(TaskFunction_t fn, const char *, uint32_t, void *param, unsigned,
+                                   TaskHandle_t *handle, int) {
+    std::thread(fn, param).detach();
+    if (handle) *handle = nullptr;
+    return pdPASS;
+}
 
 // ---------------------------------------------------------------------------
 // Timing

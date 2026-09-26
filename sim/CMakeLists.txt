@@ -70,6 +70,9 @@ set(FT_INCLUDE_DIRS
 
 set(FT_DEFINES
     FLUIDTOUCH_SIM=1
+    # Simulate the CrowPanel Advance (the main board): UART / USB CDC /
+    # ESP-NOW connection types. Serial links are stubs on the desktop.
+    HARDWARE_ADVANCE=1
     LV_CONF_INCLUDE_SIMPLE=1
     LV_LVGL_H_INCLUDE_SIMPLE=1
     SDL_MAIN_HANDLED=1

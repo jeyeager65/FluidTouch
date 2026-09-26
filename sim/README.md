@@ -16,6 +16,9 @@ device uses.
 | LVGL, ArduinoJson, ArduinoWebsockets | Same versions as `platformio.ini` |
 | Display | SDL window. Backlight brightness is shown as a dark overlay |
 | Touchscreen | Mouse (left button = finger) |
+| Board | The CrowPanel **Advance** (`HARDWARE_ADVANCE`), so UART, USB CDC and ESP-NOW connection types are available |
+| UART / USB CDC links to FluidNC | Nothing is connected: they open but never receive anything |
+| ESP-NOW | UDP to the fake FluidNC server (see [ESP-NOW](#esp-now)) |
 | Wi-Fi | Your PC's network. Wi-Fi always reports "connected" |
 | mDNS (`fluidnc.local`) | Your operating system's resolver |
 | Preferences (NVS) | `sim/data/preferences.json` |
