@@ -1276,7 +1276,7 @@ void UICommon::checkConnectionTimeout() {
             } else if (config.connection_type == CONN_ESPNOW) {
                 snprintf(error_msg, sizeof(error_msg),
                         "Could not reach machine over ESP-NOW:\n%s\n\n"
-                        "Check that FluidNC (v4.0.4 or later) is powered on.\n"
+                        "Check that FluidNC (v4.1.0 or later) is powered on.\n"
                         "If FluidNC was unpaired or switched between\n"
                         "AP and STA WiFi mode, pair it again.",
                         config.name);

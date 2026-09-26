@@ -755,7 +755,7 @@ void UIMachineSelect::updateEspNowPanel() {
     } else if (espnow_pair_failed) {
         snprintf(status, sizeof(status), "No FluidNC answered.");
         status_color = UITheme::STATE_ALARM;
-        hint = "Check FluidNC is v4.0.4 or later and is\nwithin range, then try again.";
+        hint = "Check FluidNC is v4.1.0 or later and is\nwithin range, then try again.";
         button = LV_SYMBOL_REFRESH " Pair";
     } else if (paired) {
         snprintf(status, sizeof(status), "Paired with %s (channel %u)", paired->hostname, paired->channel);
@@ -765,7 +765,7 @@ void UIMachineSelect::updateEspNowPanel() {
     } else {
         snprintf(status, sizeof(status), "Not paired");
         status_color = UITheme::UI_WARNING;
-        hint = "Needs FluidNC v4.0.4 or later. Tap Pair, then run\n$espnow/pair on FluidNC within 60 seconds.";
+        hint = "Needs FluidNC v4.1.0 or later. Tap Pair, then run\n$espnow/pair on FluidNC within 60 seconds.";
         button = LV_SYMBOL_REFRESH " Pair";
     }
 

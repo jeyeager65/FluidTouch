@@ -13,7 +13,7 @@ enum ConnectionType {
     CONN_UART    = 0,  // Hardware UART (legacy "Wired") - Advance hardware only
     CONN_WIFI    = 1,  // WiFi WebSocket (legacy "Wireless")
     CONN_USB_CDC = 2,  // Native USB CDC device - Advance hardware only
-    CONN_ESPNOW  = 3   // ESP-NOW direct radio link (FluidNC v4.0.4+)
+    CONN_ESPNOW  = 3   // ESP-NOW direct radio link (FluidNC v4.1.0+; the protocol dates from v4.0.4, which had issues)
 };
 
 // Backwards-compatible aliases for older code that still references the
