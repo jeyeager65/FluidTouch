@@ -56,6 +56,12 @@ void delay(unsigned long ms);
 void delayMicroseconds(unsigned int us);
 void yield();
 
+// FreeRTOS - the ESP32 Arduino.h pulls these in; only the pieces used outside
+// HARDWARE_ADVANCE code paths are stubbed
+typedef void *TaskHandle_t;
+#define portTICK_PERIOD_MS 1
+inline void vTaskDelay(uint32_t ticks) { delay(ticks * portTICK_PERIOD_MS); }
+
 // Random
 long random(long max);
 long random(long min, long max);
@@ -83,6 +89,7 @@ class HardwareSerial : public Stream {
 public:
     void begin(unsigned long) {}
     void end() {}
+    size_t setRxBufferSize(size_t size) { return size; }
     int available() override;
     int read() override;
     int peek() override;

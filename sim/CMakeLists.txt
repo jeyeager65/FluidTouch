@@ -66,7 +66,7 @@ set(FT_DEFINES
     LV_CONF_INCLUDE_SIMPLE=1
     LV_LVGL_H_INCLUDE_SIMPLE=1
     SDL_MAIN_HANDLED=1
-    VERSION="1.0.6-sim"
+    VERSION="1.1.0-sim"
     # ArduinoJson: enable String/Stream/Print support without defining ARDUINO
     ARDUINOJSON_ENABLE_ARDUINO_STRING=1
     ARDUINOJSON_ENABLE_ARDUINO_STREAM=1
