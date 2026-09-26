@@ -189,7 +189,7 @@ void UITabFiles::refreshFileList(const std::string &path) {
     
     // Check if machine is in IDLE state - don't fetch files if machine is running
     const FluidNCStatus& status = FluidNCClient::getStatus();
-    if (status.state != STATE_IDLE) {
+    if (!status.isIdle()) {
         if (status_label) {
             lv_label_set_text(status_label, "Machine must be IDLE to list files");
             lv_obj_set_style_text_color(status_label, UITheme::UI_WARNING, 0);

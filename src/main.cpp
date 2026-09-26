@@ -328,8 +328,9 @@ void loop()
             // Update Override tab
             UITabControlOverride::updateValues(status.feed_override, status.rapid_override, status.spindle_override);
             
-            // Update power manager with current machine state
-            PowerManager::update(status.state);
+            // Update power manager with current machine state. A G4 dwell
+            // reports Idle mid-job; keep the display awake until the job ends.
+            PowerManager::update(status.is_sd_printing ? STATE_RUN : status.state);
         } else {
             // Machine disconnected - show OFFLINE state and reset all values to dashes
             UICommon::updateMachineState("OFFLINE");

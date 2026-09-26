@@ -1121,7 +1121,7 @@ void UITabStatus::position_field_event_handler(lv_event_t *e) {
     if (code == LV_EVENT_FOCUSED) {
         // Only allow position editing when machine is IDLE
         const FluidNCStatus& status = FluidNCClient::getStatus();
-        if (status.state != STATE_IDLE) {
+        if (!status.isIdle()) {
             // Clear focus state from the textarea
             lv_obj_clear_state(textarea, LV_STATE_FOCUSED);
             return;

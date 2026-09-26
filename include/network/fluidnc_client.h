@@ -112,6 +112,10 @@ struct FluidNCStatus {
         sd_filename[0] = '\0';   // No file initially
         fluidnc_version[0] = '\0';  // Unknown until $Build/Info response received
     }
+
+    // FluidNC reports Idle during a G4 dwell inside a running file, so a
+    // file job in progress also counts as busy
+    bool isIdle() const { return state == STATE_IDLE && !is_sd_printing; }
 };
 
 class FluidNCClient {
