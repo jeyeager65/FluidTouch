@@ -74,7 +74,7 @@ void UITabSettingsGeneral::create(lv_obj_t *tab) {
     
     // Description text
     lv_obj_t *desc_label = lv_label_create(tab);
-    lv_label_set_text(desc_label, "When disabled, the first configured machine\nwill be loaded automatically at startup.");
+    lv_label_set_text(desc_label, "When disabled, the last machine used will be\nloaded automatically at startup.");
     lv_obj_set_style_text_font(desc_label, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(desc_label, UITheme::TEXT_DISABLED, 0);
     lv_obj_set_pos(desc_label, 20, 107);  // 20 + 40 (title) + 40 (switch row) + 7 (spacing)

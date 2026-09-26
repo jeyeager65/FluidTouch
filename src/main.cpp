@@ -139,20 +139,23 @@ void setup()
         Serial.println("Showing machine selection screen...");
         UIMachineSelect::show(displayDriver.getDisplay());
     } else {
-        // Auto-load first configured machine
-        Serial.println("Auto-loading first machine...");
+        // Auto-load the last machine used, or the first configured one
+        Serial.println("Auto-loading last machine...");
         MachineConfig machines[MAX_MACHINES];
         MachineConfigManager::loadMachines(machines);
-        
-        // Find first configured machine
-        int first_machine_index = -1;
-        for (int i = 0; i < MAX_MACHINES; i++) {
-            if (machines[i].is_configured) {
-                first_machine_index = i;
-                break;
+
+        int first_machine_index = MachineConfigManager::getSelectedMachineIndex();
+        if (first_machine_index < 0 || first_machine_index >= MAX_MACHINES ||
+            !machines[first_machine_index].is_configured) {
+            first_machine_index = -1;
+            for (int i = 0; i < MAX_MACHINES; i++) {
+                if (machines[i].is_configured) {
+                    first_machine_index = i;
+                    break;
+                }
             }
         }
-        
+
         if (first_machine_index >= 0) {
             // Set as selected machine and initialize UI
             MachineConfigManager::setSelectedMachineIndex(first_machine_index);

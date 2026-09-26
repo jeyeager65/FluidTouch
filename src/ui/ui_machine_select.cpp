@@ -37,6 +37,8 @@ lv_obj_t *UIMachineSelect::lbl_ssid = nullptr;
 lv_obj_t *UIMachineSelect::lbl_url = nullptr;
 lv_obj_t *UIMachineSelect::lbl_password = nullptr;
 lv_obj_t *UIMachineSelect::lbl_port = nullptr;
+lv_obj_t *UIMachineSelect::sw_autoload = nullptr;
+bool UIMachineSelect::autoload_touched = false;
 lv_obj_t *UIMachineSelect::espnow_panel = nullptr;
 lv_obj_t *UIMachineSelect::lbl_espnow_status = nullptr;
 lv_obj_t *UIMachineSelect::lbl_espnow_hint = nullptr;
@@ -391,7 +393,16 @@ void UIMachineSelect::swapMachines(int index1, int index2) {
     
     // Save to preferences
     MachineConfigManager::saveMachines(machines);
-    
+
+    // Keep the last-used machine (auto-loaded when the machine select
+    // screen is turned off) pointing at the same machine
+    int selected = MachineConfigManager::getSelectedMachineIndex();
+    if (selected == index1) {
+        MachineConfigManager::setSelectedMachineIndex(index2);
+    } else if (selected == index2) {
+        MachineConfigManager::setSelectedMachineIndex(index1);
+    }
+
     // Refresh the display
     refreshMachineList();
 }
@@ -629,7 +640,20 @@ void UIMachineSelect::onConfigSave(lv_event_t *e) {
     // Save
     MachineConfigManager::saveMachine(editing_index, config);
     MachineConfigManager::loadMachines(machines);
-    
+
+    // Load at startup: on makes this the machine loaded at boot (and turns
+    // off the machine select screen); off only matters if it was this one
+    Preferences sys_prefs;
+    sys_prefs.begin(PREFS_SYSTEM_NAMESPACE, false);
+    if (lv_obj_has_state(sw_autoload, LV_STATE_CHECKED)) {
+        sys_prefs.putBool("show_mach_sel", false);
+        MachineConfigManager::setSelectedMachineIndex(editing_index);
+    } else if (!sys_prefs.getBool("show_mach_sel", true) &&
+               MachineConfigManager::getSelectedMachineIndex() == editing_index) {
+        sys_prefs.putBool("show_mach_sel", true);
+    }
+    sys_prefs.end();
+
     hideConfigDialog();
     refreshMachineList();
 }
@@ -641,6 +665,10 @@ void UIMachineSelect::onConfigCancel(lv_event_t *e) {
 
 void UIMachineSelect::onConnectionTypeChanged(lv_event_t *e) {
     updateConnectionFields();
+}
+
+void UIMachineSelect::onAutoloadChanged(lv_event_t *e) {
+    autoload_touched = true;
 }
 
 ConnectionType UIMachineSelect::selectedConnectionType() {
@@ -664,10 +692,11 @@ void UIMachineSelect::updateConnectionFields() {
     bool is_usb_cdc = (type == CONN_USB_CDC);
     bool is_espnow  = (type == CONN_ESPNOW);
 
-    // ESP-NOW has no network settings: its pairing panel takes their place
+    // Show only the fields this connection type uses: network settings for
+    // WiFi, the pairing panel for ESP-NOW, the baud rate for UART / USB CDC
     lv_obj_t *wifi_fields[] = {lbl_ssid, ta_ssid, lbl_url, ta_url, lbl_password, ta_password, lbl_port, ta_port};
     for (lv_obj_t *obj : wifi_fields) {
-        setHidden(obj, is_espnow);
+        setHidden(obj, !is_wifi);
     }
     setHidden(espnow_panel, !is_espnow);
     if (!is_espnow && espnow_pairing) {
@@ -675,17 +704,14 @@ void UIMachineSelect::updateConnectionFields() {
     }
     updateEspNowPanel();
 
-    // Enable/disable WiFi-specific fields
-    if (is_wifi) {
-        lv_obj_clear_state(ta_ssid, LV_STATE_DISABLED);
-        lv_obj_clear_state(ta_password, LV_STATE_DISABLED);
-        lv_obj_clear_state(ta_url, LV_STATE_DISABLED);
-        lv_obj_clear_state(ta_port, LV_STATE_DISABLED);
-    } else {
-        lv_obj_add_state(ta_ssid, LV_STATE_DISABLED);
-        lv_obj_add_state(ta_password, LV_STATE_DISABLED);
-        lv_obj_add_state(ta_url, LV_STATE_DISABLED);
-        lv_obj_add_state(ta_port, LV_STATE_DISABLED);
+    // New wired machines usually have the display to themselves, so they
+    // default to loading at startup, until the user sets the switch
+    if (sw_autoload && !autoload_touched && !machines[editing_index].is_configured) {
+        if (is_uart || is_usb_cdc) {
+            lv_obj_add_state(sw_autoload, LV_STATE_CHECKED);
+        } else {
+            lv_obj_clear_state(sw_autoload, LV_STATE_CHECKED);
+        }
     }
 
     // Baud rate applies to both UART and USB CDC (USB CDC baud must match
@@ -1033,6 +1059,36 @@ void UIMachineSelect::showConfigDialog(int index) {
     }
     lv_obj_add_event_cb(ta_port, onTextareaFocused, LV_EVENT_FOCUSED, nullptr);
     
+    // "Load this machine at startup" row, above the buttons: turns off the
+    // machine select screen and makes this the machine loaded at startup
+    lv_obj_t *autoload_row = lv_obj_create(dialog_content);
+    lv_obj_set_size(autoload_row, 740, 40);
+    lv_obj_set_pos(autoload_row, 0, 315);
+    lv_obj_set_flex_flow(autoload_row, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(autoload_row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_all(autoload_row, 0, 0);
+    lv_obj_set_style_pad_gap(autoload_row, 12, 0);
+    lv_obj_set_style_border_width(autoload_row, 0, 0);
+    lv_obj_set_style_bg_opa(autoload_row, LV_OPA_TRANSP, 0);
+    lv_obj_clear_flag(autoload_row, LV_OBJ_FLAG_SCROLLABLE);
+
+    sw_autoload = lv_switch_create(autoload_row);
+    autoload_touched = false;
+    if (!is_new) {
+        Preferences sys_prefs;
+        sys_prefs.begin(PREFS_SYSTEM_NAMESPACE, true);
+        bool show_machine_select = sys_prefs.getBool("show_mach_sel", true);
+        sys_prefs.end();
+        if (!show_machine_select && MachineConfigManager::getSelectedMachineIndex() == index) {
+            lv_obj_add_state(sw_autoload, LV_STATE_CHECKED);
+        }
+    }
+    lv_obj_add_event_cb(sw_autoload, onAutoloadChanged, LV_EVENT_VALUE_CHANGED, nullptr);
+
+    lv_obj_t *lbl_autoload = lv_label_create(autoload_row);
+    lv_label_set_text(lbl_autoload, "Load this machine at startup (skips the machine list)");
+    lv_obj_set_style_text_font(lbl_autoload, &lv_font_montserrat_18, 0);
+
     // Button container at bottom with absolute positioning
     lv_obj_t *btn_container = lv_obj_create(dialog_content);
     lv_obj_set_size(btn_container, 740, 50);  // 780 - 40px padding
@@ -1080,6 +1136,7 @@ void UIMachineSelect::hideConfigDialog() {
         dialog_content = nullptr;
     }
     lbl_ssid = lbl_url = lbl_password = lbl_port = nullptr;
+    sw_autoload = nullptr;
     espnow_panel = lbl_espnow_status = lbl_espnow_hint = btn_espnow_pair = lbl_espnow_pair = nullptr;
     has_new_pairing = false;
     EspNowCrypto::wipe(&new_pairing, sizeof(new_pairing));

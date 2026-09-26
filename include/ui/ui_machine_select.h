@@ -44,6 +44,8 @@ private:
     static lv_obj_t *lbl_url;
     static lv_obj_t *lbl_password;
     static lv_obj_t *lbl_port;
+    static lv_obj_t *sw_autoload;      // "Load this machine at startup"
+    static bool autoload_touched;      // User changed the switch; stop following the connection type
 
     // ESP-NOW pairing panel (replaces the WiFi fields for ESP-NOW machines)
     static lv_obj_t *espnow_panel;
@@ -75,6 +77,7 @@ private:
     static void onConfigCancel(lv_event_t *e);
     static void onConnectionTypeChanged(lv_event_t *e);
     static void onTextareaFocused(lv_event_t *e);
+    static void onAutoloadChanged(lv_event_t *e);
     static void onEspNowPair(lv_event_t *e);
     static void onEspNowTimer(lv_timer_t *timer);
     
