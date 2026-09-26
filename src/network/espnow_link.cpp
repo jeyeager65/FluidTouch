@@ -703,11 +703,6 @@ void EspNowLink::handleFrame(const EspNowFrame& frame) {
         handleResult(frame);
         return;
     }
-    if (_state != State::Connected && _diagFrames < 20 && _hasPairing && sameMac(frame.src, _pairing.mac)) {
-        _diagFrames++;
-        LOG_PRINTF("[ESP-NOW] From FluidNC while %s: type %u, %u bytes, channel %u\n", stateName(_state), type,
-                   frame.len, frame.channel);
-    }
     if (!_hasPairing || !sameMac(frame.src, _pairing.mac) ||
         (_state != State::Searching && _state != State::Synchronizing && _state != State::Connected)) {
         return;
@@ -780,12 +775,16 @@ void EspNowLink::poll(uint32_t now_ms) {
                     _channel = channel;
                     _radio.setChannel(channel);
                 }
+                if (_searchTries == SEARCH_SAVED_CHANNEL_TRIES + 1) {
+                    // Acknowledgements show whether FluidNC's radio heard us at all
+                    uint32_t delivered, failed;
+                    _radio.deliveryCounts(delivered, failed);
+                    LOG_PRINTF("[ESP-NOW] No answer on channel %u, trying all channels "
+                               "(frames acknowledged %lu, not acknowledged %lu)\n",
+                               _pairing.channel, (unsigned long)delivered, (unsigned long)failed);
+                }
                 sendKeepalive();
                 _lastSearch = _now;
-                uint32_t delivered, failed;
-                _radio.deliveryCounts(delivered, failed);
-                LOG_PRINTF("[ESP-NOW] Searching channel %u (frames acknowledged %lu, not acknowledged %lu)\n",
-                           channel, (unsigned long)delivered, (unsigned long)failed);
             }
             break;
 

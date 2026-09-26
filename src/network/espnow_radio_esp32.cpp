@@ -67,8 +67,11 @@ public:
             esp_now_del_peer(mac);
         }
         esp_err_t err = esp_now_add_peer(&peer);
-        LOG_PRINTF("[ESP-NOW] Peer %02x:%02x:%02x:%02x:%02x:%02x %s: %s\n", mac[0], mac[1], mac[2], mac[3],
-                   mac[4], mac[5], lmk ? "encrypted" : "plain", esp_err_to_name(err));
+        if (err != ESP_OK) {
+            LOG_PRINTF("[ESP-NOW] Adding %s peer %02x:%02x:%02x:%02x:%02x:%02x failed: %s\n",
+                       lmk ? "encrypted" : "plain", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5],
+                       esp_err_to_name(err));
+        }
         return err == ESP_OK;
     }
 
