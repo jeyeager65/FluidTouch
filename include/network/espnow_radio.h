@@ -29,6 +29,12 @@ public:
     virtual bool send(const uint8_t mac[6], const void* data, size_t len) = 0;
     // Non-blocking; false when no frame is waiting
     virtual bool receive(EspNowFrame& frame) = 0;
+
+    // Diagnostics: unicast frames the peer's radio acknowledged / didn't
+    virtual void deliveryCounts(uint32_t& delivered, uint32_t& failed) {
+        delivered = 0;
+        failed = 0;
+    }
 };
 
 // Provided by the platform (ESP32 firmware or simulator)

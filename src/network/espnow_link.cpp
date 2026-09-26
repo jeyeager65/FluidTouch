@@ -245,6 +245,7 @@ void EspNowLink::restorePairing() {
 void EspNowLink::beginSearching() {
     resetSession();
     _searchTries = 0;
+    _diagFrames = 0;
     _lastSearch = _now - SEARCH_INTERVAL;  // Probe on the next poll
     setState(State::Searching);
 }
@@ -322,10 +323,12 @@ void EspNowLink::clearHandshake() {
 }
 
 void EspNowLink::sendDiscovery() {
+    if (_discoveryIndex == 0) {
+        _radio.setPeer(BROADCAST, nullptr);  // Peers follow the radio's channel
+    }
     uint8_t channel = CHANNEL_ORDER[_discoveryIndex++ % CHANNEL_COUNT];
     _channel = channel;
     _radio.setChannel(channel);
-    _radio.setPeer(BROADCAST, nullptr);
 
     DiscoveryPacket pkt = {};
     pkt.type = PKT_DISCOVERY;
@@ -513,6 +516,11 @@ void EspNowLink::handleKeepalive(const EspNowFrame& frame) {
     if (frame.len == AUTH_KEEPALIVE_SIZE) {
         uint32_t advertised = get32(d + 1);
         if (advertised == 0 || !acceptReplay(get32(d + 5), get32(d + 9))) {
+            if (_diagFrames < 20) {
+                _diagFrames++;
+                LOG_PRINTF("[ESP-NOW] Rejected keepalive: challenge %08lx, ours %08lx\n",
+                           (unsigned long)get32(d + 5), (unsigned long)_rxNonce);
+            }
             return;
         }
         _peerNonce = advertised;
@@ -687,8 +695,18 @@ void EspNowLink::handleFrame(const EspNowFrame& frame) {
         return;
     }
     if (type == PKT_RESULT) {
+        if (_state != State::Confirming && _diagFrames < 20) {
+            // FluidNC resends its result until our completion arrives
+            _diagFrames++;
+            LOG_PRINTLN("[ESP-NOW] FluidNC resent its pairing result: it never got our completion");
+        }
         handleResult(frame);
         return;
+    }
+    if (_state != State::Connected && _diagFrames < 20 && _hasPairing && sameMac(frame.src, _pairing.mac)) {
+        _diagFrames++;
+        LOG_PRINTF("[ESP-NOW] From FluidNC while %s: type %u, %u bytes, channel %u\n", stateName(_state), type,
+                   frame.len, frame.channel);
     }
     if (!_hasPairing || !sameMac(frame.src, _pairing.mac) ||
         (_state != State::Searching && _state != State::Synchronizing && _state != State::Connected)) {
@@ -740,6 +758,7 @@ void EspNowLink::poll(uint32_t now_ms) {
             } else if (_now - _confirmStarted > RESULT_TIMEOUT) {
                 // FluidNC never answered: go back to discovery
                 _radio.removePeer(_newPairing.mac);
+                _discoveryIndex = 0;
                 _lastDiscovery = _now - DISCOVERY_INTERVAL;
                 setState(State::Discovering);
             } else if (_now - _lastConfirm >= CONFIRM_RETRY) {
@@ -763,6 +782,10 @@ void EspNowLink::poll(uint32_t now_ms) {
                 }
                 sendKeepalive();
                 _lastSearch = _now;
+                uint32_t delivered, failed;
+                _radio.deliveryCounts(delivered, failed);
+                LOG_PRINTF("[ESP-NOW] Searching channel %u (frames acknowledged %lu, not acknowledged %lu)\n",
+                           channel, (unsigned long)delivered, (unsigned long)failed);
             }
             break;
 

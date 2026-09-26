@@ -37,6 +37,7 @@ public:
         }
         esp_now_set_pmk(pmk);
         esp_now_register_recv_cb(onReceive);
+        esp_now_register_send_cb(onSent);
         _started = true;
         return true;
     }
@@ -44,7 +45,11 @@ public:
     void localMac(uint8_t mac[6]) override { esp_wifi_get_mac(WIFI_IF_STA, mac); }
 
     bool setChannel(uint8_t channel) override {
-        return esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE) == ESP_OK;
+        esp_err_t err = esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
+        if (err != ESP_OK) {
+            LOG_PRINTF("[ESP-NOW] Set channel %u failed: %s\n", channel, esp_err_to_name(err));
+        }
+        return err == ESP_OK;
     }
 
     bool setPeer(const uint8_t mac[6], const uint8_t* lmk) override {
@@ -56,10 +61,15 @@ public:
         if (lmk) {
             memcpy(peer.lmk, lmk, 16);
         }
+        // Re-add rather than modify, so switching a peer between plain and
+        // encrypted can't be left half-done
         if (esp_now_is_peer_exist(mac)) {
-            return esp_now_mod_peer(&peer) == ESP_OK;
+            esp_now_del_peer(mac);
         }
-        return esp_now_add_peer(&peer) == ESP_OK;
+        esp_err_t err = esp_now_add_peer(&peer);
+        LOG_PRINTF("[ESP-NOW] Peer %02x:%02x:%02x:%02x:%02x:%02x %s: %s\n", mac[0], mac[1], mac[2], mac[3],
+                   mac[4], mac[5], lmk ? "encrypted" : "plain", esp_err_to_name(err));
+        return err == ESP_OK;
     }
 
     void removePeer(const uint8_t mac[6]) override {
@@ -69,16 +79,42 @@ public:
     }
 
     bool send(const uint8_t mac[6], const void* data, size_t len) override {
-        return esp_now_send(mac, (const uint8_t*)data, len) == ESP_OK;
+        esp_err_t err = esp_now_send(mac, (const uint8_t*)data, len);
+        if (err != ESP_OK && _sendErrors++ < 10) {
+            LOG_PRINTF("[ESP-NOW] Send failed: %s\n", esp_err_to_name(err));
+        }
+        return err == ESP_OK;
     }
 
     bool receive(EspNowFrame& frame) override {
         return _queue && xQueueReceive(_queue, &frame, 0) == pdTRUE;
     }
 
+    void deliveryCounts(uint32_t& delivered, uint32_t& failed) override {
+        delivered = _delivered;
+        failed = _failed;
+    }
+
 private:
     static QueueHandle_t _queue;
+    static volatile uint32_t _delivered;
+    static volatile uint32_t _failed;
     bool _started = false;
+    uint32_t _sendErrors = 0;
+
+    // Runs in the WiFi task. Broadcasts always report success, so this
+    // mostly tells us whether FluidNC's radio acknowledged a unicast frame.
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0)
+    static void onSent(const esp_now_send_info_t*, esp_now_send_status_t status) {
+#else
+    static void onSent(const uint8_t*, esp_now_send_status_t status) {
+#endif
+        if (status == ESP_NOW_SEND_SUCCESS) {
+            _delivered = _delivered + 1;
+        } else {
+            _failed = _failed + 1;
+        }
+    }
 
     // Runs in the WiFi task: copy the frame and hand it to the poll loop
     static void onReceive(const esp_now_recv_info_t* info, const uint8_t* data, int len) {
@@ -96,6 +132,8 @@ private:
 };
 
 QueueHandle_t Esp32EspNowRadio::_queue = nullptr;
+volatile uint32_t Esp32EspNowRadio::_delivered = 0;
+volatile uint32_t Esp32EspNowRadio::_failed = 0;
 
 }  // namespace
 

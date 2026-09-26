@@ -112,6 +112,7 @@ private:
     uint32_t _lastKeepalive = 0;
     uint32_t _lastSearch = 0;
     uint8_t _searchTries = 0;
+    uint8_t _diagFrames = 0;  // Diagnostic log lines so far this search (capped)
 
     // Outgoing line and fragment sequence
     std::string _txLine;
