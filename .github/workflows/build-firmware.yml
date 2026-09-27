@@ -79,12 +79,17 @@ jobs:
         cp .pio/build/elecrow-crowpanel-7-advance-v12/bootloader.bin web/firmware/advance-v1.2/
         cp .pio/build/elecrow-crowpanel-7-advance-v12/partitions.bin web/firmware/advance-v1.2/
         
-        # boot_app0.bin location varies, try common paths (same for all)
-        if [ -f ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin ]; then
-          cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin web/firmware/basic/
-          cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin web/firmware/advance-v1.3/
-          cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin web/firmware/advance-v1.2/
+        # boot_app0.bin comes from the framework package, which platformio.ini
+        # keeps in .pio/packages; the manifests flash it at 0xE000
+        BOOT_APP0=.pio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin
+        [ -f "$BOOT_APP0" ] || BOOT_APP0=~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin
+        if [ ! -f "$BOOT_APP0" ]; then
+          echo "::error::boot_app0.bin not found"
+          exit 1
         fi
+        cp "$BOOT_APP0" web/firmware/basic/
+        cp "$BOOT_APP0" web/firmware/advance-v1.3/
+        cp "$BOOT_APP0" web/firmware/advance-v1.2/
       
     - name: Update manifest files with version
       run: |
