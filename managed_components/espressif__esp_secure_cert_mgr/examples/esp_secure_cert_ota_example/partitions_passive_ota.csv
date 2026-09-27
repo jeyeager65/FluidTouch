@@ -1,0 +1,7 @@
+# Name,   Type, SubType, Offset,  Size, Flags
+# Partition table for passive OTA mode (requires ota_0 + ota_1 partitions)
+nvs,               data,  nvs,       0x9000,      0x4000,
+otadata,           data,  ota,       0xD000,      0x2000,
+esp_secure_cert,  0x3F,          ,   0xF000,      0x2000, encrypted
+ota_0,             app,   ota_0,    0x20000,      0xF0000,
+ota_1,             app,   ota_1,   0x110000,      0xF0000,

@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+: "${REAL_NINJA:?REAL_NINJA must point to the original Ninja executable}"
+
+exec "$REAL_NINJA" -j "${NINJA_JOBS:-4}" "$@"

@@ -1,0 +1,13 @@
+.rmaker_common_depends_default: &rmaker_common_depends_default
+  depends_components:
+    - unity
+    - esp_timer
+    - nvs_flash
+    - esp_netif
+    - freertos
+    - esp_event
+  depends_filepatterns:
+    - components/rmaker_common/**/*
+
+components/rmaker_common/test_app:
+  <<: *rmaker_common_depends_default

@@ -1,0 +1,113 @@
+#include "dl_rfft.h"
+#include "esp_log.h"
+#include <math.h>
+#include <string.h>
+
+static const char *TAG = "dl rfft";
+
+dl_fft_s16_t *dl_rfft_s16_init(int fft_point, uint32_t caps)
+{
+    dl_fft_s16_t *handle = (dl_fft_s16_t *)heap_caps_malloc(sizeof(dl_fft_s16_t), caps);
+    if (!handle) {
+        ESP_LOGE(TAG, "Failed to allocate FFT handle");
+        return NULL;
+    }
+    handle->fft_table = NULL;
+    handle->rfft_table = NULL;
+    handle->fft_point = fft_point;
+    handle->log2n = dl_power_of_two(fft_point) - 1; // rfft point is half of fft point
+
+    handle->rfft_table = dl_fft_table_acquire(DL_FFT_TBL_S16_DIF_RFFT, fft_point >> 1, caps, NULL);
+    if (!handle->rfft_table) {
+        ESP_LOGE(TAG, "Failed to generate FFT table");
+        dl_rfft_s16_deinit(handle);
+        return NULL;
+    }
+
+    handle->fft_table = dl_fft_table_acquire(DL_FFT_TBL_S16_DIF_FFT, fft_point >> 1, caps, NULL);
+    if (!handle->fft_table) {
+        ESP_LOGE(TAG, "Failed to generate FFT table");
+        dl_rfft_s16_deinit(handle);
+        return NULL;
+    }
+
+    dl_fft_cfg_round(6); // round mode: 6 - round to nearest even, just for ESP32P4 and ESP32S31
+
+    return handle;
+}
+
+// Free FFT handle
+void dl_rfft_s16_deinit(dl_fft_s16_t *handle)
+{
+    if (handle) {
+        dl_fft_table_release(handle->fft_table);
+        dl_fft_table_release(handle->rfft_table);
+        heap_caps_free(handle);
+    }
+}
+
+// Perform FFT
+esp_err_t dl_rfft_s16_run(dl_fft_s16_t *handle, int16_t *data, int in_exponent, int *out_exponent)
+{
+    if (!handle || !data) {
+        return ESP_FAIL;
+    }
+
+    int cpx_point = handle->fft_point >> 1;
+    dl_fft2r_sc16_dif(data, handle->fft_table, 15, handle->log2n, cpx_point);
+    dl_bitrev2r_sc16(data, cpx_point, handle->log2n);
+    int post_shift = dl_rfft_post_proc_sc16(data, cpx_point, handle->rfft_table);
+    out_exponent[0] = in_exponent + handle->log2n + post_shift;
+
+    return ESP_OK;
+}
+
+esp_err_t dl_rfft_s16_hp_run(dl_fft_s16_t *handle, int16_t *data, int in_exponent, int *out_exponent)
+{
+    if (!handle || !data) {
+        return ESP_FAIL;
+    }
+
+    int cpx_point = handle->fft_point >> 1;
+    out_exponent[0] = 0;
+    dl_fft2r_sc16_dif_hp(data, handle->fft_table, handle->log2n, cpx_point, out_exponent);
+    dl_bitrev2r_sc16(data, cpx_point, handle->log2n);
+    int post_shift = dl_rfft_post_proc_sc16(data, cpx_point, handle->rfft_table);
+    out_exponent[0] = in_exponent + out_exponent[0] + post_shift;
+
+    return ESP_OK;
+}
+
+esp_err_t dl_irfft_s16_run(dl_fft_s16_t *handle, int16_t *data, int in_exponent, int *out_exponent)
+{
+    if (!handle || !data) {
+        return ESP_FAIL;
+    }
+
+    int cpx_point = handle->fft_point >> 1;
+
+    int pre_shift = dl_rfft_pre_proc_sc16(data, cpx_point, handle->rfft_table);
+    dl_ifft2r_sc16_dif(data, handle->fft_table, 15, handle->log2n, cpx_point);
+    dl_bitrev2r_sc16(data, cpx_point, handle->log2n);
+    out_exponent[0] = in_exponent + pre_shift - 1;
+
+    return ESP_OK;
+}
+
+esp_err_t dl_irfft_s16_hp_run(dl_fft_s16_t *handle, int16_t *data, int in_exponent, int *out_exponent)
+{
+    if (!handle || !data) {
+        return ESP_FAIL;
+    }
+
+    int cpx_point = handle->fft_point >> 1;
+    out_exponent[0] = 0;
+
+    int pre_shift = dl_rfft_pre_proc_sc16(data, cpx_point, handle->rfft_table);
+    dl_ifft2r_sc16_dif_hp(data, handle->fft_table, handle->log2n, cpx_point, out_exponent);
+    dl_bitrev2r_sc16(data, cpx_point, handle->log2n);
+
+    out_exponent[0] = in_exponent + out_exponent[0] - handle->log2n + pre_shift - 1;
+
+    return ESP_OK;
+}

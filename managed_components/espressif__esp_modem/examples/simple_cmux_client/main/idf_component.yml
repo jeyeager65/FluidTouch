@@ -1,0 +1,5 @@
+dependencies:
+  console_cmd_ping:
+    version: '*'
+  espressif/esp_modem:
+    version: ^2

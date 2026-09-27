@@ -1,0 +1,59 @@
+.check_pre_commit_template:
+  stage: pre_check
+  image: ${CI_DOCKER_REGISTRY}/esp-idf-pre-commit:2
+  script:
+    - pip install pre-commit
+    - TARGET_BRANCH=${CI_MERGE_REQUEST_TARGET_BRANCH_NAME:-main}
+    - git fetch origin $TARGET_BRANCH --depth=1 || true
+    - git fetch origin $CI_COMMIT_REF_NAME --depth=1 || true
+    - |
+      echo "Target branch: $TARGET_BRANCH"
+      echo "Source branch: $CI_COMMIT_REF_NAME"
+      RANGE="origin/$TARGET_BRANCH..origin/$CI_COMMIT_REF_NAME"
+      MODIFIED_FILES=$(git diff --name-only $RANGE 2>/dev/null || true)
+      if [ -z "$MODIFIED_FILES" ]; then
+        echo "Two-dot diff returned nothing or failed; trying fallback diff against source branch"
+        MODIFIED_FILES=$(git diff --name-only origin/$CI_COMMIT_REF_NAME 2>/dev/null || true)
+      fi
+      MODIFIED_FILES=$(echo "$MODIFIED_FILES" | tr '\n' ' ')
+      echo "Modified files to check: $MODIFIED_FILES"
+
+      if [ -n "$MODIFIED_FILES" ]; then
+        CI=true pre-commit run --files $MODIFIED_FILES
+      else
+        echo "No modified files to check."
+      fi
+
+check_pre_commit:
+  extends:
+    - .check_pre_commit_template
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: never # Skip pre-commit on main
+    - when: never # Skip explicitly on other cases
+
+build_static_analyzer_idf_latest:
+  tags:
+    - build
+  stage: pre_check
+  image: espressif/idf:latest
+  needs:
+    - job: check_pre_commit
+      optional: true
+  artifacts:
+    name: artifacts_${CI_JOB_NAME}
+    paths:
+      - "${TEST_DIR}/**/warnings.txt"
+      - "${TEST_DIR}/**/sdkconfig"
+    when: always
+    expire_in: 3 weeks
+  parallel:
+    matrix:
+      - ANALYZER_TYPE:
+        - clang
+        - gcc
+  script:
+    - cd ${TEST_DIR}/examples
+    - ${TEST_DIR}/tools/static_analyzer_check.sh ${ANALYZER_TYPE}
+  after_script: []

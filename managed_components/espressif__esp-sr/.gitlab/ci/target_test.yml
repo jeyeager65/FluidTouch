@@ -1,0 +1,130 @@
+.pytest_template:
+  image: ${IMAGE}
+  stage: target_test
+  retry: 2
+  timeout: 10 hour
+  variables:
+    GIT_DEPTH: 1
+    SUBMODULES_TO_FETCH: "none"
+    TEST_TARGET: "esp32s3"
+    TEST_FOLDER: "test_apps"
+    TEST_ENV: "esp32s3"
+  cache:
+    - key: pip-cache
+      paths:
+        - .cache/pip
+      policy: pull
+  artifacts:
+    when: always
+    paths:
+      - XUNIT_RESULT.xml
+      - pytest_log/
+    reports:
+      junit: XUNIT_RESULT.xml
+    expire_in: 4 days
+  script:
+    - pip install -r test_apps/requirements.txt -c "${IDF_TOOLS_PATH}/espidf.constraints.v${IDF_VERSION}.txt"
+    - pytest ${TEST_FOLDER} --target ${TEST_TARGET} --env ${TEST_ENV} --junitxml=XUNIT_RESULT.xml
+
+.pytest_esp_sr_template:
+  extends:
+    - .pytest_template
+    - .rules:build:test_esp_sr
+  parallel:
+    matrix:
+      - IMAGE: "espressif/idf:release-v5.4"
+        IDF_VERSION: "5.4"
+        TEST_TARGET: esp32s3
+        TEST_ENV: esp32s3
+      - IMAGE: "espressif/idf:release-v6.0"
+        IDF_VERSION: "6.0"
+        TEST_TARGET: esp32s3
+        TEST_ENV: esp32s3
+      - IMAGE: "espressif/idf:release-v5.5"
+        IDF_VERSION: "5.5"
+        TEST_TARGET: esp32p4
+        TEST_ENV: esp32p4
+  tags:
+    - ${TEST_ENV}
+
+test_esp_sr_wakenet:
+  extends: .pytest_esp_sr_template
+  needs:
+    - job: build_esp_sr_wakenet
+      artifacts: true
+      optional: true
+  variables:
+    TEST_FOLDER: "./test_apps/esp-sr-wakenet"
+
+test_esp_sr_multinet:
+  extends: .pytest_esp_sr_template
+  needs:
+    - job: build_esp_sr_multinet
+      artifacts: true
+      optional: true
+  variables:
+    TEST_FOLDER: "./test_apps/esp-sr-multinet"
+
+test_esp_sr_vadnet:
+  extends: .pytest_esp_sr_template
+  needs:
+    - job: build_esp_sr_vadnet
+      artifacts: true
+      optional: true
+  variables:
+    TEST_FOLDER: "./test_apps/esp-sr-vadnet"
+
+test_esp_sr_afe:
+  extends: .pytest_esp_sr_template
+  needs:
+    - job: build_esp_sr_afe
+      artifacts: true
+      optional: true
+  variables:
+    TEST_FOLDER: "./test_apps/esp-sr-afe"
+
+test_esp_sr_gsc_doa:
+  extends:
+    - .pytest_template
+    - .rules:build:test_esp_sr
+  needs:
+    - job: build_esp_sr_gsc_doa
+      artifacts: true
+      optional: true
+  parallel:
+    matrix:
+      - IMAGE: "espressif/idf:release-v5.5"
+        IDF_VERSION: "5.5"
+        TEST_TARGET: esp32p4
+        TEST_ENV: esp32p4
+  tags:
+    - ${TEST_ENV}
+  variables:
+    TEST_FOLDER: "./test_apps/esp-sr-gsc-doa"
+
+test_esp_tts:
+  extends:
+    - .pytest_template
+    - .rules:build:test_esp_tts
+  needs:
+    - job: build_esp_tts
+      artifacts: true
+      optional: true
+  parallel:
+    matrix:
+      - IMAGE: "espressif/idf:release-v5.4"
+        IDF_VERSION: "5.4"
+        TEST_TARGET: esp32s3
+        TEST_ENV: esp32s3
+      - IMAGE: "espressif/idf:release-v6.0"
+        IDF_VERSION: "6.0"
+        TEST_TARGET: esp32s3
+        TEST_ENV: esp32s3
+      - IMAGE: "espressif/idf:release-v5.5"
+        IDF_VERSION: "5.5"
+        TEST_TARGET: esp32p4
+        TEST_ENV: esp32p4
+  tags:
+    - ${TEST_ENV}
+  variables:
+    TEST_FOLDER: "./test_apps/esp-tts"

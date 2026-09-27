@@ -1,0 +1,13 @@
+## Component dependencies
+dependencies:
+  ## Required IDF version
+  idf:
+    version: ">=4.4.0"
+
+  # This is the same as espressif/rmaker_common on the component registry,
+  # but referenced by directory name to use the local component for development.
+  # CMake resolves the component name from the directory name (esp-rainmaker-common),
+  # not from the idf_component.yml 'name' field (rmaker_common), so override_path
+  # with espressif/rmaker_common would fail component resolution.
+  esp-rainmaker-common:
+    path: "../../"

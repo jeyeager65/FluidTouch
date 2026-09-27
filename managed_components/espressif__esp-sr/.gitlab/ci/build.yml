@@ -1,0 +1,173 @@
+.build_test_template:
+  stage: build
+  retry: 2
+  tags:
+    - build
+  image: ${IMAGE}
+  variables:
+    BUILD_TARGET: "all"
+    NINJA_JOBS: "4"
+  artifacts:
+    when: always
+    paths:
+      - "**/build*/*.bin"
+      - "**/build*/*.map"
+      - "**/build*/*.elf"
+      - "**/build*/flasher_args.json"
+      - "**/build*/flash_project_args"
+      - "**/build*/config/sdkconfig.json"
+      - "**/build*/bootloader/*.bin"
+      - "**/build*/bootloader/*.elf"
+      - "**/build*/partition_table/*.bin"
+      - "**/build*/srmodels/*.bin"
+    expire_in: 1 week
+  script:
+    - export REAL_NINJA="$(command -v ninja)"
+    - chmod +x .gitlab/tool/ninja
+    - export PATH="$CI_PROJECT_DIR/.gitlab/tool:$PATH"
+    - python ./test_apps/build_apps.py $EXAMPLES_PATH -t $BUILD_TARGET
+
+.build_esp_sr_template:
+  extends:
+    - .build_test_template
+    - .rules:build:test_esp_sr
+  parallel:
+    matrix:
+      - IMAGE:
+          - espressif/idf:release-v5.4
+          - espressif/idf:release-v5.5
+          - espressif/idf:release-v6.0
+
+.build_esp32s31_template:
+  extends:
+    - .build_test_template
+    - .rules:build:test_esp_sr
+  image: espressif/idf:release-v6.1
+  variables:
+    BUILD_TARGET: "esp32s31"
+
+build_esp_sr_wakenet:
+  extends: .build_esp_sr_template
+  variables:
+    EXAMPLES_PATH: "test_apps/esp-sr-wakenet"
+
+build_esp_sr_multinet:
+  extends: .build_esp_sr_template
+  variables:
+    EXAMPLES_PATH: "test_apps/esp-sr-multinet"
+
+build_esp_sr_vadnet:
+  extends: .build_esp_sr_template
+  variables:
+    EXAMPLES_PATH: "test_apps/esp-sr-vadnet"
+
+build_esp_sr_afe:
+  extends: .build_esp_sr_template
+  variables:
+    EXAMPLES_PATH: "test_apps/esp-sr-afe"
+
+build_esp_sr_gsc_doa:
+  extends:
+    - .build_test_template
+    - .rules:build:test_esp_sr
+  parallel:
+    matrix:
+      - IMAGE:
+          - espressif/idf:release-v5.5
+          - espressif/idf:release-v6.0
+  variables:
+    EXAMPLES_PATH: "test_apps/esp-sr-gsc-doa"
+
+build_esp32s31_wakenet:
+  extends: .build_esp32s31_template
+  variables:
+    EXAMPLES_PATH: "test_apps/esp-sr-wakenet"
+
+build_esp32s31_multinet:
+  extends: .build_esp32s31_template
+  variables:
+    EXAMPLES_PATH: "test_apps/esp-sr-multinet"
+
+build_esp32s31_vadnet:
+  extends: .build_esp32s31_template
+  variables:
+    EXAMPLES_PATH: "test_apps/esp-sr-vadnet"
+
+build_esp32s31_afe:
+  extends: .build_esp32s31_template
+  variables:
+    EXAMPLES_PATH: "test_apps/esp-sr-afe"
+
+build_esp_tts:
+  extends:
+    - .build_test_template
+    - .rules:build:test_esp_tts
+  parallel:
+    matrix:
+      - IMAGE:
+          - espressif/idf:release-v5.4
+          - espressif/idf:v5.5.4
+          - espressif/idf:release-v6.0
+        EXAMPLES_PATH: "test_apps/esp-tts"
+
+build_esp32c5:
+  extends:
+    - .build_test_template
+    - .rules:build:test_esp32c5
+  parallel:
+    matrix:
+      - IMAGE:
+          - espressif/idf:release-v5.4
+          - espressif/idf:release-v5.5
+          - espressif/idf:release-v6.0
+        EXAMPLES_PATH: "test_apps/esp32c5"
+
+.build_doc_template:
+  stage: build
+  retry: 2
+  image: $ESP_DOCS_ENV_IMAGE
+
+build_esp_sr_html:
+  extends:
+    - .build_doc_template
+    - .rules:build_docs:docs
+  variables:
+    DOCS_DIR: $CI_PROJECT_DIR/docs
+  artifacts:
+    when: always
+    paths:
+      - $DOCS_DIR/_build/*/*/html/*
+      - $DOCS_DIR/_build/*/*/*.txt
+    expire_in: 4 days
+  script:
+    - cd $DOCS_DIR
+    - ./check_lang_folder_sync.sh
+    - pip install -r requirements.txt
+    - build-docs --skip-reqs-check -l $DOCLANG -t $DOCTGT
+    - echo "ESP-SR documentation preview available at $CI_JOB_URL/artifacts/file/docs/_build/$DOCLANG/$DOCTGT/html/index.html"
+  parallel:
+    matrix:
+      - DOCLANG: ["en", "zh_CN"]
+        DOCTGT: ["esp32", "esp32s3", "esp32p4", "esp32s31"]
+
+build_esp_sr_pdf:
+  extends:
+    - .build_doc_template
+    - .rules:build_docs:docs
+  variables:
+    DOCS_DIR: $CI_PROJECT_DIR/docs
+  artifacts:
+    when: always
+    paths:
+      - $DOCS_DIR/_build/*/*/latex/*
+      - $DOCS_DIR/_build/*/*/*.txt
+    expire_in: 4 days
+  script:
+    - cd $DOCS_DIR
+    - ./check_lang_folder_sync.sh
+    - pip install -r requirements.txt
+    - build-docs --skip-reqs-check -bs latex -l $DOCLANG -t $DOCTGT
+  parallel:
+    matrix:
+      - DOCLANG: ["en", "zh_CN"]
+        DOCTGT: ["esp32", "esp32s3", "esp32p4", "esp32s31"]

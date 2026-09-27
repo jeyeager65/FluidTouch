@@ -1,0 +1,316 @@
+// Copyright 2020 Espressif Systems (Shanghai) PTE LTD
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include <sdkconfig.h>
+#include <stdint.h>
+#include <string.h>
+
+#include <esp_log.h>
+
+#include <esp_rmaker_factory.h>
+#include <esp_rmaker_core.h>
+#include <esp_rmaker_utils.h>
+
+#include "esp_rmaker_internal.h"
+#include "esp_rmaker_client_data.h"
+
+#ifdef CONFIG_ESP_RMAKER_USE_ESP_SECURE_CERT_MGR
+    #include "esp_secure_cert_read.h"
+#endif
+
+static const char *TAG = "esp_rmaker_client_data";
+
+extern uint8_t mqtt_server_root_ca_pem_start[] asm("_binary_rmaker_mqtt_server_crt_start");
+extern uint8_t mqtt_server_root_ca_pem_end[] asm("_binary_rmaker_mqtt_server_crt_end");
+
+/* LWT storage for conn_params population */
+static struct {
+    char *topic;
+    char *message;
+    size_t message_len;
+} s_lwt_data;
+
+char * esp_rmaker_get_mqtt_host()
+{
+#ifdef CONFIG_ESP_RMAKER_READ_MQTT_HOST_FROM_CONFIG
+    return strdup(CONFIG_ESP_RMAKER_MQTT_HOST);
+#else
+    char *host = esp_rmaker_factory_get(ESP_RMAKER_MQTT_HOST_NVS_KEY);
+#if defined(CONFIG_ESP_RMAKER_SELF_CLAIM) || defined(CONFIG_ESP_RMAKER_ASSISTED_CLAIM)
+    if (!host) {
+        return strdup(CONFIG_ESP_RMAKER_MQTT_HOST);
+    }
+#endif /* defined(CONFIG_ESP_RMAKER_SELF_CLAIM) || defined(CONFIG_ESP_RMAKER_ASSISTED_CLAIM) */
+    return host;
+#endif /* !CONFIG_ESP_RMAKER_READ_MQTT_HOST_FROM_CONFIG */
+}
+
+char * esp_rmaker_get_client_cert()
+{
+#ifdef CONFIG_ESP_RMAKER_USE_ESP_SECURE_CERT_MGR
+    uint32_t client_cert_len = 0;
+    char *client_cert_addr = NULL;
+    if (esp_secure_cert_get_device_cert(&client_cert_addr, &client_cert_len) == ESP_OK) {
+        /* Certificate returned by esp_secure_cert_get_device_cert shall be freed using
+         * esp_secure_cert_free_device_cert() and our fallback method expects it to be freed using
+         * free(). So to avoid any confusion, we are copying the certificate to a new buffer and
+         * returning that, and the caller is expected to free the returned buffer using free().
+         */
+
+        char *client_cert_buf = MEM_CALLOC_EXTRAM(1, client_cert_len);
+        if (client_cert_buf) {
+            memcpy(client_cert_buf, client_cert_addr, client_cert_len);
+        }
+
+        /* Not using the fallback method if we run out of memory as the fallback
+         * method also performs the dynamic memory allocation and would fail as well.
+         */
+
+        esp_secure_cert_free_device_cert(client_cert_addr);
+        return client_cert_buf;
+    } else {
+        ESP_LOGE(TAG, "Failed to obtain flash address of device cert");
+        ESP_LOGI(TAG, "Attempting to fetch client certificate from NVS");
+    }
+#endif /* CONFIG_ESP_RMAKER_USE_ESP_SECURE_CERT_MGR */
+    return esp_rmaker_factory_get(ESP_RMAKER_CLIENT_CERT_NVS_KEY);
+}
+
+size_t esp_rmaker_get_client_cert_len()
+{
+#ifdef CONFIG_ESP_RMAKER_USE_ESP_SECURE_CERT_MGR
+    uint32_t client_cert_len = 0;
+    char *client_cert_addr = NULL;
+    if (esp_secure_cert_get_device_cert(&client_cert_addr, &client_cert_len) == ESP_OK) {
+        esp_secure_cert_free_device_cert(client_cert_addr);
+        return client_cert_len;
+    } else {
+        ESP_LOGE(TAG, "Failed to obtain flash address of device cert");
+        ESP_LOGI(TAG, "Attempting to fetch client certificate from NVS");
+    }
+#endif /* CONFIG_ESP_RMAKER_USE_ESP_SECURE_CERT_MGR */
+    return esp_rmaker_factory_get_size(ESP_RMAKER_CLIENT_CERT_NVS_KEY) + 1; /* +1 for NULL terminating byte */
+}
+
+char * esp_rmaker_get_client_key()
+{
+/* esp_secure_cert_get_priv_key()/esp_secure_cert_free_priv_key() are only declared by
+ * esp_secure_cert_mgr when CONFIG_ESP_SECURE_CERT_DS_PERIPHERAL is disabled. With the DS
+ * peripheral enabled (default on DS-capable SoCs) the private key lives inside the DS context,
+ * so there is no plain-buffer priv key to read and we simply fall back to NVS.
+ */
+#if defined(CONFIG_ESP_RMAKER_USE_ESP_SECURE_CERT_MGR) && !defined(CONFIG_ESP_SECURE_CERT_DS_PERIPHERAL)
+    uint32_t client_key_len = 0;
+    char *client_key_addr = NULL;
+    if (esp_secure_cert_get_priv_key(&client_key_addr, &client_key_len) == ESP_OK) {
+        /* Key returned by esp_secure_cert_get_priv_key shall be freed using
+         * esp_secure_cert_free_priv_key() and our fallback method expects it to be freed using
+         * free(). So to avoid any confusion, we are copying the key to a new buffer and
+         * returning that, and the caller is expected to free the returned buffer using free().
+         */
+
+        char *client_key_buf = MEM_CALLOC_EXTRAM(1, client_key_len);
+        if (client_key_buf) {
+            memcpy(client_key_buf, client_key_addr, client_key_len);
+        }
+
+        /* Not using the fallback method if we run out of memory as the fallback
+         * method also performs the dynamic memory allocation and would fail as well.
+         */
+
+        esp_secure_cert_free_priv_key(client_key_addr);
+        return client_key_buf;
+    } else {
+        ESP_LOGE(TAG, "Failed to obtain flash address of private_key");
+        ESP_LOGI(TAG, "Attempting to fetch key from NVS");
+    }
+#endif /* CONFIG_ESP_RMAKER_USE_ESP_SECURE_CERT_MGR && !CONFIG_ESP_SECURE_CERT_DS_PERIPHERAL */
+    return esp_rmaker_factory_get(ESP_RMAKER_CLIENT_KEY_NVS_KEY);
+}
+
+size_t esp_rmaker_get_client_key_len()
+{
+#if defined(CONFIG_ESP_RMAKER_USE_ESP_SECURE_CERT_MGR) && !defined(CONFIG_ESP_SECURE_CERT_DS_PERIPHERAL)
+    uint32_t client_key_len = 0;
+    char *client_key_addr = NULL;
+    if (esp_secure_cert_get_priv_key(&client_key_addr, &client_key_len) == ESP_OK) {
+        esp_secure_cert_free_priv_key(client_key_addr);
+        return client_key_len;
+    } else {
+        ESP_LOGE(TAG, "Failed to obtain flash address of private_key");
+        ESP_LOGI(TAG, "Attempting to fetch key from NVS");
+    }
+#endif /* CONFIG_ESP_RMAKER_USE_ESP_SECURE_CERT_MGR && !CONFIG_ESP_SECURE_CERT_DS_PERIPHERAL */
+    return esp_rmaker_factory_get_size(ESP_RMAKER_CLIENT_KEY_NVS_KEY) + 1; /* +1 for NULL terminating byte */
+}
+
+char * esp_rmaker_get_client_csr()
+{
+    return esp_rmaker_factory_get(ESP_RMAKER_CLIENT_CSR_NVS_KEY);
+}
+
+esp_rmaker_mqtt_conn_params_t *esp_rmaker_get_mqtt_conn_params()
+{
+    esp_rmaker_mqtt_conn_params_t *mqtt_conn_params = MEM_CALLOC_EXTRAM(1, sizeof(esp_rmaker_mqtt_conn_params_t));
+    if (mqtt_conn_params == NULL) {
+        ESP_LOGE(TAG, "Failed to allocate memory for mqtt_conn_params");
+        return NULL;
+    }
+
+#if defined(CONFIG_ESP_RMAKER_USE_ESP_SECURE_CERT_MGR)
+#if defined(CONFIG_ESP_SECURE_CERT_DS_PERIPHERAL)
+    /* DS-provisioned partitions carry no priv-key TLV (the key exists only as DS
+     * ciphertext), so check for a DS context first instead of probing for a key
+     * type that cannot exist there.
+     */
+    mqtt_conn_params->ds_data = esp_secure_cert_get_ds_ctx();
+    if (mqtt_conn_params->ds_data == NULL) /* Look for a key only if there is no DS data */
+#endif
+    {
+        /* Determine the key type and use ecdsa peripheral if it is supported */
+        esp_secure_cert_key_type_t key_type = ESP_SECURE_CERT_DEFAULT_FORMAT_KEY;
+        esp_err_t esp_ret = esp_secure_cert_get_priv_key_type(&key_type);
+        if (esp_ret != ESP_OK) {
+            /* Legacy-format partitions carry no TLVs at all, so this lookup failing
+             * is expected there. Fall through with the default key type and read
+             * the key below.
+             */
+            key_type = ESP_SECURE_CERT_DEFAULT_FORMAT_KEY;
+        }
+        if (key_type == ESP_SECURE_CERT_ECDSA_PERIPHERAL_KEY) {
+#if CONFIG_MBEDTLS_HARDWARE_ECDSA_SIGN
+            ESP_LOGI(TAG, "Setting up the ECDSA key from eFuse");
+            uint8_t efuse_block_id;
+            esp_ret = esp_secure_cert_get_priv_key_efuse_id(&efuse_block_id);
+            if (esp_ret != ESP_OK) {
+                ESP_LOGE(TAG, "Failed to get ECDSA key from eFuse");
+                goto init_err;
+            }
+            mqtt_conn_params->use_ecdsa_peripheral = true;
+            mqtt_conn_params->ecdsa_key_efuse_blk = efuse_block_id;
+#else
+            ESP_LOGE(TAG, "ECDSA signing is not enabled. Enable CONFIG_MBEDTLS_HARDWARE_ECDSA_SIGN");
+            goto init_err;
+#endif
+        } else {
+            if ((mqtt_conn_params->client_key = esp_rmaker_get_client_key()) == NULL) {
+                goto init_err;
+            }
+            mqtt_conn_params->client_key_len = esp_rmaker_get_client_key_len();
+        }
+    }
+#else /* !CONFIG_ESP_RMAKER_USE_ESP_SECURE_CERT_MGR */
+    if ((mqtt_conn_params->client_key = esp_rmaker_get_client_key()) == NULL) {
+        goto init_err;
+    }
+    mqtt_conn_params->client_key_len = esp_rmaker_get_client_key_len();
+#endif
+
+    if ((mqtt_conn_params->client_cert = esp_rmaker_get_client_cert()) == NULL) {
+        ESP_LOGE(TAG, "Failed to get client cert");
+        goto init_err;
+    }
+    mqtt_conn_params->client_cert_len = esp_rmaker_get_client_cert_len();
+    if ((mqtt_conn_params->mqtt_host = esp_rmaker_get_mqtt_host()) == NULL) {
+        ESP_LOGE(TAG, "Failed to get mqtt host");
+        goto init_err;
+    }
+    mqtt_conn_params->server_cert = (char *)mqtt_server_root_ca_pem_start;
+    mqtt_conn_params->client_id = esp_rmaker_get_node_id();
+
+    /* Populate LWT if configured */
+    if (s_lwt_data.topic) {
+        mqtt_conn_params->mqtt_last_will_topic = s_lwt_data.topic;
+        mqtt_conn_params->mqtt_last_will_message = s_lwt_data.message;
+        mqtt_conn_params->mqtt_last_will_message_len = s_lwt_data.message_len;
+        ESP_LOGI(TAG, "LWT configured - Topic: %s", s_lwt_data.topic);
+    }
+
+    return mqtt_conn_params;
+init_err:
+    esp_rmaker_clean_mqtt_conn_params(mqtt_conn_params);
+    free(mqtt_conn_params);
+    return NULL;
+}
+
+esp_err_t esp_rmaker_set_mqtt_conn_lwt(const char *topic, const char *message, size_t message_len)
+{
+    /* Free existing LWT data */
+    if (s_lwt_data.topic) {
+        free(s_lwt_data.topic);
+        s_lwt_data.topic = NULL;
+    }
+    if (s_lwt_data.message) {
+        free(s_lwt_data.message);
+        s_lwt_data.message = NULL;
+    }
+    s_lwt_data.message_len = 0;
+
+    /* Set new LWT data if both topic and message are provided.
+     * LWT without a message is useless - broker needs something to publish.
+     */
+    if (topic && strlen(topic) > 0 && message && message_len > 0) {
+        s_lwt_data.topic = strdup(topic);
+        if (!s_lwt_data.topic) {
+            ESP_LOGE(TAG, "Failed to allocate memory for LWT topic");
+            return ESP_ERR_NO_MEM;
+        }
+
+        s_lwt_data.message = malloc(message_len);
+        if (!s_lwt_data.message) {
+            free(s_lwt_data.topic);
+            s_lwt_data.topic = NULL;
+            ESP_LOGE(TAG, "Failed to allocate memory for LWT message");
+            return ESP_ERR_NO_MEM;
+        }
+        memcpy(s_lwt_data.message, message, message_len);
+        s_lwt_data.message_len = message_len;
+
+        ESP_LOGI(TAG, "LWT data set - Topic: %s, Message len: %d", topic, (int)message_len);
+    } else {
+        ESP_LOGI(TAG, "LWT data cleared");
+    }
+
+    return ESP_OK;
+}
+
+void esp_rmaker_clean_mqtt_conn_params(esp_rmaker_mqtt_conn_params_t *mqtt_conn_params)
+{
+    if (mqtt_conn_params) {
+        if (mqtt_conn_params->mqtt_host) {
+            free(mqtt_conn_params->mqtt_host);
+        }
+#ifdef CONFIG_ESP_RMAKER_USE_ESP_SECURE_CERT_MGR
+        if (mqtt_conn_params->client_cert) {
+            esp_secure_cert_free_device_cert(mqtt_conn_params->client_cert);
+        }
+#ifdef CONFIG_ESP_SECURE_CERT_DS_PERIPHERAL
+        if (mqtt_conn_params->ds_data) {
+            esp_secure_cert_free_ds_ctx(mqtt_conn_params->ds_data);
+        }
+#else  /* !CONFIG_ESP_SECURE_CERT_DS_PERIPHERAL */
+        if (mqtt_conn_params->client_key) {
+            esp_secure_cert_free_priv_key(mqtt_conn_params->client_key);
+        }
+#endif /* CONFIG_ESP_SECURE_CERT_DS_PERIPHERAL */
+#else  /* !CONFIG_ESP_RMAKER_USE_ESP_SECURE_CERT_MGR */
+        if (mqtt_conn_params->client_cert) {
+            free(mqtt_conn_params->client_cert);
+        }
+        if (mqtt_conn_params->client_key) {
+            free(mqtt_conn_params->client_key);
+        }
+#endif /* CONFIG_ESP_RMAKER_USE_ESP_SECURE_CERT_MGR */
+    }
+}

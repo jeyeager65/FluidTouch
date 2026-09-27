@@ -1,0 +1,12 @@
+name: rmaker_console
+version: "1.0.1"
+description: ESP RainMaker firmware agent - Console component
+url: https://github.com/espressif/esp-rainmaker-common/tree/master/components/rmaker_console
+dependencies:
+  idf: ">=5.1"
+  espressif/rmaker_system_ctrl:
+    version: "^1.0.0"
+    override_path: ../rmaker_system_ctrl
+  espressif/rmaker_time_sync:
+    version: "^1.0.0"
+    override_path: ../rmaker_time_sync

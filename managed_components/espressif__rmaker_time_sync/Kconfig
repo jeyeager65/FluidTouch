@@ -1,0 +1,17 @@
+menu "ESP RainMaker Time Sync"
+
+    config ESP_RMAKER_DEF_TIMEZONE
+        string "Default Timezone"
+        default "Asia/Shanghai"
+        help
+            Default Timezone to use. Eg. "Asia/Shanghai", "America/Los_Angeles".
+            Check documentation for complete list of valid values. This value
+            will be used only if no timezone is set using the C APIs.
+
+    config ESP_RMAKER_SNTP_SERVER_NAME
+        string "ESP RainMaker SNTP Server Name"
+        default "pool.ntp.org"
+        help
+            Default SNTP Server which is used for time synchronization.
+
+endmenu

@@ -1,0 +1,4 @@
+[codespell]
+skip = build,*.drawio,*.svg,*.pdf,Kconfig.*,model/**/*,*.cpp,*.c
+ignore-words-list = AFE,afe,mian
+write-changes = true

@@ -1,0 +1,603 @@
+# Changelog
+
+## 1.16.1
+
+### Bug Fixes
+
+- OTA: keep the OTA marked in progress after a successful upgrade until the device reboots, so a
+  new OTA request (or a QoS1 redelivery of the same one) in the reboot wait window cannot overwrite
+  the freshly written partition. Custom OTA callbacks that do not write an ESP image (host MCU
+  updates, config downloads) are unaffected.
+
+## 1.16.0
+
+### Changes
+
+- Add ESP-IDF v6.0 (mbedtls v4.0) compatibility
+  - Migrate `esp_rmaker_node_auth` signing and key-type detection to PSA APIs (`mbedtls_pk_get_psa_attributes`, `mbedtls_pk_sign_ext`); SHA-256 stays on `esp_sha()`
+  - Port the hardware ECDSA peripheral signing path to a PSA opaque key (`esp_ecdsa_set_pk_context` was removed in mbedtls 4.0)
+  - Migrate `esp_rmaker_claim` to PSA key generation (`psa_generate_key`) and the PSA one-shot MAC for HMAC challenges
+  - Replace removed `ESP_IF_WIFI_STA` with `WIFI_IF_STA`
+  - Kconfig: select `MBEDTLS_X509_CREATE_C` / `MBEDTLS_X509_CSR_WRITE_C` when claiming is enabled
+  - All changes guarded with `ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)` so older IDFs keep working
+
+## 1.15.1
+
+### Bug Fixes
+
+- Fix MQTT init and challenge-response on DS-peripheral pre-provisioned modules: use the
+  DS context directly instead of expecting a priv-key TLV (absent on DS partitions).
+  Challenge signing via the DS peripheral uses RSA-PSS and needs
+  `CONFIG_MBEDTLS_SSL_PROTO_TLS1_3=y`.
+- Fix build break with esp_secure_cert_mgr when the DS peripheral is enabled (priv-key
+  read APIs are not declared there; calls now guarded to match).
+
+## 1.15.0
+
+### Changes
+
+- MQTT OTA reliability and recovery
+  - Validate image header completeness; verify ESP_APP_DESC magic word
+    (fixes spurious "Project Name mismatch" rejections)
+  - Per-request block bitmap so retries only fetch missing blocks
+  - Fast-abort current attempt on MQTT disconnect; gate next attempt on reconnect
+  - Resume across reboots via (file_md5, block_offset) NVS state (IDF >= 5.5.0)
+  - Fix teardown race by flipping state to INVALID_STATE before unsubscribe
+- MQTT OTA Kconfig defaults
+  - `ESP_RMAKER_MQTT_OTA_BLOCK_SIZE` 3072 → 4096 (flash-sector aligned)
+  - `ESP_RMAKER_MQTT_OTA_NO_OF_BLOCKS` 42 → 16 (finer resume-checkpoint cadence)
+  - New `ESP_RMAKER_MQTT_OTA_BLOCK_WAIT_SEC` (default 10s)
+- Add `CONFIG_ESP_RMAKER_OTA_TEST_ROLLBACK` (test-only) for repeat-testing
+  the OTA pipeline from a single image push
+
+## 1.14.0
+
+### Changes
+
+- Sec2 is now the default protocomm security version for provisioning.
+- Add protocomm security version 2 (SRP6a) support for Wi-Fi/Thread provisioning
+  - Kconfig choice for security version 1 (PoP-less option) or 2
+  - Salt/verifier handling in provisioning and local control flows; cached
+    in factory NVS, regenerated when PoP changes
+  - QR code generation includes username for sec2
+- Add security version 2 support for local control service
+  - Salt-verifier generated from PoP if not found in factory NVS
+  - Local control Kconfig default remains sec1; examples opt into sec2
+    via sdkconfig.defaults
+
+## 1.13.0
+
+### Changes
+
+- When starting RainMaker, treat the device as already on-network only if the active interface has a
+  non-zero IPv4 address via `esp_netif`, matching `IP_EVENT_*_GOT_IP` and DHCP completion—not merely
+  link or association ready: for Wi-Fi STA, require IPv4 on `WIFI_STA_DEF` (not only
+  `esp_wifi_sta_get_ap_info`); for Ethernet (`CONFIG_ETH_ENABLED`), require IPv4 on `ETH_DEF`,
+  consistent with `ETHERNET_CONNECTED_EVENT`. This avoids continuing startup before DHCP assigns an
+  address
+
+## 1.12.9
+
+### Bug Fixes
+
+- Fix `CONFIG_ESP_RMAKER_OTA_AUTOFETCH_PERIOD` timer overflow: `pdMS_TO_TICKS(hours * 3600 * 1000)`
+  overflowed `uint32_t` for periods >= ~12 h at the default 100 Hz tick rate, so a configured 24 h
+  period actually fired every ~8 minutes. The autofetch interval is now computed directly in 64-bit
+  ticks and is accurate for the entire Kconfig range (1–168 h).
+- Fix OTA fetch retry exponential backoff: `retry_count` was being reset on every retry call,
+  which pinned the backoff at its first step and made the `OTA_FETCH_MAX_RETRIES` cap unreachable.
+  The counter is now preserved across retries and is reset to 0 only when a fetch succeeds.
+- Fix `TimerHandle_t` leak in the OTA fetch PUBACK timeout callback: the one-shot timer was not
+  deleted before the next attempt overwrote the handle. Only triggers on rare PUBACK timeouts.
+
+## 1.12.8
+
+### New Features
+
+- Add `esp_rmaker_cmd_async_response_send()` helper for handlers that deferred the response by
+  returning `ESP_ERR_NOT_FINISHED`. Wraps payload preparation and publish in a single call.
+- Bump `espressif/rmaker_common` minimum version to `>=1.8.2` (provides `esp_rmaker_cmd_prepare_payload`
+  and the `ESP_ERR_NOT_FINISHED` defer path).
+
+## 1.12.7
+
+### Bug Fixes
+
+- Fix HTTPS OTA resume on flash-encrypted devices with IDF < 5.5.3: `esp_https_ota` did not guarantee
+  that bytes written after an interruption were 16-byte aligned. RainMaker now stores resumed written
+  length in KiB (`uint16_t`), so the resume offset passed to `esp_https_ota` is always a multiple of 1024
+  and therefore 16-byte aligned.
+
+## 1.12.6
+
+### Bug Fixes
+
+- Fix unopened block under specific configs (no Wi-Fi/Thread) causing compile error in `esp_rmaker_core.c`
+- Fix unused variable `service_key` warning in `app_network.c` when neither Wi-Fi nor Thread is enabled
+
+## 1.12.5
+
+### Bug Fixes
+
+- Fix ECDSA peripheral preprocessor guard: use `CONFIG_MBEDTLS_HARDWARE_ECDSA_SIGN` instead of
+  `SOC_ECDSA_SUPPORTED` in `esp_rmaker_node_auth.c` and `esp_rmaker_client_data.c`. The previous
+  guard caused build failures on ECDSA-capable SoCs (ESP32-H2, ESP32-C6) when
+  `CONFIG_MBEDTLS_HARDWARE_ECDSA_SIGN` was not explicitly enabled (the default).
+
+## 1.12.4
+
+### Changes
+
+- Add ECDSA peripheral support for MQTT connections and challenge-response node authentication signing
+- Detect private key type from secure cert partition; use ECDSA peripheral with eFuse key block when available
+- Refactor `esp_rmaker_node_auth_sign_msg()`: use `mbedtls_pk_sign()` for both software and hardware-backed keys, fix memory leaks on error paths, use `inlen` instead of `strlen()` for binary challenge data
+- Dynamically determine RSA signature buffer size via `mbedtls_rsa_get_len()` instead of hardcoded 256
+- Bump `espressif/rmaker_common` minimum version to `>=1.7.1`
+
+## 1.12.3
+
+### Changes
+
+- Expose `esp_rmaker_report_updated_params()` as a public API so applications can report
+  already-updated parameters to the cloud at any time, without having to call
+  `esp_rmaker_param_update_and_report()` solely to trigger a report.
+
+## 1.12.2
+
+### Changes
+
+- Add optional `Timestamp` parameter to the Time Service. When enabled via
+  `CONFIG_ESP_RMAKER_TIME_CURRENT_TIME_PARAM`, the app can write an epoch timestamp
+  to set the device's local RTC. This is useful for devices without internet access.
+
+## 1.12.1
+
+### Changes
+
+- Allow `PROP_FLAG_SIMPLE_TIME_SERIES` for object and array type parameters.
+
+## 1.12.0
+
+### Changes
+
+- Move `CONFIG_ESP_RMAKER_NETWORK_OVER_WIFI` and `CONFIG_ESP_RMAKER_NETWORK_OVER_THREAD` from `rmaker_common`
+  to `esp-rainmaker` component.
+
+## 1.11.1
+
+### Changes
+
+- Add `ESP_RMAKER_REQ_SRC_BLE_LOCAL` in `esp_rmaker_req_src_t`, so that application code can differentiate
+  between the Wi-Fi based local control (`ESP_RMAKER_REQ_SRC_LOCAL`) and BLE Local Control.
+
+## 1.11.0
+
+### Changes
+
+- De-couple work queue execution from MQTT connection. With this change, tasks added in work queue
+  using `esp_rmaker_work_queue_add_task()` can execute as soon as the network connects.
+  It won't be blocked for the MQTT connection and subsequent node config reporting.
+  This is a behavioural change, so ensure that your usage of `esp_rmaker_work_queue_add_task()` does
+  not get affected. The internal users of this API (OTA fetch, schedule execution and user-node mapping)
+  have already been fixed to account for this change.
+- Exposed `esp_rmaker_get_state()` as public API.
+- Added `RMAKER_EVENT_STARTED` event and raise the same once node params are reported. Since we have
+  restructured the rmaker_start flow, functions enqueued before MQTT connected may
+  get executed leading to issues. Please wait on this event if required.
+
+## 1.10.6
+
+### Changes
+
+- Store `mqtt_cred_host` from claim verify response if present. Used by camera devices that receive
+  a separate MQTT credentials host from the claiming service.
+
+## 1.10.5
+
+### New Features
+
+- Added Ethernet network support for ESP RainMaker.
+    - RainMaker now supports Ethernet connectivity alongside Wi-Fi and Thread networks.
+    - Devices can use Ethernet, Wi-Fi, Thread, or any combination of these networks.
+    - RainMaker automatically uses whichever network connects first (Wi-Fi, Thread, or Ethernet).
+    - Ethernet support includes:
+        - Full MQTT connectivity over Ethernet
+        - On-network challenge-response service for user-node mapping via Ethernet
+        - mDNS service discovery for Ethernet-based devices
+        - Local control service support over Ethernet
+    - **Note**: Assisted claiming (BLE-based) is not supported for Ethernet-only devices.
+    - When multiple networks are enabled, both can be active simultaneously and RainMaker
+      will use whichever connects first. The underlying network stack (LWIP) handles routing automatically.
+
+
+## 1.10.4
+
+### Bug Fixes
+
+- Fixed MQTT LWT configuration after assisted claiming: When connectivity service is enabled with an unclaimed node,
+  the LWT topic was initialized with the MAC-based node ID. After assisted claiming, the node ID changed but the LWT topic was not updated,
+  causing MQTT connection issues. LWT is now reconfigured with the new node ID when assisted claiming succeeds.
+- Fixed misleading Connectivity `Connected` param reporting: The param default was set from the MQTT connection status
+  at enable time (typically false, since connectivity is enabled before `esp_rmaker_start()`).
+  Params are only reported after MQTT connects, so the cloud received false initially then true after a delay.
+  The default is now true to reflect the actual state when the param gets reported.
+
+## 1.10.3
+
+### Bug Fixes
+
+- Fixed memory management issues (leaks, missing NULL checks, inconsistent ownership) in client data retrieval APIs.
+
+## 1.10.2
+
+### New Features
+
+- Added Connectivity service so that clients can get connected/disconnected status of the node.
+- Connected status is reported on receiving MQTT connected event.
+- Disconnected status is reported via MQTT LWT.
+- Delay for reporting connected status is configurable via `CONFIG_ESP_RMAKER_CONNECTIVITY_REPORT_DELAY`.
+  This is required to handle race condition when a device reboots quickly, the broker may trigger the
+  old connection's LWT (Connected=false) after the new connection reports Connected=true, resulting in incorrect status.
+
+## 1.10.1
+
+### Changes
+
+- Move User Authentication part of RainMaker controller service to an independent service. 
+  Components can register to `RMAKER_AUTH_SERVICE_EVENT` event to get the user token and base url updates.
+- Added `esp.param.user-token-status` in the RainMaker User Auth Service to indicate user-token state:
+  0 = not set; 1 = set but not verified; 2 = set and verified; 3 = set but expired/invalid.
+- Because group_id is not marked `PROP_FLAG_PERSIST`, it must be stored manually in the RainMaker Controller.
+
+## 1.10.0
+
+### New Features
+
+- Added BLE local control during provisioning phase.
+    - Enable via `CONFIG_ESP_RMAKER_ENABLE_PROV_LOCAL_CTRL` in menuconfig.
+    - Requires challenge-response to be enabled (`CONFIG_ESP_RMAKER_ENABLE_CHALLENGE_RESPONSE`).
+    - Adds custom provisioning endpoints for direct parameter access over BLE:
+        - `get_params`: Retrieve current device parameters.
+        - `set_params`: Update device parameters.
+        - `get_config`: Retrieve node configuration with fragmented transfer support for BLE MTU limits.
+    - `get_params` and `get_config` return raw JSON by default. If a timestamp is provided,
+      the response includes the data, timestamp, and signature for verification.
+    - These handlers stay active only while in provisioning mode.
+    - Recommend setting `CONFIG_APP_NETWORK_PROV_TIMEOUT_PERIOD=0` to keep device in provisioning mode
+      indefinitely and hence, reachable for local control over BLE.
+    - **Note**: This uses custom provisioning endpoints, not `esp_local_ctrl`, as the latter
+      is designed for HTTP-based local control.
+
+## 1.9.2
+
+### New Features
+
+- Add support of on-network challenge-response service for Thread devices.
+
+## 1.9.1
+
+### New Features
+
+- Add support for ECDSA key type for claiming. You can choose between RSA (legacy) and ECDSA via Kconfig options
+  `CONFIG_ESP_RMAKER_CLAIM_KEY_RSA`/`CONFIG_ESP_RMAKER_CLAIM_KEY_ECDSA`.
+  `idf.py menuconfig -> ESP RainMaker Config -> Claiming Key Type -> RSA (2048-bit)/ECDSA (P-256)`
+
+## 1.9.0
+
+### New Features
+
+- Implemented option to report 'failed' status on OTA rollback due to MQTT timeout.
+    - Enable via `CONFIG_ESP_RMAKER_OTA_ROLLBACK_REPORT_FAILED` in menuconfig.
+    - When enabled, if a rollback happens because MQTT did not connect within the configured timeout,
+      the rolled-back firmware will report 'failed' status instead of 'rejected'.
+    - Ensures backward compatibility: older firmware versions (without this feature) will not
+      report any status, preventing incorrect 'rejected' reports.
+    - Only applicable for `OTA_USING_TOPICS` type.
+    - Implementation details:
+        - New firmware stores failure reason and job ID in separate NVS keys before rollback.
+        - Rolled-back firmware reads these keys and reports 'failed' status with appropriate job ID.
+        - Main job ID key is erased before rollback to prevent old firmware from reporting 'rejected'.
+    - **WARNING**: Use this option with caution. If the new firmware has issues that cause persistent
+      MQTT connection failures, enabling this feature may cause the device to toggle between two
+      firmware versions indefinitely (new firmware boots → MQTT fails → rollback → OTA retry →
+      new firmware boots again).
+
+## 1.8.9
+
+### New Features
+
+- Added on-network challenge-response service for user-node mapping.
+    - Enable via `CONFIG_ESP_RMAKER_ON_NETWORK_CHAL_RESP_ENABLE` in menuconfig.
+    - Allows mapping already-provisioned devices to user accounts without re-provisioning.
+    - Starts an HTTP server (default port 80) with protocomm security (Sec0/Sec1/Sec2).
+    - Devices announce themselves via mDNS service type `_esp_rmaker_chal_resp._tcp`.
+    - Challenge-response endpoint: `ch_resp`.
+    - TXT records include: `node_id`, `port`, `sec_version`, `pop_required`.
+    - Optional instance name support via `config.mdns_instance_name` (NULL uses node_id).
+    - APIs: `esp_rmaker_on_network_chal_resp_start()`, `esp_rmaker_on_network_chal_resp_stop()`,
+      `esp_rmaker_on_network_chal_resp_is_running()`.
+    - **Note**: Mutually exclusive with Local Control (`CONFIG_ESP_RMAKER_LOCAL_CTRL_FEATURE_ENABLE`)
+      as both use protocomm_httpd which only supports one instance at a time.
+
+- Added challenge-response endpoint in Local Control service.
+    - Enable via `CONFIG_ESP_RMAKER_LOCAL_CTRL_CHAL_RESP_ENABLE` in menuconfig.
+    - Registers `ch_resp` endpoint in the Local Control HTTP server.
+    - Announces mDNS service `_esp_rmaker_chal_resp._tcp` (same as standalone service for consistency).
+    - TXT records include: `node_id`, `port`, `sec_version`, `pop_required`.
+    - Optional instance name parameter (NULL uses node_id as default).
+    - APIs: `esp_rmaker_local_ctrl_enable_chal_resp(instance_name)`,
+      `esp_rmaker_local_ctrl_disable_chal_resp()`.
+    - Both standalone and local control ch_resp use the same mDNS service type, simplifying discovery.
+
+- Added `esp_rmaker_local_ctrl_set_pop()` API to set custom PoP for Local Control.
+    - Allows using the same PoP as provisioning for Local Control service.
+    - Must be called before `esp_rmaker_local_ctrl_enable()`.
+
+- Added console commands to enable/disable these handlers based on `CONFIG_ESP_RMAKER_CONSOLE_CHAL_RESP_CMDS_ENABLE`.
+    - Console command: `chal-resp-enable [instance_name]` (instance name is optional).
+    - The appropriate APIs are called based on whether `CONFIG_ESP_RMAKER_ON_NETWORK_CHAL_RESP_ENABLE` or
+      `CONFIG_ESP_RMAKER_LOCAL_CTRL_CHAL_RESP_ENABLE` is enabled.
+
+## 1.8.8
+
+### Bug Fixes
+- Fixed an issue where HTTP OTA resumption reported incorrect progress, even though the OTA itself could still succeed.
+- Fixed when use ECDSA to sign the data, the device will crash.
+
+## 1.8.7
+
+### Bug Fixes
+- If assisted claiming was already performed before calling `esp_rmaker_start()`,
+  the firmware was stalling with an incorrect print saying that the Node connected to network
+  without claiming.
+
+## 1.8.6
+
+### New Feature
+
+- Added Groups service to enable direct MQTT communication between nodes and clients (phone apps/controllers).
+    - Setting group_id via the Groups service routes local param updates to group-specific topics
+      (`node/<node_id>/params/local/<group_id>`) for lower latency.
+    - Also added `esp_rmaker_publish_direct()` API to publish messages on `node/<node_id>/direct/params/local/<group_id>`
+      for direct client-to-node communication, bypassing cloud processing for reduced cost and latency.
+    - Clients can also publish param updates directly to `node/<node_id>/params/remote/<group_id>` instead of
+      using the set params API.
+
+## 1.8.5
+
+### Changes
+
+- Assisted claiming is now the default for all supported platforms (requires Bluetooth enabled and not ESP32S2).
+  Previously, it was only the default for ESP32. To revert to self claiming, set `CONFIG_ESP_RMAKER_SELF_CLAIM=y` in menuconfig.
+- Challenge response based user-node mapping is now enabled by default. This replaces the traditional user-node mapping flow.
+  To disable it, set `CONFIG_ESP_RMAKER_ENABLE_CHALLENGE_RESPONSE=n` in menuconfig.
+  Note that challenge response requires the node to be claimed before it can be used.
+
+## 1.8.4
+
+### New Feature
+- Added RainMaker user Auth Service
+- Added helper layer for RainMaker Controller
+
+## 1.8.1
+
+### New Feature
+
+- Added optional `readme` field to node info: Allows example projects to include
+  a README URL in the node configuration. The readme field will be included in
+  node config only if its value is not NULL and not an empty string. This can
+  be set using the `esp_rmaker_node_add_readme()` API.
+
+## 1.8.0
+
+### Changes
+- Decouple esp_rcp_update from esp_rainmaker and it is not a core functionality of RainMaker
+
+## 1.7.9
+
+### New Feature
+- Added set-param, get-param and update-param console commands to assist in some testing
+
+## 1.7.8
+
+## Changes
+- Make version dependency for network_provisioning more flexible
+
+## 1.7.7
+
+### New Feature
+- Added AWS credential provider APIs, required for RainMaker Camera applications.
+
+## 1.7.6
+
+## Changes
+-  Disabled esp_bt code from ota code for supporting esp32-p4, which uses network adapters for Bluetooth.
+
+## 1.7.5
+
+### Bug Fixes
+- Some guards for `CONFIG_ESP_RMAKER_CMD_RESP_ENABLE` and `CONFIG_ESP_RMAKER_PARAM_CMD_RESP_ENABLE` were missing.
+
+### Other changes
+- Changed default MQTT Host URL to mqtt.rainmaker.espressif.com to match the domain conigured on public RainMaker.
+
+
+## 1.7.4
+
+### New Feature
+
+- Add `network-id` attribute to Thread rainmaker nodes.
+
+This attribute represents the partition ID of the Thread network, which is used to determine whether Thread nodes belong to the same network.
+
+## 1.7.3
+
+### New Feature
+
+- Add parameter updates via command-response (command id 1): Enables triggering parameter
+  updates through the command-response framework with proper JSON response containing
+  updated parameter values. Controlled by `CONFIG_ESP_RMAKER_PARAM_CMD_RESP_ENABLE`
+  (enabled by default when command-response is enabled). This will also update the values
+  in the params DB returned via the regular get params APIs like GET /user/nodes/params.
+  - Sample command payload: `{"params":{"Light":{"Power":false}}}`
+  - Sample response payload: `{"status":"success","params":{"Light":{"Power":false}}}`
+
+## 1.7.2
+
+### New Feature
+
+- Add RainMaker OTA resumption feature. The OTA process will resume downloading from the last position instead of restarting the download.
+
+OTA will check whether the MD5 values of the two consecutive files are the same. If the same, the OTA will continue; if they are different, the OTA will restart.
+Therefore, cloud support for delivering the file MD5 value is required (supported in backend version 3.0.0 and above).
+In addition, this feature requires IDF version 5.5 and above.
+
+## 1.7.1
+
+### New Feature
+
+- **Daylight (Sunrise/Sunset) Schedules**: Added support for scheduling device actions based on astronomical calculations for sunrise and sunset times.
+  - Supports scheduling at specific offsets from sunrise/sunset (e.g., 30 minutes before sunset)
+  - Works with day-of-week repeat patterns (e.g., "every weekday at sunset")
+  - Requires geographical location (latitude/longitude) for calculations. The location name is optional.
+  - Configurable via `CONFIG_ESP_SCHEDULE_ENABLE_DAYLIGHT` and `CONFIG_ESP_RMAKER_SCHEDULE_ENABLE_DAYLIGHT`
+  - Adds about 15KB of flash space when enabled.
+  - **Schedule service now includes `daylight_support` attribute** with value set to "yes" to indicate if daylight schedules are supported, enabling client applications to discover this capability.
+
+  **Example JSON for sunrise schedule:**
+  ```json
+  {
+    "Schedule Name": {
+      "triggers": [{
+        "sr": 30,
+        "lat": 37.7749,
+        "lon": -122.4194,
+        "loc": "San Francisco",
+        "d": 127,
+        "ts": 1641123456
+      }],
+      "action": {
+        "Light": {
+          "Power": true,
+          "Brightness": 80
+        }
+      }
+    }
+  }
+  ```
+
+  **Example JSON for sunset schedule:**
+  ```json
+  {
+    "Evening Schedule": {
+      "triggers": [{
+        "ss": -15,
+        "lat": 51.5074,
+        "lon": -0.1278,
+        "loc": "London",
+        "d": 31,
+        "ts": 1641123456
+      }],
+      "action": {
+        "Light": {
+          "Power": true,
+          "Brightness": 50
+        }
+      }
+    }
+  }
+  ```
+
+  **JSON Field Descriptions:**
+  - `sr`: Sunrise offset in minutes (positive = after sunrise, negative = before, zero = exact)
+  - `ss`: Sunset offset in minutes (positive = after sunset, negative = before, zero = exact)
+  - `lat`: Latitude in decimal degrees (-90 to +90, positive North)
+  - `lon`: Longitude in decimal degrees (-180 to +180, positive East)
+  - `loc`: Optional location name for reference
+  - `d`: Day pattern bitmask (1=Sunday, 2=Monday, 4=Tuesday, ..., 127=everyday)
+  - `ts`: Next trigger timestamp (automatically calculated). Can be used by the phone apps to display the next trigger time.
+
+## 1.7.0
+
+### Other changes
+
+- Removed legacy code for esp idf versions < 5.1 as they have reached their end of life.
+
+## 1.6.7
+
+### Minor Change
+
+- Allow challenge-response based user-node mapping even for Assisted Claiming. However, the same will
+still not work with self claiming because the certificate gets registered with the RainMaker backend
+after node connects to Wi-Fi, whereas this user-node mapping happens before that.
+
+## 1.6.6
+
+### Bug Fix
+
+- User-Node mapping could fail if ESP Insights is enabled.
+  -ESP Insights uses the ESP RainMaker Work Queue to send data. The queue itself is processed only after
+   MQTT connection. So, any Insights message (Eg. periodic metric reporting) triggered before that would be
+   queued, eventually causing it to get full. This can cause the user-node mapping to fail,
+   as it also uses the same queue.
+  - Fixed by adding a retry mechanism to the user-node mapping.
+
+## 1.6.5
+
+### New Feature
+
+- Add support for challenge response based user node mapping during provisioning.
+  This is more secure and reliable because
+    - The mapping happens even before Wi-Fi credentials are sent, which ensures that the
+      node is added to the user's account before it is connected to the network.
+    - The node does not necessarily need to be connected to the network to be mapped.
+
+Note that the node needs to be claimed before this can be used, as it requires the MQTT credentials
+to be available. This is not a concern for private deployments since the node credentials are pre-flashed.
+This feature requires the support to be available in phone apps too.
+This was added in ESP RainMaker iOS app v3.4.0 and Android app v3.7.0
+
+## 1.6.4
+
+## New feature
+
+- Support for OTA over MQTT: The regular OTA upgrades with ESP RainMaker required an
+additional https connection to fetch the OTA image, which has a significant impact on
+heap usage. With MQTT OTA, the same MQTT channel used for rest of the RainMaker
+communication is used to fetch the OTA image, thereby saving on RAM.
+This could be slightly slower and may odd some cost. but the overall
+impact would be low enough when compared against the advantages. This can be enabled by setting
+`CONFIG_ESP_RMAKER_OTA_USE_MQTT` to `y` in the menuconfig.
+(`idf.py menuconfig ->  ESP RainMaker Config -> ESP RainMaker OTA Config -> OTA Update Protocol Type -> MQTT`)
+
+
+## 1.6.3
+
+## Bugfix
+
+- Duplicate otafetch after rebooting into new firmware after an OTA was causing a crash.
+This was seen when both, `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE` and `CONFIG_ESP_RMAKER_OTA_AUTOFETCH`
+are enabled.
+
+## 1.6.2
+
+## Minor changes
+
+- AVoid execution of `esp_rmaker_params_mqtt_init()` from esp-idf event handler
+
+## 1.6.1
+
+## Minor changes
+
+- Make cmd response payload publish api (`esp_rmaker_cmd_response_publish()`) public
+
+## 1.6.0
+
+### Enhancements
+
+- Enhance OTA fetch reliability
+    - Monitor message publish acknowledgement for the otafetch message
+    - Add retry logic if otafetch fails
+- Add OTA retry on failure mechanism
+    - Try OTA multiple times (as per `CONFIG_ESP_RMAKER_OTA_MAX_RETRIES`, set to 3 by default) if it fails
+    - Schedule an OTA fetch as per `CONFIG_ESP_RMAKER_OTA_RETRY_DELAY_MINUTES` if all retries fail

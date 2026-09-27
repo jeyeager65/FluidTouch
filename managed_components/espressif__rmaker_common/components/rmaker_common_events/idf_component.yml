@@ -1,0 +1,6 @@
+name: rmaker_common_events
+version: "1.1.0"
+description: ESP RainMaker firmware agent - Common Events component
+url: https://github.com/espressif/esp-rainmaker-common/tree/master/components/rmaker_common_events
+dependencies:
+  idf: ">=5.1"

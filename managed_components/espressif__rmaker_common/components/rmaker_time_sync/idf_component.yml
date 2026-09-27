@@ -1,0 +1,9 @@
+name: rmaker_time_sync
+version: "1.0.2"
+description: ESP RainMaker firmware agent - Time Sync component
+url: https://github.com/espressif/esp-rainmaker-common/tree/master/components/rmaker_time_sync
+dependencies:
+  idf: ">=5.1"
+  espressif/rmaker_common_events:
+    version: "^1.0.0"
+    override_path: ../rmaker_common_events

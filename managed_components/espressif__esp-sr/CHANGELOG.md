@@ -1,0 +1,282 @@
+# Change log for esp-sr
+
+
+# 2.5.5
+- Fix nsnet3 memory bug
+- Reduce esp-sr bin size
+- Add more wakenet10 models
+- Update AFE interface
+
+# 2.5.4(yanked)
+- Add wn10_hiesp(en), wn10_alexa(en) and wn10_airisu
+- Add nsnet3
+
+# 2.5.3
+- Fix wakenet10 memory bug
+- Update docs and add more wakenet10 models
+
+# 2.5.2
+- Support w8a16 wakenet10
+- Improve DOA
+
+# 2.5.1
+- Add GSC module
+- Add wakenet10 models
+
+# 2.5.0
+- Add a minimum energy threshold to VADNet.
+- Resolve the incompatibility between Kconfig and IDF v6.1.
+- Improve BSS performance
+- Support wakenet10 
+
+# 2.4.6
+- Remove redundant heap check
+
+# 2.4.5
+- Fix the coexistence bug of esp-dl and esp-sr on ESP32-S3.
+- Fix the crash issue of ESP32-P4 in IDF v5.5.1 and IDF v5.5.2.
+
+# 2.4.4
+- Support ESP32-S31
+- Fix some document bugs
+
+# 2.4.3
+- Add Full-Duplex AEC and AFE for esp32s3 and esp32p4
+
+# 2.4.2
+- Add more wake word models
+
+# 2.4.1
+- Experimental support esp-idf v6.0
+- Supports both esp32p4 eco6 and old versions.
+- Added a Kconfig option to load data from external path.
+- Print model loading report during compilation
+
+# 2.4.0
+- add more wakenet models
+- add an afe option to fix output channel
+- fix some afe bugs
+
+# 2.3.0
+- Upgrade esp-dsp to v1.7.0
+- Fix mn5q8 crash
+- Support add more wakenet model in AFE
+
+# 2.2.2
+- Add more wakenet9 models
+
+# 2.2.1
+- Fix AFE error log
+- Add new wakenet9 models
+
+# 2.2.0
+- Support WakeNet9l models
+- Update TTS pipeline v3.0 
+
+## 2.1.5
+- Fix ringbuf bug
+- Add more wakenet9 models
+
+## 2.1.4
+- Fix the bug of multinet duration overflow
+- Fix the memory leak bug in multinet7 and multinet6
+
+## 2.1.3
+- Replace kissfft with dl_fft for wakenet9s
+- Replace esp-dsp fft with dl_fft for wakenet9
+- Add more wakenet9 model
+
+## 2.1.2
+- Add debug mode
+- Update wakenet trigget to v4
+
+## 2.1.1
+- Add 8KHz AEC for VoIP
+- Add more wakenet9 models
+
+## 2.1.0
+- esp32c3 support wakenet9s and aec
+- esp32c5 support wakenet9s and aec
+- esp32c6 support wakenet9s and aec
+- esp32s2 support wakenet9s and aec
+- Add four wakenet9s model: hilexin,hiesp,nihaoxiaozhi,hijason
+
+## 2.0.5
+- Fix fftr bug
+
+## 2.0.4
+- Add DOA(Direction of Arrival) algorithm
+
+## 2.0.3
+- Add wakenet9 support for ESP32
+
+## 2.0.2
+- Accelerate the AEC of ESP32C5, reducing the CPU loading from 39% to 30%.
+
+## 2.0.1
+- Add `afe_aec_create`, `afe_aec_destroy`, `afe_aec_process` interface
+
+## 2.0.0
+- Add vadnet1_medium model
+- Refactor AFE interface. Note AFE v2.0 is not compatible with previous versions
+- Add esp32c5 AEC support
+- Add some new wake words
+
+## 1.9.5
+- Add Hi,Jason; 小鸭小鸭; 璃奈板 wake word models
+
+## 1.9.4
+- Fix bugs when using C++ to compile
+- Add more new wake words
+
+## 1.9.3
+- Fix nsnet2 crash
+- Add esp32p4 ci test
+
+## 1.9.2
+- Improve nsnet2 performance
+
+## 1.9.1
+- Support esp32p4 for nsnet2
+- Add a method to load model from rodata
+
+## 1.9.0
+- Support esp32p4 for WakeNet, MultiNet and AFE_SR
+
+
+## 1.8.0
+- Support esp-idf v5.3
+- Add more new wake words
+- Add setting "fixed_first_channel" in afe_config
+ 
+## 1.7.1
+- Add 喵喵同学，Hi,joy, (Hi,Lily/Hi,莉莉) wakenet model
+
+## 1.7.0
+- Add first Noise Suppression model: nsnet2
+- Add more wake word model trained by TTS sample
+
+## 1.6.1
+- Add hey willow wakenet model: wn9_heywillow_tts
+- Update wn9_alexa from v3 to v4
+- Add model info into srmodels_list_t
+- parse wake words from model_info string
+
+## 1.6.0
+- Add Chinese MultiNet7 models
+- Add first Noise Suppression model: nsnet1
+- Add wakenet model trained by TTS samples: Jarvis and Computer
+- fix some bugs
+
+## 1.5.1
+- Reduce Internal RAM of multinet7
+- Update benchmark
+- Add ci build test for esp32
+- Fix some bugs
+
+## 1.5.0
+- Add esp32c6 tts lib
+- Return the volume of wake word audio when one wake word is detected
+- Reduce MultiNet6 SRAM size from 48KB to 32 KB
+- Add "Hi M Five" wake word model from M5Stack
+- Remove all MultiNet4 models
+- Update MultiNet7_en v2.0
+- Fix some bugs in AFE
+- Add Flite G2P module
+
+## 1.4.2
+- Reset timeout trigger of multinet6 when a new speech command is detected
+- Allocate all beams from PSRAM
+
+## 1.4.1
+- Fix the wrong APIs of multinet2 when using ESP32 chip
+- VAD can work fine when WakeNet is disabled
+
+## 1.4.0
+- Add ci tests to check the APIs of wakenet, multinet and AFE work fine
+- Support to load and run two wakenet9 models at the same time in AFE
+- Reduce the latency of multinet6
+
+## 1.3.4
+- Fix the bug of multinet5q8 whrn adding new speech commands
+
+## 1.3.3
+- Fix the crash of multinet5q8 when speech commands are triggered
+- Update esp_mn_commands_update() in esp_process_sdkconfig.c
+
+## 1.3.2
+- Output text of ctc greedy search result when no command can be detected.
+- Modify the default Chinese commands
+- Remove __pycache__ in esp-sr/model folder
+
+## 1.3.1
+- Bugfix: remove all cxx11:string
+- Bugfix: remove esp-partition for esp32s2 & esp32c3 on idf v4.4
+- Update multinet API to add/modify/check new commands in the code
+- Update documents to introduce how to use multinet API
+
+## 1.3.0 
+- Update the partition APIs to keep compatible with both IDF v4.4 and IDF v5.0
+- Add a new Chinese MultiNet6 model for air conditioner controller 
+
+## 1.2.1
+- Fix bugs in model loader
+- Read all parameters sequentially, which reduces about 5x in model loading time.
+- Use esp_partition_mmap to replace spiffs file system, which further reduces about 3x in model loading time
+- Add WakeNet API unity test
+- Add MultiNet API unity test
+
+## 1.2.0
+- ESP-DSP dependency is now installed from the component registry
+- Add an English MultiNet6 model which is trained by RNNT and CTC
+- Add a Chinese MultiNet6 model which is trained by RNNT and CTC
+- Fixed CMake errors when esp-sr was installed from component registry
+- Fixed the list of supported chips displayed in the component registry
+
+## 1.1.0
+- Support esp32c3 for Chinese TTS
+- Update document of ESP-SR
+- Add ESP-SR into Espressif component manager
+
+## 1.0.0
+- Add wakenet8 & wakenet9
+- Add multinet5 to support English and Chinese speech command recognition
+- Remove wakenet7
+- Add AFE pipeline for voice communication
+
+## 0.8.0
+- support ESP32S3 chip
+- add wakenet7 & update wakenet5 to support multi-channel detection
+- remove wakenet6
+- add AFE pipeline for speech recognition
+
+## 0.7.0
+- add chinese tts
+- update noise suppression v2
+- update AEC v3
+
+## 0.6.0
+- update multinet_cn_1.4 and add CONTINUOUS RECOGNITION mode
+- improve hilexin wakeNet5X3 model(v5)
+- support IDFv4.0 build system
+- replace MAP algorithm with MASE(Mic Array Speech Enhancement) algorithm v1.0
+
+## 0.5.0
+- add multinet1 English model v1.0
+- update multinet1 Chinese model v2.0
+- add Mic Array Processing(MAP) algorithm
+- Fix the bug of parsing speech command
+- fix the bug of decoder
+
+## 0.3.0
+- add wakenet6
+- support cmake
+- add free wake word: hi jeson
+- update wakenet5X3 wake word model(v2)
+
+## 0.2.0
+- add acoustic algorithm, include AEC, AGC, VAD ,NS
+- add wakenet5X2 and wakenet5X3
+
+## 0.1.0
+- Initial commit, include wakenet4,wakenet5 and multinet1_cni

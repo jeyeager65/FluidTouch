@@ -1,0 +1,12 @@
+dependencies:
+  espressif/rmaker_common_events:
+    require: public
+    version: ^1.0.0
+  idf: '>=5.1'
+description: ESP RainMaker firmware agent - System Control component
+repository: git://github.com/espressif/esp-rainmaker-common.git
+repository_info:
+  commit_sha: 9dea1e17e2cbf3b24db875897341fc67b1b6e558
+  path: components/rmaker_system_ctrl
+url: https://github.com/espressif/esp-rainmaker-common/tree/master/components/rmaker_system_ctrl
+version: 1.0.0

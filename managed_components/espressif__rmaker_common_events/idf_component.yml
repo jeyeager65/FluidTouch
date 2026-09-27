@@ -1,0 +1,9 @@
+dependencies:
+  idf: '>=5.1'
+description: ESP RainMaker firmware agent - Common Events component
+repository: git://github.com/espressif/esp-rainmaker-common.git
+repository_info:
+  commit_sha: a746bb4ca879e320488306030cb952cdb123e9aa
+  path: components/rmaker_common_events
+url: https://github.com/espressif/esp-rainmaker-common/tree/master/components/rmaker_common_events
+version: 1.1.0

@@ -1,0 +1,93 @@
+.if-protected: &if-protected
+  if: '($CI_COMMIT_REF_NAME == "master" || $CI_COMMIT_BRANCH =~ /^release\/v/ || $CI_COMMIT_TAG =~ /^v\d+\.\d+(\.\d+)?($|-)/)'
+
+.if-dev-push: &if-dev-push
+  if: '$CI_COMMIT_REF_NAME != "master" && $CI_COMMIT_BRANCH !~ /^release\/v/ && $CI_COMMIT_TAG !~ /^v\d+\.\d+(\.\d+)?($|-)/ && ($CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "merge_request_event")'
+
+.if-label-build: &if-label-build
+  if: '$CI_MERGE_REQUEST_LABELS =~ /^(?:[^,\n\r]+,)*build(?:,[^,\n\r]+)*$/i'
+
+.patterns-test_esp_tts: &patterns-test_esp_tts
+  - "esp-tts/**/*"
+  - "test_apps/esp-tts/**/*"
+  - "CMakeLists.txt"
+
+.patterns-test_esp_sr: &patterns-test_esp_sr
+  - "lib/**/*"
+  - "include/**/*"
+  - "src/**/*"
+  - "model/**/*"
+  - "test_apps/esp-sr-wakenet/**/*"
+  - "test_apps/esp-sr-multinet/**/*"
+  - "test_apps/esp-sr-vadnet/**/*"
+  - "test_apps/esp-sr-afe/**/*"
+  - "CMakeLists.txt"
+
+.patterns-test_esp32c5: &patterns-test_esp32c5
+  - "lib/esp32c5/*"
+  - "lib/esp32c3/*"
+  - "lib/esp32c6/*"
+  - "lib/esp32s2/*"
+  - "include/esp32c5/*"
+  - "src/**/*"
+  - "model/**/*"
+  - "test_apps/esp32c5/**/*"
+  - "CMakeLists.txt"
+
+.patterns-build_system: &patterns-build_system
+  - ".gitlab-ci.yml"
+  - ".gitlab/ci/**/*"
+  - "test_apps/.build-rules.yml"
+  - "test_apps/build_apps.py"
+  - "conftest.py"
+  - "pytest.ini"
+  - "CMakeLists.txt"
+
+.patterns-build_docs: &patterns-build_docs
+  - "docs/**/*"
+  - ".gitlab-ci.yml"
+  - ".gitlab/ci/**/*"
+
+.rules:build:test_esp_sr:
+  rules:
+    - <<: *if-protected
+    - <<: *if-label-build
+    - <<: *if-dev-push
+      changes: *patterns-build_system
+    - <<: *if-dev-push
+      changes: *patterns-test_esp_sr
+
+.rules:build:test_esp_tts:
+  rules:
+    - <<: *if-protected
+    - <<: *if-label-build
+    - <<: *if-dev-push
+      changes: *patterns-build_system
+    - <<: *if-dev-push
+      changes: *patterns-test_esp_tts
+
+.rules:build:test_esp32c5:
+  rules:
+    - <<: *if-protected
+    - <<: *if-label-build
+    - <<: *if-dev-push
+      changes: *patterns-build_system
+    - <<: *if-dev-push
+      changes: *patterns-test_esp32c5
+
+.rules:build_docs:docs:
+  rules:
+    - <<: *if-protected
+    - <<: *if-label-build
+    - <<: *if-dev-push
+      changes: *patterns-build_docs
+
+.rules:deploy:docs_preview:
+  rules:
+    - <<: *if-label-build
+    - <<: *if-dev-push
+      changes: *patterns-build_docs
+
+.rules:deploy:docs_production:
+  rules:
+    - <<: *if-protected

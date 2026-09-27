@@ -1,0 +1,9 @@
+dependencies:
+  idf: '>=5.1'
+description: ESP RainMaker firmware agent - Command Response component
+repository: git://github.com/espressif/esp-rainmaker-common.git
+repository_info:
+  commit_sha: 9dea1e17e2cbf3b24db875897341fc67b1b6e558
+  path: components/rmaker_cmd_resp
+url: https://github.com/espressif/esp-rainmaker-common/tree/master/components/rmaker_cmd_resp
+version: 1.0.0

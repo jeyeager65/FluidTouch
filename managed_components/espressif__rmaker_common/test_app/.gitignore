@@ -1,0 +1,7 @@
+__pycache__/
+.cache/
+build/
+managed_components/
+dependencies.lock
+sdkconfig
+sdkconfig.old

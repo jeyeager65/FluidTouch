@@ -1,0 +1,6 @@
+name: rmaker_cmd_resp
+version: "1.0.0"
+description: ESP RainMaker firmware agent - Command Response component
+url: https://github.com/espressif/esp-rainmaker-common/tree/master/components/rmaker_cmd_resp
+dependencies:
+  idf: ">=5.1"
