@@ -294,6 +294,11 @@ void FluidNCClient::onEventsCallback(WebsocketsEvent event, String data) {
             
             // Request firmware version info
             webSocket.send("$Build/Info\n");
+            
+            // Request GCode parser state once: the touchscreen may have booted
+            // while the machine was already running, so modals (WCS, plane,
+            // units, tool, feed, spindle) must be refreshed immediately.
+            webSocket.send("$G\n");
             break;
             
         case WebsocketsEvent::ConnectionClosed:
