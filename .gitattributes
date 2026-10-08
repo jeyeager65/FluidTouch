@@ -1,0 +1,4 @@
+# FreeCAD models and 3D print files: never touch line endings or attempt text merges
+*.FCStd binary
+*.3mf binary
+*.stl binary

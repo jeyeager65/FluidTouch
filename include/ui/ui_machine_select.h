@@ -38,6 +38,26 @@ private:
     static lv_obj_t *ta_url;
     static lv_obj_t *ta_port;
     static lv_obj_t *dd_connection_type;
+    static lv_obj_t *ta_baud_rate;
+    static lv_obj_t *baud_rate_container;  // Wraps baud label + textarea for show/hide as unit
+    static lv_obj_t *lbl_ssid;
+    static lv_obj_t *lbl_url;
+    static lv_obj_t *lbl_password;
+    static lv_obj_t *lbl_port;
+    static lv_obj_t *sw_autoload;      // "Load this machine at startup"
+    static bool autoload_touched;      // User changed the switch; stop following the connection type
+
+    // ESP-NOW pairing panel (replaces the WiFi fields for ESP-NOW machines)
+    static lv_obj_t *espnow_panel;
+    static lv_obj_t *lbl_espnow_status;
+    static lv_obj_t *lbl_espnow_hint;
+    static lv_obj_t *btn_espnow_pair;
+    static lv_obj_t *lbl_espnow_pair;
+    static lv_timer_t *espnow_timer;
+    static EspNowPairing new_pairing;  // Paired in this dialog, saved on Save
+    static bool has_new_pairing;
+    static bool espnow_pairing;        // Pairing in progress
+    static bool espnow_pair_failed;    // Last attempt timed out
     
     // Delete confirmation dialog
     static lv_obj_t *delete_dialog;
@@ -57,6 +77,9 @@ private:
     static void onConfigCancel(lv_event_t *e);
     static void onConnectionTypeChanged(lv_event_t *e);
     static void onTextareaFocused(lv_event_t *e);
+    static void onAutoloadChanged(lv_event_t *e);
+    static void onEspNowPair(lv_event_t *e);
+    static void onEspNowTimer(lv_timer_t *timer);
     
     // Helper functions
     static void refreshMachineList();
@@ -65,6 +88,9 @@ private:
     static void showDeleteConfirmDialog(int index);
     static void hideDeleteConfirmDialog();
     static void updateConnectionFields();
+    static void updateEspNowPanel();
+    static void stopEspNowPairing();
+    static ConnectionType selectedConnectionType();
     static void showKeyboard(lv_obj_t *ta);
     static void hideKeyboard();
     static int getConfiguredMachineCount();

@@ -19,6 +19,8 @@ public:
     static void listDisplaySDFiles(const std::string &path);
     static void requestRefresh();  // Request a refresh (called from callbacks)
     static void checkPendingRefresh();  // Check and execute pending refresh (called from main loop)
+    // Poll XModem transfer state and update the progress dialog (called from main loop)
+    static void checkXModemProgress();
     static StorageSource current_storage;
     
     // Cache for each storage source
@@ -46,6 +48,11 @@ private:
     static lv_obj_t *upload_progress_dialog;
     static lv_obj_t *upload_progress_bar;
     static lv_obj_t *upload_progress_label;
+    // XModem upload dialog widgets (wired mode)
+    static lv_obj_t *xmodem_dialog;
+    static lv_obj_t *xmodem_progress_dialog;
+    static lv_obj_t *xmodem_progress_bar;
+    static lv_obj_t *xmodem_progress_label;
     static std::vector<std::string> file_names;
     static std::string current_path;  // Track current directory path
     static bool initial_load_done;    // Track if initial file list has been loaded
@@ -63,6 +70,10 @@ private:
     static void updateUploadProgress(size_t current, size_t total);
     static void closeUploadProgress(bool success, const char* error);
     static bool isDisplaySDAvailable();  // Check if Display SD card is available
+    // XModem (wired) upload helpers
+    static void showXModemDialog(const char* filename, const char* fullPath, size_t fileSize);
+    static void showXModemProgress(const char* filename);
+    static void closeXModemProgress(bool success, const char* error);
     static void navigateToUploadDirectory();  // Navigate to /fluidtouch/uploads on FluidNC SD
 };
 

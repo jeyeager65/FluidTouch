@@ -56,6 +56,19 @@ void delay(unsigned long ms);
 void delayMicroseconds(unsigned int us);
 void yield();
 
+// FreeRTOS - the ESP32 Arduino.h pulls these in. Tasks run as detached
+// threads; vTaskDelete() is a no-op because the firmware's task functions
+// return right after calling vTaskDelete(nullptr).
+typedef void *TaskHandle_t;
+typedef int BaseType_t;
+typedef void (*TaskFunction_t)(void *);
+#define pdPASS 1
+#define portTICK_PERIOD_MS 1
+inline void vTaskDelay(uint32_t ticks) { delay(ticks * portTICK_PERIOD_MS); }
+inline void vTaskDelete(TaskHandle_t) {}
+BaseType_t xTaskCreatePinnedToCore(TaskFunction_t fn, const char *name, uint32_t stack, void *param,
+                                   unsigned priority, TaskHandle_t *handle, int core);
+
 // Random
 long random(long max);
 long random(long min, long max);
@@ -78,11 +91,15 @@ inline struct tm *localtime_r(const time_t *t, struct tm *out) {
 }
 #endif
 
-// Serial - prints to stdout, reads lines typed into the console
+// Serial - prints to stdout, reads lines typed into the console. Other ports
+// (e.g. the Advance's UART link to FluidNC) are silent: nothing is connected.
+#define SERIAL_8N1 0x800001c
 class HardwareSerial : public Stream {
 public:
-    void begin(unsigned long) {}
+    explicit HardwareSerial(int port = 0) : port_(port) {}
+    void begin(unsigned long, uint32_t = SERIAL_8N1, int8_t = -1, int8_t = -1) {}
     void end() {}
+    size_t setRxBufferSize(size_t size) { return size; }
     int available() override;
     int read() override;
     int peek() override;
@@ -91,6 +108,9 @@ public:
     using Print::write;
     void flush() override;
     explicit operator bool() const { return true; }
+
+private:
+    int port_;
 };
 extern HardwareSerial Serial;
 

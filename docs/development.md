@@ -36,9 +36,9 @@
     - Internal battery connector with JST PH 2.0mm 2-pin connector
     - Optional acrylic case includes space for battery (e.g., 1200mAh lithium polymer battery)
     - ⚠️ **ESP32-S3 ONLY** - ESP32-P4 versions are NOT supported
-    - ⚠️ **Advance Version Compatibility:** Supports hardware Versions 1.2 and 1.3
-    - **DIP Switch Configuration:** Both versions require DIP switches S0 and S1 set to position 1
-    - **Version 1.3:** Fully tested (use `elecrow-crowpanel-7-advance-v13` build environment)
+    - ⚠️ **Advance Version Compatibility:** Supports hardware Versions 1.2 through 1.5
+    - **DIP Switch Configuration:** All versions require DIP switches S0 and S1 set to position 1
+    - **Versions 1.3, 1.4 and 1.5:** Fully tested (use `elecrow-crowpanel-7-advance-v13` build environment for all three; v1.4 only changed the boot/reset buttons and v1.5 only changed the silkscreen)
     - **Version 1.2:** ⚠️ Untested (use `elecrow-crowpanel-7-advance-v12` build environment)
 - Serial terminal (PlatformIO includes one)
 - Chrome/Edge browser (for ESP Web Tools testing)

@@ -29,12 +29,19 @@ void MachineConfigManager::loadMachines(MachineConfig machines[MAX_MACHINES]) {
         
         if (machines[i].is_configured) {
             prefs.getString((prefix + "name").c_str(), machines[i].name, sizeof(machines[i].name));
-            machines[i].connection_type = (ConnectionType)prefs.getUChar((prefix + "type").c_str(), CONN_WIRELESS);
+            machines[i].connection_type = (ConnectionType)prefs.getUChar((prefix + "type").c_str(), CONN_WIFI);
             prefs.getString((prefix + "ssid").c_str(), machines[i].ssid, sizeof(machines[i].ssid));
             prefs.getString((prefix + "pwd").c_str(), machines[i].password, sizeof(machines[i].password));
             prefs.getString((prefix + "url").c_str(), machines[i].fluidnc_url, sizeof(machines[i].fluidnc_url));
             machines[i].websocket_port = prefs.getUShort((prefix + "port").c_str(), 81);
-            
+            machines[i].uart_baud_rate = prefs.getUInt((prefix + "baud").c_str(), 115200);
+            String espnowKey = prefix + "enow";
+            if (prefs.getBytesLength(espnowKey.c_str()) == sizeof(EspNowPairing)) {
+                prefs.getBytes(espnowKey.c_str(), &machines[i].espnow_pairing, sizeof(EspNowPairing));
+            } else {
+                memset(&machines[i].espnow_pairing, 0, sizeof(EspNowPairing));
+            }
+
             Serial.printf("    Name: %s, URL: %s:%d\n", machines[i].name, machines[i].fluidnc_url, machines[i].websocket_port);
             
             // Load jog settings (with defaults if not present)
@@ -98,7 +105,13 @@ void MachineConfigManager::saveMachines(const MachineConfig machines[MAX_MACHINE
             prefs.putString((prefix + "pwd").c_str(), machines[i].password);
             prefs.putString((prefix + "url").c_str(), machines[i].fluidnc_url);
             prefs.putUShort((prefix + "port").c_str(), machines[i].websocket_port);
-            
+            prefs.putUInt((prefix + "baud").c_str(), machines[i].uart_baud_rate);
+            if (espnowIsPaired(machines[i].espnow_pairing)) {
+                prefs.putBytes((prefix + "enow").c_str(), &machines[i].espnow_pairing, sizeof(EspNowPairing));
+            } else if (prefs.isKey((prefix + "enow").c_str())) {
+                prefs.remove((prefix + "enow").c_str());
+            }
+
             // Save jog settings
             prefs.putFloat((prefix + "jxy_st").c_str(), machines[i].jog_xy_step);
             prefs.putFloat((prefix + "jz_st").c_str(), machines[i].jog_z_step);

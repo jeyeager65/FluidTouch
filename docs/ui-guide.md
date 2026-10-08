@@ -447,7 +447,7 @@ The Settings tab contains six sub-tabs for configuration:
 ![Settings General](./images/settings-general.png)
 
 **Machine Selection:**
-- Whether or not to show the machine selection screen. If skipped, it will automatically load the configuration for the first machine.
+- Whether or not to show the machine selection screen. If skipped, it will automatically load the last machine used (or the first machine, if none has been used yet). This suits a display that's wired to one machine: select it once, then turn this off.
 
 **File Browser:**
 - **Folders on Top:** When enabled, folders appear first in the Files tab, followed by files (both sorted alphabetically)

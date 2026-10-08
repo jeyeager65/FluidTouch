@@ -41,10 +41,17 @@ FetchContent_Declare(arduinowebsockets
     GIT_TAG        0.5.4
     GIT_SHALLOW    TRUE
     SOURCE_SUBDIR  _no_cmake_)
+# ESP-NOW pairing crypto; the ESP32 framework ships mbedtls 3.6 too
+FetchContent_Declare(mbedtls
+    GIT_REPOSITORY https://github.com/Mbed-TLS/mbedtls.git
+    GIT_TAG        v3.6.7
+    GIT_SHALLOW    TRUE
+    GIT_SUBMODULES ""
+    SOURCE_SUBDIR  _no_cmake_)
 
 # Download sources only (SOURCE_SUBDIR points at a non-existent dir so their
 # own CMake projects aren't added) - we compile them ourselves below.
-FetchContent_MakeAvailable(lvgl arduinojson arduinowebsockets)
+FetchContent_MakeAvailable(lvgl arduinojson arduinowebsockets mbedtls)
 
 find_package(SDL2 REQUIRED CONFIG)
 
@@ -63,10 +70,13 @@ set(FT_INCLUDE_DIRS
 
 set(FT_DEFINES
     FLUIDTOUCH_SIM=1
+    # Simulate the CrowPanel Advance (the main board): UART / USB CDC /
+    # ESP-NOW connection types. Serial links are stubs on the desktop.
+    HARDWARE_ADVANCE=1
     LV_CONF_INCLUDE_SIMPLE=1
     LV_LVGL_H_INCLUDE_SIMPLE=1
     SDL_MAIN_HANDLED=1
-    VERSION="1.0.6-sim"
+    VERSION="1.1.0-sim"
     # ArduinoJson: enable String/Stream/Print support without defining ARDUINO
     ARDUINOJSON_ENABLE_ARDUINO_STRING=1
     ARDUINOJSON_ENABLE_ARDUINO_STREAM=1
@@ -100,6 +110,20 @@ target_compile_options(arduinowebsockets PRIVATE -w -funsigned-char
     "$<$<COMPILE_LANGUAGE:CXX>:SHELL:-include ${FT_CXX_FORCE_INCLUDE}>")
 
 # ---------------------------------------------------------------------------
+# mbedtls crypto (no TLS/X.509 needed)
+# ---------------------------------------------------------------------------
+file(GLOB MBEDTLS_SOURCES "${mbedtls_SOURCE_DIR}/library/*.c")
+list(FILTER MBEDTLS_SOURCES EXCLUDE REGEX ".*/library/(net_sockets|ssl_|x509|pkcs7|debug|mps_).*\\.c$")
+add_library(mbedcrypto STATIC ${MBEDTLS_SOURCES})
+target_include_directories(mbedcrypto
+    PUBLIC "${mbedtls_SOURCE_DIR}/include"
+    PRIVATE "${mbedtls_SOURCE_DIR}/library")
+target_compile_options(mbedcrypto PRIVATE -w -O2)
+if(WIN32)
+    target_link_libraries(mbedcrypto PUBLIC bcrypt)
+endif()
+
+# ---------------------------------------------------------------------------
 # FluidTouch app: firmware sources + simulator platform layer
 # ---------------------------------------------------------------------------
 file(GLOB_RECURSE FT_SOURCES CONFIGURE_DEPENDS
@@ -123,12 +147,29 @@ target_compile_options(fluidtouch_sim PRIVATE
     -Wall -Wno-unused-variable -Wno-unused-function -Wno-format
     -Wno-unused-but-set-variable -Wno-missing-field-initializers
     "$<$<COMPILE_LANGUAGE:CXX>:SHELL:-include ${FT_CXX_FORCE_INCLUDE}>")
-target_link_libraries(fluidtouch_sim PRIVATE lvgl arduinowebsockets SDL2::SDL2)
+target_link_libraries(fluidtouch_sim PRIVATE lvgl arduinowebsockets mbedcrypto SDL2::SDL2)
+
+# ESP-NOW link test against sim/tools/fake_fluidnc.py (see sim/test/espnow_link_test.cpp)
+add_executable(espnow_link_test
+    "${SIM_DIR}/test/espnow_link_test.cpp"
+    "${SIM_DIR}/src/arduino_core.cpp"
+    "${SIM_DIR}/src/espnow_radio_udp.cpp"
+    "${FT_ROOT}/src/network/espnow_link.cpp"
+    "${FT_ROOT}/src/network/espnow_crypto.cpp")
+target_include_directories(espnow_link_test PRIVATE ${FT_INCLUDE_DIRS})
+target_compile_definitions(espnow_link_test PRIVATE
+    ${FT_DEFINES}
+    SIM_DEFAULT_DATA_DIR="${SIM_DIR}/data")
+target_compile_options(espnow_link_test PRIVATE -funsigned-char -Wall -Wno-unused-function
+    "$<$<COMPILE_LANGUAGE:CXX>:SHELL:-include ${FT_CXX_FORCE_INCLUDE}>")
+target_link_libraries(espnow_link_test PRIVATE mbedcrypto)
 
 if(WIN32)
     target_link_libraries(fluidtouch_sim PRIVATE ws2_32 iphlpapi)
+    target_link_libraries(espnow_link_test PRIVATE ws2_32)
     # Static libgcc/libstdc++ so the exe only needs SDL2.dll next to it
     target_link_options(fluidtouch_sim PRIVATE -static-libgcc -static-libstdc++)
+    target_link_options(espnow_link_test PRIVATE -static-libgcc -static-libstdc++)
     # Copy runtime DLLs next to the exe so it runs outside the MSYS2 shell
     # (and doesn't pick up an incompatible libwinpthread from e.g. Git's PATH)
     get_filename_component(MINGW_BIN "${CMAKE_CXX_COMPILER}" DIRECTORY)
@@ -140,4 +181,5 @@ if(WIN32)
 else()
     find_package(Threads REQUIRED)
     target_link_libraries(fluidtouch_sim PRIVATE Threads::Threads)
+    target_link_libraries(espnow_link_test PRIVATE Threads::Threads)
 endif()

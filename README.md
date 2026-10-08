@@ -51,6 +51,21 @@ Refer to the **[Development Guide](./docs/development.md)** for additional instr
 
 ## 🖥️ Compatible Hardware
 
+**Elecrow CrowPanel 7" Advance ESP32-S3 HMI Display** ⭐ *Recommended*
+- ESP32-S3-WROOM-1-N16R8 (16MB Flash + 8MB PSRAM)
+- 800×480 IPS RGB LCD (superior image quality)
+- GT911 Capacitive Touch
+- I2C Backlight Control (STC8H1K28)
+- Internal battery connector (JST PH 2.0mm 2-pin)
+- Optional acrylic case with battery compartment (supports ~1200mAh LiPo batteries), or a [3D printed case](./hardware/case/) with room for much larger batteries, plus a matching [table stand](./hardware/stand/)
+- ⚠️ **ESP32-S3 ONLY** - ESP32-P4 versions are NOT supported
+- **Hardware Versions 1.2 through 1.5 Supported**
+  - **All versions:** DIP switches S0 and S1 must both be set to position 1
+  - **Version 1.2:** ⚠️ Support is untested - use v1.2 firmware from web installer
+  - **Versions 1.3, 1.4 and 1.5:** Fully tested and recommended. They use the same firmware: v1.4 only changed the boot/reset buttons and v1.5 only changed the silkscreen
+  - **Case Note:** When using acrylic case, install 6mm M3 screws in bottom mounting inserts to prevent accidental reset button presses
+- [Buy on Elecrow ↗](https://www.awin1.com/cread.php?awinmid=82721&awinaffid=2663106&ued=https%3A%2F%2Fwww.elecrow.com%2Fcrowpanel-advance-7-0-hmi-esp32-ai-display-800x480-artificial-intelligent-ips-touch-screen-support-meshtastic-and-arduino-lvgl-micropython.html) *(affiliate link)*
+
 **Elecrow CrowPanel 7" Basic ESP32-S3 HMI Display**
 - ESP32-S3-WROOM-1-N4R8 (4MB Flash + 8MB PSRAM)
 - 800×480 TN RGB TFT LCD
@@ -58,21 +73,6 @@ Refer to the **[Development Guide](./docs/development.md)** for additional instr
 - PWM Backlight Control
 - External battery connector
 - [Buy on Elecrow ↗](https://www.awin1.com/cread.php?awinmid=82721&awinaffid=2663106&ued=https%3A%2F%2Fwww.elecrow.com%2Fesp32-display-7-inch-hmi-display-rgb-tft-lcd-touch-screen-support-lvgl.html) *(affiliate link)*
-
-**Elecrow CrowPanel 7" Advance ESP32-S3 HMI Display** ⭐ *Recommended*
-- ESP32-S3-WROOM-1-N16R8 (16MB Flash + 8MB PSRAM)
-- 800×480 IPS RGB LCD (superior image quality)
-- GT911 Capacitive Touch
-- I2C Backlight Control (STC8H1K28)
-- Internal battery connector (JST PH 2.0mm 2-pin)
-- Optional acrylic case with battery compartment (supports ~1200mAh LiPo batteries)
-- ⚠️ **ESP32-S3 ONLY** - ESP32-P4 versions are NOT supported
-- **Hardware Versions 1.2 and 1.3 Supported**
-  - **Both versions:** DIP switches S0 and S1 must both be set to position 1
-  - **Version 1.2:** ⚠️ Support is untested - use v1.2 firmware from web installer
-  - **Version 1.3:** Fully tested and recommended
-  - **Case Note:** When using acrylic case, install 6mm M3 screws in bottom mounting inserts to prevent accidental reset button presses
-- [Buy on Elecrow ↗](https://www.awin1.com/cread.php?awinmid=82721&awinaffid=2663106&ued=https%3A%2F%2Fwww.elecrow.com%2Fcrowpanel-advance-7-0-hmi-esp32-ai-display-800x480-artificial-intelligent-ips-touch-screen-support-meshtastic-and-arduino-lvgl-micropython.html) *(affiliate link)*
 
 ---
 
@@ -85,6 +85,7 @@ Detailed documentation is available in the [`docs/`](./docs/) folder:
 - **[Configuration](./docs/configuration.md)** - WiFi setup, machine configuration, and settings
 - **[Development Guide](./docs/development.md)** - Building, debugging, and contributing
 - **[Desktop Simulator](./sim/README.md)** - Run and develop the UI on your PC, connected to a real FluidNC controller
+- **[3D Printed Case](./hardware/case/README.md)** and **[Stand](./hardware/stand/README.md)** - Print files, hardware list and assembly for the Advance display
 
 ---
 

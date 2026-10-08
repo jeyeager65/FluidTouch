@@ -83,6 +83,16 @@ jobs:
         cp .pio/build/elecrow-crowpanel-7-basic/*.bin /tmp/firmware-artifacts/basic/
         cp .pio/build/elecrow-crowpanel-7-advance-v13/*.bin /tmp/firmware-artifacts/advance-v1.3/
         cp .pio/build/elecrow-crowpanel-7-advance-v12/*.bin /tmp/firmware-artifacts/advance-v1.2/
+
+        # boot_app0.bin comes from the framework package, which platformio.ini
+        # keeps in .pio/packages (removed below); the manifests flash it at 0xE000
+        BOOT_APP0=.pio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin
+        [ -f "$BOOT_APP0" ] || BOOT_APP0=~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin
+        if [ ! -f "$BOOT_APP0" ]; then
+          echo "::error::boot_app0.bin not found"
+          exit 1
+        fi
+        cp "$BOOT_APP0" /tmp/firmware-artifacts/boot_app0.bin
         cp web/manifest_basic.json /tmp/firmware-artifacts/web/
         cp web/manifest_advance-v1.3.json /tmp/firmware-artifacts/web/
         cp web/manifest_advance-v1.2.json /tmp/firmware-artifacts/web/
@@ -128,12 +138,10 @@ jobs:
         cp /tmp/firmware-artifacts/advance-v1.2/bootloader.bin firmware/preview/${VERSION_ID}/advance-v1.2/
         cp /tmp/firmware-artifacts/advance-v1.2/partitions.bin firmware/preview/${VERSION_ID}/advance-v1.2/
         
-        # Copy boot_app0.bin if available
-        if [ -f ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin ]; then
-          cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin firmware/preview/${VERSION_ID}/basic/
-          cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin firmware/preview/${VERSION_ID}/advance-v1.3/
-          cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin firmware/preview/${VERSION_ID}/advance-v1.2/
-        fi
+        # Copy boot_app0.bin (saved before .pio was removed)
+        cp /tmp/firmware-artifacts/boot_app0.bin firmware/preview/${VERSION_ID}/basic/
+        cp /tmp/firmware-artifacts/boot_app0.bin firmware/preview/${VERSION_ID}/advance-v1.3/
+        cp /tmp/firmware-artifacts/boot_app0.bin firmware/preview/${VERSION_ID}/advance-v1.2/
         
         # Copy and update manifests
         cp /tmp/firmware-artifacts/web/manifest_basic.json firmware/preview/${VERSION_ID}/manifest_basic.json

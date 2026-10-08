@@ -3,6 +3,8 @@
 #include "ui/ui_tabs.h"
 #include "ui/ui_theme.h"
 #include "core/power_manager.h"
+#include "network/fluidnc_client.h"
+#include "network/espnow_crypto.h"
 #include "config.h"
 #include <Preferences.h>
 
@@ -29,8 +31,36 @@ lv_obj_t *UIMachineSelect::ta_password = nullptr;
 lv_obj_t *UIMachineSelect::ta_url = nullptr;
 lv_obj_t *UIMachineSelect::ta_port = nullptr;
 lv_obj_t *UIMachineSelect::dd_connection_type = nullptr;
+lv_obj_t *UIMachineSelect::ta_baud_rate = nullptr;
+lv_obj_t *UIMachineSelect::baud_rate_container = nullptr;
+lv_obj_t *UIMachineSelect::lbl_ssid = nullptr;
+lv_obj_t *UIMachineSelect::lbl_url = nullptr;
+lv_obj_t *UIMachineSelect::lbl_password = nullptr;
+lv_obj_t *UIMachineSelect::lbl_port = nullptr;
+lv_obj_t *UIMachineSelect::sw_autoload = nullptr;
+bool UIMachineSelect::autoload_touched = false;
+lv_obj_t *UIMachineSelect::espnow_panel = nullptr;
+lv_obj_t *UIMachineSelect::lbl_espnow_status = nullptr;
+lv_obj_t *UIMachineSelect::lbl_espnow_hint = nullptr;
+lv_obj_t *UIMachineSelect::btn_espnow_pair = nullptr;
+lv_obj_t *UIMachineSelect::lbl_espnow_pair = nullptr;
+lv_timer_t *UIMachineSelect::espnow_timer = nullptr;
+EspNowPairing UIMachineSelect::new_pairing = {};
+bool UIMachineSelect::has_new_pairing = false;
+bool UIMachineSelect::espnow_pairing = false;
+bool UIMachineSelect::espnow_pair_failed = false;
 lv_obj_t *UIMachineSelect::delete_dialog = nullptr;
 int UIMachineSelect::deleting_index = -1;
+
+// Connection dropdown entries, in order
+#ifdef HARDWARE_ADVANCE
+static const ConnectionType CONNECTION_OPTIONS[] = {CONN_WIFI, CONN_UART, CONN_USB_CDC, CONN_ESPNOW};
+static const char *CONNECTION_OPTION_TEXT = "WiFi\nUART\nUSB CDC\nESP-NOW";
+#else
+static const ConnectionType CONNECTION_OPTIONS[] = {CONN_WIFI, CONN_ESPNOW};
+static const char *CONNECTION_OPTION_TEXT = "WiFi\nESP-NOW";
+#endif
+static const uint16_t CONNECTION_OPTION_COUNT = sizeof(CONNECTION_OPTIONS) / sizeof(CONNECTION_OPTIONS[0]);
 
 void UIMachineSelect::show(lv_display_t *disp) {
     display = disp;
@@ -187,7 +217,7 @@ void UIMachineSelect::refreshMachineList() {
                 
                 // Machine label with symbol
                 lv_obj_t *label = lv_label_create(machine_buttons[i]);
-                const char *symbol = (machines[i].connection_type == CONN_WIRELESS) ? LV_SYMBOL_WIFI : LV_SYMBOL_USB;
+                const char *symbol = connectionIsWireless(machines[i].connection_type) ? LV_SYMBOL_WIFI : LV_SYMBOL_USB;
                 String text = String(symbol) + " " + String(machines[i].name);
                 lv_label_set_text(label, text.c_str());
                 lv_obj_set_style_text_font(label, &lv_font_montserrat_22, 0);
@@ -289,8 +319,14 @@ void UIMachineSelect::refreshMachineList() {
                 // Line 2: Connection type symbol + SSID/Wired (bottom area)
                 lv_obj_t *connection_label = lv_label_create(machine_buttons[i]);
                 String connection_text;
-                if (machines[i].connection_type == CONN_WIRELESS) {
+                if (machines[i].connection_type == CONN_WIFI) {
                     connection_text = String(LV_SYMBOL_WIFI) + " " + String(machines[i].ssid);
+                } else if (machines[i].connection_type == CONN_UART) {
+                    connection_text = String(LV_SYMBOL_USB) + " UART";
+                } else if (machines[i].connection_type == CONN_USB_CDC) {
+                    connection_text = String(LV_SYMBOL_USB) + " USB CDC";
+                } else if (machines[i].connection_type == CONN_ESPNOW) {
+                    connection_text = String(LV_SYMBOL_WIFI) + " ESP-NOW";
                 } else {
                     connection_text = String(LV_SYMBOL_USB) + " Wired";
                 }
@@ -299,11 +335,21 @@ void UIMachineSelect::refreshMachineList() {
                 lv_obj_set_style_text_color(connection_label, UITheme::UI_INFO, 0);
                 lv_obj_align(connection_label, LV_ALIGN_BOTTOM_LEFT, 0, -30);  // 30px from bottom
                 
-                // Line 3: FluidNC URL:Port (bottom area)
+                // Line 3: where FluidNC is (bottom area): URL:Port for WiFi,
+                // the paired hostname for ESP-NOW, the baud rate for UART / USB CDC
                 lv_obj_t *url_label = lv_label_create(machine_buttons[i]);
                 char url_text[128];
-                snprintf(url_text, sizeof(url_text), "%s:%d", 
-                        machines[i].fluidnc_url, machines[i].websocket_port);
+                if (machines[i].connection_type == CONN_ESPNOW) {
+                    const EspNowPairing &pairing = machines[i].espnow_pairing;
+                    snprintf(url_text, sizeof(url_text), "%s",
+                             espnowIsPaired(pairing) ? pairing.hostname : "Not paired");
+                } else if (connectionIsSerial(machines[i].connection_type)) {
+                    snprintf(url_text, sizeof(url_text), "%lu baud",
+                             (unsigned long)machines[i].uart_baud_rate);
+                } else {
+                    snprintf(url_text, sizeof(url_text), "%s:%d",
+                            machines[i].fluidnc_url, machines[i].websocket_port);
+                }
                 lv_label_set_text(url_label, url_text);
                 lv_obj_set_style_text_font(url_label, &lv_font_montserrat_24, 0);  // Larger font
                 lv_obj_set_style_text_color(url_label, UITheme::TEXT_MEDIUM, 0);
@@ -351,7 +397,16 @@ void UIMachineSelect::swapMachines(int index1, int index2) {
     
     // Save to preferences
     MachineConfigManager::saveMachines(machines);
-    
+
+    // Keep the last-used machine (auto-loaded when the machine select
+    // screen is turned off) pointing at the same machine
+    int selected = MachineConfigManager::getSelectedMachineIndex();
+    if (selected == index1) {
+        MachineConfigManager::setSelectedMachineIndex(index2);
+    } else if (selected == index2) {
+        MachineConfigManager::setSelectedMachineIndex(index1);
+    }
+
     // Refresh the display
     refreshMachineList();
 }
@@ -418,7 +473,7 @@ void UIMachineSelect::onMachineSelected(lv_event_t *e) {
     Serial.printf("UIMachineSelect: Machine selected: %s (index %d)\n", machines[index].name, index);
     
     // Check if WiFi password is set for wireless machines
-    if (machines[index].connection_type == CONN_WIRELESS && strlen(machines[index].password) == 0) {
+    if (machines[index].connection_type == CONN_WIFI && strlen(machines[index].password) == 0) {
         Serial.println("UIMachineSelect: WiFi password not set!");
         
         // Create modal backdrop
@@ -556,29 +611,53 @@ void UIMachineSelect::onConfigSave(lv_event_t *e) {
     const char *password = lv_textarea_get_text(ta_password);
     const char *url = lv_textarea_get_text(ta_url);
     const char *port_str = lv_textarea_get_text(ta_port);
-    uint16_t sel = lv_dropdown_get_selected(dd_connection_type);
-    
+
     // Validate
     if (strlen(name) == 0) {
         Serial.println("UIMachineSelect: Machine name required");
         return;
     }
     
-    // Create config
+    // Start from the saved machine when editing, so settings this dialog
+    // doesn't show (jog, probe, axes, ESP-NOW pairing) are kept
     MachineConfig config;
+    if (editing_index >= 0 && editing_index < MAX_MACHINES && machines[editing_index].is_configured) {
+        config = machines[editing_index];
+    }
     strncpy(config.name, name, sizeof(config.name) - 1);
-    config.connection_type = (sel == 0) ? CONN_WIRELESS : CONN_WIRED;
+    config.connection_type = selectedConnectionType();
+    if (has_new_pairing) {
+        config.espnow_pairing = new_pairing;
+    }
     strncpy(config.ssid, ssid, sizeof(config.ssid) - 1);
     strncpy(config.password, password, sizeof(config.password) - 1);
     strncpy(config.fluidnc_url, url, sizeof(config.fluidnc_url) - 1);
     config.websocket_port = atoi(port_str);
     if (config.websocket_port == 0) config.websocket_port = 81;
+    // Baud rate from text field (only used for wired connections)
+    if (ta_baud_rate) {
+        uint32_t baud = (uint32_t)atol(lv_textarea_get_text(ta_baud_rate));
+        config.uart_baud_rate = (baud > 0) ? baud : 1000000;
+    }
     config.is_configured = true;
     
     // Save
     MachineConfigManager::saveMachine(editing_index, config);
     MachineConfigManager::loadMachines(machines);
-    
+
+    // Load at startup: on makes this the machine loaded at boot (and turns
+    // off the machine select screen); off only matters if it was this one
+    Preferences sys_prefs;
+    sys_prefs.begin(PREFS_SYSTEM_NAMESPACE, false);
+    if (lv_obj_has_state(sw_autoload, LV_STATE_CHECKED)) {
+        sys_prefs.putBool("show_mach_sel", false);
+        MachineConfigManager::setSelectedMachineIndex(editing_index);
+    } else if (!sys_prefs.getBool("show_mach_sel", true) &&
+               MachineConfigManager::getSelectedMachineIndex() == editing_index) {
+        sys_prefs.putBool("show_mach_sel", true);
+    }
+    sys_prefs.end();
+
     hideConfigDialog();
     refreshMachineList();
 }
@@ -592,24 +671,171 @@ void UIMachineSelect::onConnectionTypeChanged(lv_event_t *e) {
     updateConnectionFields();
 }
 
-void UIMachineSelect::updateConnectionFields() {
+void UIMachineSelect::onAutoloadChanged(lv_event_t *e) {
+    autoload_touched = true;
+}
+
+ConnectionType UIMachineSelect::selectedConnectionType() {
     uint16_t sel = lv_dropdown_get_selected(dd_connection_type);
-    bool is_wireless = (sel == 0);
-    
-    // Enable/disable wireless-specific fields
-    if (is_wireless) {
-        lv_obj_clear_state(ta_ssid, LV_STATE_DISABLED);
-        lv_obj_clear_state(ta_password, LV_STATE_DISABLED);
+    return sel < CONNECTION_OPTION_COUNT ? CONNECTION_OPTIONS[sel] : CONN_WIFI;
+}
+
+static void setHidden(lv_obj_t *obj, bool hidden) {
+    if (!obj) return;
+    if (hidden) {
+        lv_obj_add_flag(obj, LV_OBJ_FLAG_HIDDEN);
     } else {
-        lv_obj_add_state(ta_ssid, LV_STATE_DISABLED);
-        lv_obj_add_state(ta_password, LV_STATE_DISABLED);
+        lv_obj_clear_flag(obj, LV_OBJ_FLAG_HIDDEN);
     }
+}
+
+void UIMachineSelect::updateConnectionFields() {
+    ConnectionType type = selectedConnectionType();
+    bool is_wifi    = (type == CONN_WIFI);
+    bool is_uart    = (type == CONN_UART);
+    bool is_usb_cdc = (type == CONN_USB_CDC);
+    bool is_espnow  = (type == CONN_ESPNOW);
+
+    // Show only the fields this connection type uses: network settings for
+    // WiFi, the pairing panel for ESP-NOW, the baud rate for UART / USB CDC
+    lv_obj_t *wifi_fields[] = {lbl_ssid, ta_ssid, lbl_url, ta_url, lbl_password, ta_password, lbl_port, ta_port};
+    for (lv_obj_t *obj : wifi_fields) {
+        setHidden(obj, !is_wifi);
+    }
+    setHidden(espnow_panel, !is_espnow);
+    if (!is_espnow && espnow_pairing) {
+        stopEspNowPairing();
+    }
+    updateEspNowPanel();
+
+    // New wired machines usually have the display to themselves, so they
+    // default to loading at startup, until the user sets the switch
+    if (sw_autoload && !autoload_touched && !machines[editing_index].is_configured) {
+        if (is_uart || is_usb_cdc) {
+            lv_obj_add_state(sw_autoload, LV_STATE_CHECKED);
+        } else {
+            lv_obj_clear_state(sw_autoload, LV_STATE_CHECKED);
+        }
+    }
+
+    // Baud rate applies to both UART and USB CDC (USB CDC baud must match
+    // FluidNC's uart3: usb_host: baud: setting in config.yaml).
+    if (baud_rate_container) {
+        if (is_uart || is_usb_cdc) {
+            lv_obj_clear_flag(baud_rate_container, (lv_obj_flag_t)(LV_OBJ_FLAG_HIDDEN | LV_OBJ_FLAG_FLOATING));
+        } else {
+            lv_obj_add_flag(baud_rate_container, (lv_obj_flag_t)(LV_OBJ_FLAG_HIDDEN | LV_OBJ_FLAG_FLOATING));
+        }
+    }
+}
+
+// ESP-NOW pairing panel: status, instructions and the Pair / Cancel button
+void UIMachineSelect::updateEspNowPanel() {
+    if (!espnow_panel || lv_obj_has_flag(espnow_panel, LV_OBJ_FLAG_HIDDEN)) {
+        return;
+    }
+    const EspNowPairing *paired = nullptr;
+    if (has_new_pairing) {
+        paired = &new_pairing;
+    } else if (editing_index >= 0 && machines[editing_index].is_configured &&
+               espnowIsPaired(machines[editing_index].espnow_pairing)) {
+        paired = &machines[editing_index].espnow_pairing;
+    }
+
+    char status[96];
+    lv_color_t status_color;
+    const char *hint;
+    const char *button;
+    if (espnow_pairing) {
+        EspNowLink &link = FluidNCClient::espnowLink();
+        if (link.state() == EspNowLink::State::Confirming) {
+            snprintf(status, sizeof(status), "FluidNC found, confirming...");
+        } else {
+            snprintf(status, sizeof(status), "Searching for FluidNC... channel %u", link.channel());
+        }
+        status_color = UITheme::UI_INFO;
+        hint = "On FluidNC, run  $espnow/pair  now\n(in its terminal or WebUI).";
+        button = LV_SYMBOL_CLOSE " Cancel";
+    } else if (espnow_pair_failed) {
+        snprintf(status, sizeof(status), "No FluidNC answered.");
+        status_color = UITheme::STATE_ALARM;
+        hint = "Check FluidNC is v4.1.0 or later and is\nwithin range, then try again.";
+        button = LV_SYMBOL_REFRESH " Pair";
+    } else if (paired) {
+        snprintf(status, sizeof(status), "Paired with %s (channel %u)", paired->hostname, paired->channel);
+        status_color = UITheme::STATE_IDLE;
+        hint = has_new_pairing ? "Tap Save to keep this pairing." : "";
+        button = LV_SYMBOL_REFRESH " Pair again";
+    } else {
+        snprintf(status, sizeof(status), "Not paired");
+        status_color = UITheme::UI_WARNING;
+        hint = "Needs FluidNC v4.1.0 or later. Tap Pair, then run\n$espnow/pair on FluidNC within 60 seconds.";
+        button = LV_SYMBOL_REFRESH " Pair";
+    }
+
+    lv_label_set_text(lbl_espnow_status, status);
+    lv_obj_set_style_text_color(lbl_espnow_status, status_color, 0);
+    lv_label_set_text(lbl_espnow_hint, hint);
+    setHidden(lbl_espnow_hint, hint[0] == '\0');
+    lv_label_set_text(lbl_espnow_pair, button);
+    lv_obj_set_style_bg_color(btn_espnow_pair, espnow_pairing ? UITheme::BG_BUTTON : UITheme::ACCENT_PRIMARY, 0);
+}
+
+void UIMachineSelect::stopEspNowPairing() {
+    if (espnow_pairing) {
+        FluidNCClient::espnowLink().cancelPairing();
+        espnow_pairing = false;
+    }
+}
+
+void UIMachineSelect::onEspNowPair(lv_event_t *e) {
+    if (espnow_pairing) {
+        Serial.println("UIMachineSelect: ESP-NOW pairing cancelled");
+        stopEspNowPairing();
+        updateEspNowPanel();
+        return;
+    }
+    EspNowLink &link = FluidNCClient::espnowLink();
+    espnow_pair_failed = false;
+    if (!link.begin()) {
+        lv_label_set_text(lbl_espnow_status, "ESP-NOW radio failed to start");
+        lv_obj_set_style_text_color(lbl_espnow_status, UITheme::STATE_ALARM, 0);
+        return;
+    }
+    Serial.println("UIMachineSelect: ESP-NOW pairing started");
+    link.startPairing();
+    espnow_pairing = true;
+    updateEspNowPanel();
+}
+
+void UIMachineSelect::onEspNowTimer(lv_timer_t *timer) {
+    if (!espnow_pairing) {
+        return;
+    }
+    EspNowLink &link = FluidNCClient::espnowLink();
+    if (link.pairingChanged()) {
+        new_pairing = link.pairing();
+        has_new_pairing = true;
+        espnow_pairing = false;
+        // The machine connects when it's selected; drop this session until then
+        link.clearPairing();
+        Serial.printf("UIMachineSelect: Paired with %s\n", new_pairing.hostname);
+    } else if (link.state() != EspNowLink::State::Discovering &&
+               link.state() != EspNowLink::State::Confirming) {
+        // The link gave up (it stops after 90 s)
+        espnow_pairing = false;
+        espnow_pair_failed = true;
+    }
+    updateEspNowPanel();
 }
 
 void UIMachineSelect::showConfigDialog(int index) {
     editing_index = index;
     bool is_new = !machines[index].is_configured;
-    
+    has_new_pairing = false;
+    espnow_pairing = false;
+    espnow_pair_failed = false;
+
     // Create modal background
     config_dialog = lv_obj_create(lv_scr_act());
     lv_obj_set_size(config_dialog, LV_PCT(100), LV_PCT(100));
@@ -672,7 +898,7 @@ void UIMachineSelect::showConfigDialog(int index) {
     lv_obj_add_event_cb(ta_name, onTextareaFocused, LV_EVENT_FOCUSED, nullptr);
     
     // WiFi SSID field
-    lv_obj_t *lbl_ssid = lv_label_create(left_col);
+    lbl_ssid = lv_label_create(left_col);
     lv_label_set_text(lbl_ssid, "WiFi SSID:");
     lv_obj_set_style_text_font(lbl_ssid, &lv_font_montserrat_18, 0);
     
@@ -686,7 +912,7 @@ void UIMachineSelect::showConfigDialog(int index) {
     lv_obj_add_event_cb(ta_ssid, onTextareaFocused, LV_EVENT_FOCUSED, nullptr);
     
     // FluidNC URL field
-    lv_obj_t *lbl_url = lv_label_create(left_col);
+    lbl_url = lv_label_create(left_col);
     lv_label_set_text(lbl_url, "FluidNC URL:");
     lv_obj_set_style_text_font(lbl_url, &lv_font_montserrat_18, 0);
     
@@ -702,6 +928,43 @@ void UIMachineSelect::showConfigDialog(int index) {
         lv_textarea_set_text(ta_url, "fluidnc.local");
     }
     lv_obj_add_event_cb(ta_url, onTextareaFocused, LV_EVENT_FOCUSED, nullptr);
+
+    // ESP-NOW pairing panel (shown instead of the network fields for ESP-NOW)
+    espnow_panel = lv_obj_create(left_col);
+    lv_obj_set_size(espnow_panel, LV_PCT(100), LV_SIZE_CONTENT);
+    lv_obj_set_flex_flow(espnow_panel, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_style_pad_all(espnow_panel, 0, 0);
+    lv_obj_set_style_pad_top(espnow_panel, 10, 0);
+    lv_obj_set_style_pad_gap(espnow_panel, 12, 0);
+    lv_obj_set_style_border_width(espnow_panel, 0, 0);
+    lv_obj_set_style_bg_opa(espnow_panel, LV_OPA_TRANSP, 0);
+    lv_obj_clear_flag(espnow_panel, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(espnow_panel, LV_OBJ_FLAG_HIDDEN);
+
+    lv_obj_t *lbl_espnow_title = lv_label_create(espnow_panel);
+    lv_label_set_text(lbl_espnow_title, "ESP-NOW PAIRING");
+    lv_obj_set_style_text_font(lbl_espnow_title, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(lbl_espnow_title, UITheme::TEXT_DISABLED, 0);
+
+    lbl_espnow_status = lv_label_create(espnow_panel);
+    lv_obj_set_width(lbl_espnow_status, LV_PCT(100));
+    lv_label_set_long_mode(lbl_espnow_status, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_text_font(lbl_espnow_status, &lv_font_montserrat_18, 0);
+
+    lbl_espnow_hint = lv_label_create(espnow_panel);
+    lv_obj_set_width(lbl_espnow_hint, LV_PCT(100));
+    lv_label_set_long_mode(lbl_espnow_hint, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_text_font(lbl_espnow_hint, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_color(lbl_espnow_hint, UITheme::TEXT_MEDIUM, 0);
+
+    btn_espnow_pair = lv_btn_create(espnow_panel);
+    lv_obj_set_size(btn_espnow_pair, 220, 48);
+    lv_obj_add_event_cb(btn_espnow_pair, onEspNowPair, LV_EVENT_CLICKED, nullptr);
+    lbl_espnow_pair = lv_label_create(btn_espnow_pair);
+    lv_obj_set_style_text_font(lbl_espnow_pair, &lv_font_montserrat_18, 0);
+    lv_obj_center(lbl_espnow_pair);
+
+    espnow_timer = lv_timer_create(onEspNowTimer, 200, nullptr);
     
     // RIGHT COLUMN (1/3 width): Connection, Password, Port
     lv_obj_t *right_col = lv_obj_create(fields_container);
@@ -722,15 +985,52 @@ void UIMachineSelect::showConfigDialog(int index) {
     lv_obj_set_width(dd_connection_type, LV_PCT(100));
     lv_obj_set_height(dd_connection_type, 48);
     lv_obj_set_style_text_font(dd_connection_type, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_pad_top(dd_connection_type, 12, LV_PART_MAIN);  // Adjust top padding to vertically center text
-    lv_dropdown_set_options(dd_connection_type, "Wireless");  // Wired option hidden for now, reserved for future
-    if (!is_new) lv_dropdown_set_selected(dd_connection_type, machines[index].connection_type);
+    lv_obj_set_style_pad_top(dd_connection_type, 12, LV_PART_MAIN);
+    lv_dropdown_set_options(dd_connection_type, CONNECTION_OPTION_TEXT);
+    if (!is_new) {
+        for (uint16_t i = 0; i < CONNECTION_OPTION_COUNT; i++) {
+            if (CONNECTION_OPTIONS[i] == machines[index].connection_type) {
+                lv_dropdown_set_selected(dd_connection_type, i);
+            }
+        }
+    }
     lv_obj_add_event_cb(dd_connection_type, onConnectionTypeChanged, LV_EVENT_VALUE_CHANGED, nullptr);
-    
+
+    // Baud Rate container (wired only - Advance hardware): holds label + dropdown together for hide/show
+    baud_rate_container = lv_obj_create(right_col);
+    lv_obj_set_width(baud_rate_container, LV_PCT(100));
+    lv_obj_set_height(baud_rate_container, LV_SIZE_CONTENT);
+    lv_obj_set_flex_flow(baud_rate_container, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(baud_rate_container, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+    lv_obj_set_style_pad_all(baud_rate_container, 0, 0);
+    lv_obj_set_style_pad_gap(baud_rate_container, 10, 0);
+    lv_obj_set_style_border_width(baud_rate_container, 0, 0);
+    lv_obj_set_style_bg_opa(baud_rate_container, LV_OPA_TRANSP, 0);
+    // Initially hidden (floating so it doesn't affect flex layout when hidden)
+    lv_obj_add_flag(baud_rate_container, (lv_obj_flag_t)(LV_OBJ_FLAG_HIDDEN | LV_OBJ_FLAG_FLOATING));
+
+    lv_obj_t *lbl_baud = lv_label_create(baud_rate_container);
+    lv_label_set_text(lbl_baud, "Baud Rate:");
+    lv_obj_set_style_text_font(lbl_baud, &lv_font_montserrat_18, 0);
+
+    ta_baud_rate = lv_textarea_create(baud_rate_container);
+    lv_obj_set_width(ta_baud_rate, LV_PCT(100));
+    lv_obj_set_height(ta_baud_rate, 40);
+    lv_textarea_set_one_line(ta_baud_rate, true);
+    lv_textarea_set_max_length(ta_baud_rate, 10);
+    lv_obj_set_style_text_font(ta_baud_rate, &lv_font_montserrat_18, 0);
+    {
+        char baud_str[12];
+        uint32_t baud = (!is_new && machines[index].uart_baud_rate > 0) ? machines[index].uart_baud_rate : 1000000;
+        snprintf(baud_str, sizeof(baud_str), "%lu", (unsigned long)baud);
+        lv_textarea_set_text(ta_baud_rate, baud_str);
+    }
+    lv_obj_add_event_cb(ta_baud_rate, onTextareaFocused, LV_EVENT_FOCUSED, nullptr);
+
     // Password field
-    lv_obj_t *lbl_pwd = lv_label_create(right_col);
-    lv_label_set_text(lbl_pwd, "Password:");
-    lv_obj_set_style_text_font(lbl_pwd, &lv_font_montserrat_18, 0);
+    lbl_password = lv_label_create(right_col);
+    lv_label_set_text(lbl_password, "Password:");
+    lv_obj_set_style_text_font(lbl_password, &lv_font_montserrat_18, 0);
     
     ta_password = lv_textarea_create(right_col);
     lv_obj_set_width(ta_password, LV_PCT(100));
@@ -743,7 +1043,7 @@ void UIMachineSelect::showConfigDialog(int index) {
     lv_obj_add_event_cb(ta_password, onTextareaFocused, LV_EVENT_FOCUSED, nullptr);
     
     // Port field
-    lv_obj_t *lbl_port = lv_label_create(right_col);
+    lbl_port = lv_label_create(right_col);
     lv_label_set_text(lbl_port, "Port:");
     lv_obj_set_style_text_font(lbl_port, &lv_font_montserrat_18, 0);
     
@@ -763,6 +1063,36 @@ void UIMachineSelect::showConfigDialog(int index) {
     }
     lv_obj_add_event_cb(ta_port, onTextareaFocused, LV_EVENT_FOCUSED, nullptr);
     
+    // "Load this machine at startup" row, above the buttons: turns off the
+    // machine select screen and makes this the machine loaded at startup
+    lv_obj_t *autoload_row = lv_obj_create(dialog_content);
+    lv_obj_set_size(autoload_row, 740, 40);
+    lv_obj_set_pos(autoload_row, 0, 315);
+    lv_obj_set_flex_flow(autoload_row, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(autoload_row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_all(autoload_row, 0, 0);
+    lv_obj_set_style_pad_gap(autoload_row, 12, 0);
+    lv_obj_set_style_border_width(autoload_row, 0, 0);
+    lv_obj_set_style_bg_opa(autoload_row, LV_OPA_TRANSP, 0);
+    lv_obj_clear_flag(autoload_row, LV_OBJ_FLAG_SCROLLABLE);
+
+    sw_autoload = lv_switch_create(autoload_row);
+    autoload_touched = false;
+    if (!is_new) {
+        Preferences sys_prefs;
+        sys_prefs.begin(PREFS_SYSTEM_NAMESPACE, true);
+        bool show_machine_select = sys_prefs.getBool("show_mach_sel", true);
+        sys_prefs.end();
+        if (!show_machine_select && MachineConfigManager::getSelectedMachineIndex() == index) {
+            lv_obj_add_state(sw_autoload, LV_STATE_CHECKED);
+        }
+    }
+    lv_obj_add_event_cb(sw_autoload, onAutoloadChanged, LV_EVENT_VALUE_CHANGED, nullptr);
+
+    lv_obj_t *lbl_autoload = lv_label_create(autoload_row);
+    lv_label_set_text(lbl_autoload, "Load this machine at startup (skips the machine list)");
+    lv_obj_set_style_text_font(lbl_autoload, &lv_font_montserrat_18, 0);
+
     // Button container at bottom with absolute positioning
     lv_obj_t *btn_container = lv_obj_create(dialog_content);
     lv_obj_set_size(btn_container, 740, 50);  // 780 - 40px padding
@@ -799,11 +1129,21 @@ void UIMachineSelect::showConfigDialog(int index) {
 
 void UIMachineSelect::hideConfigDialog() {
     hideKeyboard();
+    stopEspNowPairing();
+    if (espnow_timer) {
+        lv_timer_delete(espnow_timer);
+        espnow_timer = nullptr;
+    }
     if (config_dialog) {
         lv_obj_del(config_dialog);
         config_dialog = nullptr;
         dialog_content = nullptr;
     }
+    lbl_ssid = lbl_url = lbl_password = lbl_port = nullptr;
+    sw_autoload = nullptr;
+    espnow_panel = lbl_espnow_status = lbl_espnow_hint = btn_espnow_pair = lbl_espnow_pair = nullptr;
+    has_new_pairing = false;
+    EspNowCrypto::wipe(&new_pairing, sizeof(new_pairing));
     editing_index = -1;
 }
 

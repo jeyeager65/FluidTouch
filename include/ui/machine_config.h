@@ -2,13 +2,36 @@
 #define MACHINE_CONFIG_H
 
 #include <Arduino.h>
+#include "network/espnow_link.h"
 
 #define MAX_MACHINES 4
 
+// NVS-stable numeric values - DO NOT reorder existing entries.
+// CONN_UART/CONN_WIFI keep the original CONN_WIRED/CONN_WIRELESS numeric values
+// so existing machine configurations in NVS continue to load correctly.
 enum ConnectionType {
-    CONN_WIRED = 0,
-    CONN_WIRELESS = 1
+    CONN_UART    = 0,  // Hardware UART (legacy "Wired") - Advance hardware only
+    CONN_WIFI    = 1,  // WiFi WebSocket (legacy "Wireless")
+    CONN_USB_CDC = 2,  // Native USB CDC device - Advance hardware only
+    CONN_ESPNOW  = 3   // ESP-NOW direct radio link (FluidNC v4.1.0+; the protocol dates from v4.0.4, which had issues)
 };
+
+// Backwards-compatible aliases for older code that still references the
+// pre-v2 names. New code should use CONN_UART / CONN_WIFI directly.
+#define CONN_WIRED    CONN_UART
+#define CONN_WIRELESS CONN_WIFI
+
+// Convenience predicates
+inline bool connectionIsWireless(ConnectionType t) {
+    return t == CONN_WIFI || t == CONN_ESPNOW;
+}
+inline bool connectionIsSerial(ConnectionType t) {
+    return t == CONN_UART || t == CONN_USB_CDC;
+}
+inline bool espnowIsPaired(const EspNowPairing& p) {
+    static const uint8_t zero[6] = {};
+    return memcmp(p.mac, zero, sizeof(zero)) != 0;
+}
 
 struct MachineConfig {
     char name[32];
@@ -17,6 +40,9 @@ struct MachineConfig {
     char password[64];       // WiFi password (max 63 chars + null)
     char fluidnc_url[128];   // FluidNC URL (e.g., "192.168.1.100" or "fluidnc.local")
     uint16_t websocket_port; // WebSocket port (default 81)
+    uint32_t uart_baud_rate; // CONN_UART: must match FluidNC's uartN baud. CONN_USB_CDC: must match
+                             // FluidNC's `usb_host: baud:`, which sets the Advance's CH340 bridge speed
+    EspNowPairing espnow_pairing;  // CONN_ESPNOW: FluidNC's MAC, key and channel (all zero = not paired)
     bool is_configured;      // Whether this slot has a valid machine
     
     // Jog control defaults
@@ -46,13 +72,14 @@ struct MachineConfig {
     bool axis_a_enabled;     // Enable 4th axis (rotary) support
     
     // Constructor with defaults
-    MachineConfig() : connection_type(CONN_WIRELESS), websocket_port(81), is_configured(false),
+    MachineConfig() : connection_type(CONN_WIFI), websocket_port(81), uart_baud_rate(115200), is_configured(false),
                       jog_xy_step(10.0f), jog_z_step(1.0f), jog_a_step(1.0f),
                       jog_xy_feed(3000), jog_z_feed(1000), jog_a_feed(1000),
                       jog_max_xy_feed(3000), jog_max_z_feed(1000), jog_max_a_feed(1000),
                       probe_feed_rate(100), probe_max_distance(10),
                       probe_retract(2), probe_thickness(0.0f),
                       axis_x_enabled(true), axis_y_enabled(true), axis_z_enabled(true), axis_a_enabled(false) {
+        memset(&espnow_pairing, 0, sizeof(espnow_pairing));
         name[0] = '\0';
         ssid[0] = '\0';
         password[0] = '\0';

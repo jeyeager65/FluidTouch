@@ -595,7 +595,7 @@ void UITabMain::position_field_event_handler(lv_event_t *e) {
 
     if (code == LV_EVENT_FOCUSED) {
         const FluidNCStatus& status = FluidNCClient::getStatus();
-        if (status.state != STATE_IDLE) {
+        if (!status.isIdle()) {
             lv_obj_clear_state(textarea, LV_STATE_FOCUSED);
             return;
         }

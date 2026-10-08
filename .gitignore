@@ -85,6 +85,7 @@ $RECYCLE.BIN/
 *.temp
 *.log
 *.bak
+*.FCBak
 *.cache
 tmpclaude-*
 
@@ -110,6 +111,9 @@ logs/
 # Environment variables
 .env
 .env.local
+
+# Local MCP server config (e.g. FreeCAD MCP for editing hardware/case)
+.mcp.json
 
 # Credentials (never commit these!)
 secrets.h
@@ -140,3 +144,10 @@ fluidtouch/
 # Desktop simulator build output and local data
 sim/build/
 sim/data/
+
+# Generated when custom_sdkconfig makes the platform rebuild the framework libraries
+/CMakeLists.txt
+/sdkconfig.*
+/dependencies.lock
+/managed_components/
+/.dummy/

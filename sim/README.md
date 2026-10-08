@@ -16,6 +16,9 @@ device uses.
 | LVGL, ArduinoJson, ArduinoWebsockets | Same versions as `platformio.ini` |
 | Display | SDL window. Backlight brightness is shown as a dark overlay |
 | Touchscreen | Mouse (left button = finger) |
+| Board | The CrowPanel **Advance** (`HARDWARE_ADVANCE`), so UART, USB CDC and ESP-NOW connection types are available |
+| UART / USB CDC links to FluidNC | Nothing is connected: they open but never receive anything |
+| ESP-NOW | UDP to the fake FluidNC server (see [ESP-NOW](#esp-now)) |
 | Wi-Fi | Your PC's network. Wi-Fi always reports "connected" |
 | mDNS (`fluidnc.local`) | Your operating system's resolver |
 | Preferences (NVS) | `sim/data/preferences.json` |
@@ -128,6 +131,38 @@ simulator's **Terminal** tab:
 | `$sim/state=Door:0` | Report any state string, e.g. `Door:0`, `Sleep`, or an unknown one to test "DISCONNECTED" |
 
 The fake server doesn't implement uploads (HTTP) or running jobs.
+
+#### ESP-NOW
+
+The fake server also plays FluidNC's side of ESP-NOW (FluidNC v4.0.4+) on UDP
+port 8182. The simulator's ESP-NOW radio (`sim/src/espnow_radio_udp.cpp`)
+sends each frame there as a UDP datagram that records the WiFi channel and
+whether real hardware would encrypt the frame. Like FluidNC, the fake server
+ignores frames on the wrong channel and rejects frames with the wrong
+encryption state.
+
+`$espnow/pair`, `$espnow/list`, `$espnow/unpair=<n>` and `$espnow/cancel` work
+as they do on FluidNC. Pairings are saved to `sim/data/fake_espnow_pairings.json`.
+
+| Option | Effect |
+|---|---|
+| `--espnow-pair` | Open the 60 second pairing window at startup |
+| `--espnow-channel 11` | Put FluidNC on another WiFi channel (default 6) |
+| `--espnow-port 0` | Turn ESP-NOW off |
+
+Set `FT_ESPNOW_SERVER=host:port` if the fake server isn't on `127.0.0.1:8182`.
+
+`espnow_link_test` checks the ESP-NOW link without the UI. It pairs, sends
+`$G` and `?`, and passes once the reply, an `ok` and a status report arrive:
+
+```powershell
+python sim\tools\fake_fluidnc.py --espnow-pair
+sim\build\espnow_link_test.exe --pair    # pair and save the pairing
+sim\build\espnow_link_test.exe           # reconnect with the saved pairing
+```
+
+`--hold --seconds 40` keeps it running, so you can restart the fake server
+(optionally on another `--espnow-channel`) and check that it reconnects.
 
 ### Scripted input and automated screenshots
 
