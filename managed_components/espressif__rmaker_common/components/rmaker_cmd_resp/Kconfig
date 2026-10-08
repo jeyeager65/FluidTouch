@@ -1,9 +1,0 @@
-menu "ESP RainMaker Command-Response"
-
-    config ESP_RMAKER_MAX_COMMANDS
-        int "Maximum commands supported for command-response"
-        default 10
-        help
-            Maximum number of commands supported by the command-response framework
-
-endmenu

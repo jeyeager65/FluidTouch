@@ -1,4 +1,0 @@
-requests
-urllib3
-unittest-xml-reporting
-junit2html

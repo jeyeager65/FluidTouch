@@ -1,5 +1,0 @@
-#
-# ASCII-specific configuration
-#
-CONFIG_MB_COMM_MODE_ASCII=y
-CONFIG_MB_COMM_MODE_RTU=n

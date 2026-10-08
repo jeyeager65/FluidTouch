@@ -1,9 +1,0 @@
-dependencies:
-  espressif/esp_encrypted_img:
-    version: ^2.0.0
-  espressif/esp_secure_cert_mgr:
-    version: ^2.0.8
-  protocol_examples_common:
-    path: ${IDF_PATH}/examples/common_components/protocol_examples_common
-description: ESP Secure Cert Manager OTA Example
-version: 1.0.0

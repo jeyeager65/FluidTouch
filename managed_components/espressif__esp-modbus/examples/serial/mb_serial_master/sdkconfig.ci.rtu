@@ -1,5 +1,0 @@
-#
-# RTU-specific configuration
-#
-CONFIG_MB_COMM_MODE_ASCII=n
-CONFIG_MB_COMM_MODE_RTU=y
