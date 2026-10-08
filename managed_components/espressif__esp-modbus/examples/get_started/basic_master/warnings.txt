@@ -1,0 +1,585 @@
+Enabled checks:
+    bugprone-argument-comment
+    bugprone-too-small-loop-variable
+    google-explicit-constructor
+    misc-unused-using-decls
+    modernize-loop-convert
+    modernize-use-bool-literals
+    modernize-use-equals-default
+    modernize-use-equals-delete
+    modernize-use-nullptr
+    readability-avoid-const-params-in-decls
+    readability-else-after-return
+    readability-inconsistent-declaration-parameter-name
+    readability-make-member-function-const
+    readability-redundant-control-flow
+    readability-redundant-member-init
+    readability-simplify-boolean-expr
+    readability-static-accessed-through-instance
+
+Running clang-tidy for 43 files out of 43 in compilation database ...
+[ 1/43][0.0s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_objects/functions/mbfuncdiag.c
+[ 2/43][0.0s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_transports/ascii/ascii_lrc.c
+[ 3/43][0.1s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_transports/ascii/ascii_slave.c
+123 warnings generated.
+Suppressed 123 warnings (123 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+
+[ 4/43][0.1s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/examples/get_started/basic_master/main/basic_master.c
+/builds/idf/esp-modbus/examples/get_started/basic_master/main/basic_master.c:184:57: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  184 |     const mb_parameter_descriptor_t *param_descriptor = NULL;  // Struct to hold Data Dictionary entry
+      |                                                         ^~~~
+      |                                                         nullptr
+/builds/idf/esp-modbus/examples/get_started/basic_master/main/basic_master.c:208:57: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  208 |     const mb_parameter_descriptor_t *param_descriptor = NULL;  // Struct to hold Data Dictionary entry
+      |                                                         ^~~~
+      |                                                         nullptr
+128 warnings generated.
+Suppressed 124 warnings (124 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+2 warnings treated as errors
+
+[ 5/43][0.1s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_objects/functions/mbfunccoils_master.c
+123 warnings generated.
+Suppressed 123 warnings (123 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+
+[ 6/43][0.1s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_controller/common/esp_modbus_master_tcp.c
+124 warnings generated.
+Suppressed 124 warnings (124 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+
+[ 7/43][0.1s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_ports/tcp/port_tcp_master.c
+124 warnings generated.
+Suppressed 124 warnings (124 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+
+[ 8/43][0.1s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_objects/functions/mbfuncinput.c
+123 warnings generated.
+Suppressed 123 warnings (123 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+
+[ 9/43][0.1s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_transports/tcp/tcp_master.c
+124 warnings generated.
+Suppressed 124 warnings (124 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+
+[10/43][0.1s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_objects/functions/mbfuncdisc.c
+123 warnings generated.
+Suppressed 123 warnings (123 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+
+[11/43][0.1s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_objects/functions/mbfuncholding_master.c
+123 warnings generated.
+Suppressed 123 warnings (123 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+
+[12/43][0.1s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_controller/common/esp_modbus_slave_serial.c
+123 warnings generated.
+Suppressed 123 warnings (123 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+
+[13/43][0.1s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_objects/functions/mbfuncdisc_master.c
+123 warnings generated.
+Suppressed 123 warnings (123 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+
+[14/43][0.1s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_ports/tcp/port_tcp_driver.c
+127 warnings generated.
+Suppressed 127 warnings (127 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+
+[15/43][0.2s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_objects/functions/mbutils.c
+123 warnings generated.
+Suppressed 123 warnings (123 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+
+[16/43][0.2s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_objects/mb_master.c
+/builds/idf/esp-modbus/modbus/mb_objects/mb_master.c:122:36: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  122 |         mb_fn_handler_fp handler = NULL;
+      |                                    ^~~~
+      |                                    nullptr
+/builds/idf/esp-modbus/modbus/mb_objects/mb_master.c:201:29: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  201 |     mbm_object_t *mbm_obj = NULL;
+      |                             ^~~~
+      |                             nullptr
+/builds/idf/esp-modbus/modbus/mb_objects/mb_master.c:202:35: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  202 |     mb_trans_base_t *transp_obj = NULL;
+      |                                   ^~~~
+      |                                   nullptr
+/builds/idf/esp-modbus/modbus/mb_objects/mb_master.c:221:28: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  221 |     mbm_obj->base.obj_id = NULL;
+      |                            ^~~~
+      |                            nullptr
+/builds/idf/esp-modbus/modbus/mb_objects/mb_master.c:403:36: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  403 |             mbm_obj->base.obj_id = NULL;
+      |                                    ^~~~
+      |                                    nullptr
+133 warnings generated.
+Suppressed 123 warnings (123 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+5 warnings treated as errors
+
+[17/43][0.2s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_transports/ascii/ascii_master.c
+123 warnings generated.
+Suppressed 123 warnings (123 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+
+[18/43][0.2s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_ports/common/port_other.c
+123 warnings generated.
+Suppressed 123 warnings (123 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+
+[19/43][0.2s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_transports/rtu/mbcrc.c
+123 warnings generated.
+Suppressed 123 warnings (123 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+
+[20/43][0.2s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_controller/common/esp_modbus_master_serial.c
+124 warnings generated.
+Suppressed 124 warnings (124 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+
+[21/43][0.2s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_objects/functions/mbfunccoils.c
+123 warnings generated.
+Suppressed 123 warnings (123 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+
+[22/43][0.2s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_transports/tcp/tcp_slave.c
+123 warnings generated.
+Suppressed 123 warnings (123 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+
+[23/43][0.2s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_ports/tcp/port_tcp_utils.c
+124 warnings generated.
+Suppressed 124 warnings (124 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+
+[24/43][0.2s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_controller/common/esp_modbus_slave_tcp.c
+123 warnings generated.
+Suppressed 123 warnings (123 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+
+[25/43][0.2s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_controller/common/esp_modbus_common.c
+124 warnings generated.
+Suppressed 124 warnings (124 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+
+[26/43][0.2s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_objects/functions/mbfuncholding.c
+123 warnings generated.
+Suppressed 123 warnings (123 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+
+[27/43][0.2s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_ports/common/mb_transaction.c
+/builds/idf/esp-modbus/modbus/mb_ports/common/mb_transaction.c:42:44: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+   42 |     ESP_MEM_CHECK(TAG, transaction, return NULL);
+      |                                            ^~~~
+      |                                            nullptr
+/builds/idf/esp-modbus/modbus/mb_ports/common/mb_transaction.c:44:70: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+   44 |     ESP_MEM_CHECK(TAG, transaction->list, {free(transaction); return NULL;});
+      |                                                                      ^~~~
+      |                                                                      nullptr
+/builds/idf/esp-modbus/modbus/mb_ports/common/mb_transaction.c:54:16: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+   54 |         return NULL;
+      |                ^~~~
+      |                nullptr
+/builds/idf/esp-modbus/modbus/mb_ports/common/mb_transaction.c:58:16: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+   58 |         return NULL;
+      |                ^~~~
+      |                nullptr
+/builds/idf/esp-modbus/modbus/mb_ports/common/mb_transaction.c:86:12: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+   86 |     return NULL;
+      |            ^~~~
+      |            nullptr
+/builds/idf/esp-modbus/modbus/mb_ports/common/mb_transaction.c:93:16: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+   93 |         return NULL;
+      |                ^~~~
+      |                nullptr
+/builds/idf/esp-modbus/modbus/mb_ports/common/mb_transaction.c:100:12: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  100 |     return NULL;
+      |            ^~~~
+      |            nullptr
+/builds/idf/esp-modbus/modbus/mb_ports/common/mb_transaction.c:117:12: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  117 |     return NULL;
+      |            ^~~~
+      |            nullptr
+/builds/idf/esp-modbus/modbus/mb_ports/common/mb_transaction.c:160:12: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  160 |     return NULL;
+      |            ^~~~
+      |            nullptr
+/builds/idf/esp-modbus/modbus/mb_ports/common/mb_transaction.h:51:27: error: function 'transaction_dequeue' has a definition with different parameter names [readability-inconsistent-declaration-parameter-name,-warnings-as-errors]
+   51 | transaction_item_handle_t transaction_dequeue(transaction_handle_t transaction, pending_state_t pending, transaction_tick_t *tick);
+      |                           ^
+/builds/idf/esp-modbus/modbus/mb_ports/common/mb_transaction.c:103:27: note: the definition seen here
+  103 | transaction_item_handle_t transaction_dequeue(transaction_handle_t transaction, pending_state_t state, transaction_tick_t *tick)
+      |                           ^
+/builds/idf/esp-modbus/modbus/mb_ports/common/mb_transaction.h:51:27: note: differing parameters are named here: ('pending'), in definition: ('state')
+   51 | transaction_item_handle_t transaction_dequeue(transaction_handle_t transaction, pending_state_t pending, transaction_tick_t *tick);
+      |                           ^                                                                     ~~~~~~~
+      |                                                                                                 state
+/builds/idf/esp-modbus/modbus/mb_ports/common/mb_transaction.h:67:11: error: function 'transaction_set_state' has a definition with different parameter names [readability-inconsistent-declaration-parameter-name,-warnings-as-errors]
+   67 | esp_err_t transaction_set_state(transaction_handle_t transaction, uint16_t msg_id, pending_state_t pending);
+      |           ^
+/builds/idf/esp-modbus/modbus/mb_ports/common/mb_transaction.c:182:11: note: the definition seen here
+  182 | esp_err_t transaction_set_state(transaction_handle_t transaction, uint16_t msg_id, pending_state_t state)
+      |           ^
+/builds/idf/esp-modbus/modbus/mb_ports/common/mb_transaction.h:67:11: note: differing parameters are named here: ('pending'), in definition: ('state')
+   67 | esp_err_t transaction_set_state(transaction_handle_t transaction, uint16_t msg_id, pending_state_t pending);
+      |           ^                                                                                        ~~~~~~~
+      |                                                                                                    state
+143 warnings generated.
+Suppressed 123 warnings (123 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+11 warnings treated as errors
+
+[28/43][0.2s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_controller/tcp/mbc_tcp_slave.c
+126 warnings generated.
+Suppressed 126 warnings (126 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+
+[29/43][0.2s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_objects/functions/mbfuncinput_master.c
+123 warnings generated.
+Suppressed 123 warnings (123 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+
+[30/43][0.2s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_controller/common/esp_modbus_slave.c
+/builds/idf/esp-modbus/modbus/mb_controller/common/esp_modbus_slave.c:45:16: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+   45 |         return NULL;
+      |                ^~~~
+      |                nullptr
+/builds/idf/esp-modbus/modbus/mb_controller/common/esp_modbus_slave.c:58:12: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+   58 |     return NULL;
+      |            ^~~~
+      |            nullptr
+/builds/idf/esp-modbus/modbus/mb_controller/common/esp_modbus_slave.c:108:22: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  108 |     mbs_controller = NULL;
+      |                      ^~~~
+      |                      nullptr
+129 warnings generated.
+Suppressed 123 warnings (123 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+3 warnings treated as errors
+
+[31/43][0.2s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_ports/tcp/port_tcp_slave.c
+127 warnings generated.
+Suppressed 127 warnings (127 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+
+[32/43][0.2s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_transports/rtu/rtu_slave.c
+/builds/idf/esp-modbus/modbus/mb_transports/rtu/rtu_slave.c:45:32: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+   45 |     mbs_rtu_transp_t *transp = NULL;
+      |                                ^~~~
+      |                                nullptr
+/builds/idf/esp-modbus/modbus/mb_transports/rtu/rtu_slave.c:57:33: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+   57 |     transp->base.frm_is_bcast = NULL;
+      |                                 ^~~~
+      |                                 nullptr
+/builds/idf/esp-modbus/modbus/mb_transports/rtu/rtu_slave.c:70:29: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+   70 |     port_obj->cb.tx_empty = NULL;
+      |                             ^~~~
+      |                             nullptr
+/builds/idf/esp-modbus/modbus/mb_transports/rtu/rtu_slave.c:71:30: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+   71 |     port_obj->cb.byte_rcvd = NULL;
+      |                              ^~~~
+      |                              nullptr
+/builds/idf/esp-modbus/modbus/mb_transports/rtu/rtu_slave.c:138:65: error: redundant boolean literal supplied to boolean operator [readability-simplify-boolean-expr,-warnings-as-errors]
+  138 |     if (mb_port_ser_recv_data(inst->port_obj, &buf, &length) == false) {
+      |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~
+      |         !mb_port_ser_recv_data(inst->port_obj, &buf, &length)
+132 warnings generated.
+Suppressed 123 warnings (123 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+5 warnings treated as errors
+
+[33/43][0.2s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_controller/serial/mbc_serial_master.c
+/builds/idf/esp-modbus/modbus/mb_controller/serial/mbc_serial_master.c:116:29: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  116 |     mbm_opts->task_handle = NULL;
+      |                             ^~~~
+      |                             nullptr
+/builds/idf/esp-modbus/modbus/mb_controller/serial/mbc_serial_master.c:118:36: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  118 |     mbm_opts->event_group_handle = NULL;
+      |                                    ^~~~
+      |                                    nullptr
+/builds/idf/esp-modbus/modbus/mb_controller/serial/mbc_serial_master.c:123:26: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  123 |     mbm_opts->mbm_sema = NULL;
+      |                          ^~~~
+      |                          nullptr
+/builds/idf/esp-modbus/modbus/mb_controller/serial/mbc_serial_master.c:128:26: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  128 |     mbm_iface->mb_base = NULL;
+      |                          ^~~~
+      |                          nullptr
+/builds/idf/esp-modbus/modbus/mb_controller/serial/mbc_serial_master.c:257:40: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  257 |             mb_fn_handler_fp handler = NULL;
+      |                                        ^~~~
+      |                                        nullptr
+/builds/idf/esp-modbus/modbus/mb_controller/serial/mbc_serial_master.c:342:25: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  342 |     uint8_t *data_ptr = NULL;
+      |                         ^~~~
+      |                         nullptr
+/builds/idf/esp-modbus/modbus/mb_controller/serial/mbc_serial_master.c:389:25: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  389 |     uint8_t *data_ptr = NULL;
+      |                         ^~~~
+      |                         nullptr
+/builds/idf/esp-modbus/modbus/mb_controller/serial/mbc_serial_master.c:442:25: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  442 |     uint8_t *data_ptr = NULL;
+      |                         ^~~~
+      |                         nullptr
+/builds/idf/esp-modbus/modbus/mb_controller/serial/mbc_serial_master.c:488:25: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  488 |     uint8_t *data_ptr = NULL;
+      |                         ^~~~
+      |                         nullptr
+/builds/idf/esp-modbus/modbus/mb_controller/serial/mbc_serial_master.c:535:43: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  535 |             mbm_iface->opts.task_handle = NULL;
+      |                                           ^~~~
+      |                                           nullptr
+/builds/idf/esp-modbus/modbus/mb_controller/serial/mbc_serial_master.c:539:50: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  539 |             mbm_iface->opts.event_group_handle = NULL;
+      |                                                  ^~~~
+      |                                                  nullptr
+/builds/idf/esp-modbus/modbus/mb_controller/serial/mbc_serial_master.c:548:52: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  548 |     mbm_controller_iface_t *mbm_controller_iface = NULL;
+      |                                                    ^~~~
+      |                                                    nullptr
+/builds/idf/esp-modbus/modbus/mb_controller/serial/mbc_serial_master.c:560:29: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  560 |     mbm_opts->task_handle = NULL;
+      |                             ^~~~
+      |                             nullptr
+/builds/idf/esp-modbus/modbus/mb_controller/serial/mbc_serial_master.c:593:37: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  593 |     mbm_controller_iface->mb_base = NULL;
+      |                                     ^~~~
+      |                                     nullptr
+/builds/idf/esp-modbus/modbus/mb_controller/serial/mbc_serial_master.c:605:52: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  605 |     mbm_controller_iface_t *mbm_controller_iface = NULL;
+      |                                                    ^~~~
+      |                                                    nullptr
+/builds/idf/esp-modbus/modbus/mb_controller/serial/mbc_serial_master.c:673:45: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  673 |             mbm_controller_iface->mb_base = NULL;
+      |                                             ^~~~
+      |                                             nullptr
+159 warnings generated.
+Suppressed 127 warnings (127 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+16 warnings treated as errors
+
+[34/43][0.2s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_ports/common/port_timer.c
+/builds/idf/esp-modbus/modbus/mb_ports/common/port_timer.c:55:37: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+   55 |     inst->timer_obj->timer_handle = NULL;
+      |                                     ^~~~
+      |                                     nullptr
+/builds/idf/esp-modbus/modbus/mb_ports/common/port_timer.c:83:23: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+   83 |     inst->timer_obj = NULL;
+      |                       ^~~~
+      |                       nullptr
+/builds/idf/esp-modbus/modbus/mb_ports/common/port_timer.c:96:27: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+   96 |         inst->timer_obj = NULL;
+      |                           ^~~~
+      |                           nullptr
+129 warnings generated.
+Suppressed 123 warnings (123 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+3 warnings treated as errors
+
+[35/43][0.2s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_objects/functions/mbfuncother.c
+/builds/idf/esp-modbus/modbus/mb_objects/functions/mbfuncother.c:88:29: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+   88 |     uint8_t *mb_frame_ptr = NULL;
+      |                             ^~~~
+      |                             nullptr
+125 warnings generated.
+Suppressed 123 warnings (123 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+1 warning treated as error
+
+[36/43][0.2s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_ports/common/port_event.c
+/builds/idf/esp-modbus/modbus/mb_ports/common/port_event.c:29:34: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+   29 |     mb_port_event_t *event_obj = NULL;
+      |                                  ^~~~
+      |                                  nullptr
+/builds/idf/esp-modbus/modbus/mb_ports/common/port_event.c:52:32: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+   52 |         event_obj->event_hdl = NULL;
+      |                                ^~~~
+      |                                nullptr
+/builds/idf/esp-modbus/modbus/mb_ports/common/port_event.c:56:38: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+   56 |         event_obj->event_group_hdl = NULL;
+      |                                      ^~~~
+      |                                      nullptr
+/builds/idf/esp-modbus/modbus/mb_ports/common/port_event.c:60:35: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+   60 |         event_obj->resource_hdl = NULL;
+      |                                   ^~~~
+      |                                   nullptr
+/builds/idf/esp-modbus/modbus/mb_ports/common/port_event.c:63:23: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+   63 |     inst->event_obj = NULL;
+      |                       ^~~~
+      |                       nullptr
+/builds/idf/esp-modbus/modbus/mb_ports/common/port_event.c:233:38: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  233 |         inst->event_obj->event_hdl = NULL;
+      |                                      ^~~~
+      |                                      nullptr
+/builds/idf/esp-modbus/modbus/mb_ports/common/port_event.c:236:23: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  236 |     inst->event_obj = NULL;
+      |                       ^~~~
+      |                       nullptr
+137 warnings generated.
+Suppressed 123 warnings (123 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+7 warnings treated as errors
+
+[37/43][0.2s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_ports/serial/port_serial.c
+/builds/idf/esp-modbus/modbus/mb_ports/serial/port_serial.c:62:37: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+   62 |         port_obj->bus_sema_handle = NULL;
+      |                                     ^~~~
+      |                                     nullptr
+/builds/idf/esp-modbus/modbus/mb_ports/serial/port_serial.c:91:70: error: redundant boolean literal in ternary expression result [readability-simplify-boolean-expr,-warnings-as-errors]
+   91 |     status = (uxSemaphoreGetCount(port_obj->bus_sema_handle) == 0) ? true : false;
+      |              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~
+      |              static_cast<bool>(uxSemaphoreGetCount(port_obj->bus_sema_handle) == 0)
+/builds/idf/esp-modbus/modbus/mb_ports/serial/port_serial.c:209:17: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  209 |     vTaskDelete(NULL);
+      |                 ^~~~
+      |                 nullptr
+/builds/idf/esp-modbus/modbus/mb_ports/serial/port_serial.c:214:31: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  214 |     mb_ser_port_t *ser_port = NULL;
+      |                               ^~~~
+      |                               nullptr
+130 warnings generated.
+Suppressed 123 warnings (123 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+4 warnings treated as errors
+
+[38/43][0.2s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_controller/tcp/mbc_tcp_master.c
+128 warnings generated.
+Suppressed 128 warnings (128 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+
+[39/43][0.2s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_transports/rtu/rtu_master.c
+/builds/idf/esp-modbus/modbus/mb_transports/rtu/rtu_master.c:49:32: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+   49 |     mbm_rtu_transp_t *transp = NULL;
+      |                                ^~~~
+      |                                nullptr
+/builds/idf/esp-modbus/modbus/mb_transports/rtu/rtu_master.c:50:32: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+   50 |     mb_port_base_t *port_obj = NULL;
+      |                                ^~~~
+      |                                nullptr
+/builds/idf/esp-modbus/modbus/mb_transports/rtu/rtu_master.c:80:29: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+   80 |     port_obj->cb.tx_empty = NULL;
+      |                             ^~~~
+      |                             nullptr
+/builds/idf/esp-modbus/modbus/mb_transports/rtu/rtu_master.c:81:30: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+   81 |     port_obj->cb.byte_rcvd = NULL;
+      |                              ^~~~
+      |                              nullptr
+/builds/idf/esp-modbus/modbus/mb_transports/rtu/rtu_master.c:153:65: error: redundant boolean literal supplied to boolean operator [readability-simplify-boolean-expr,-warnings-as-errors]
+  153 |     if (mb_port_ser_recv_data(inst->port_obj, &buf, &length) == false) {
+      |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~
+      |         !mb_port_ser_recv_data(inst->port_obj, &buf, &length)
+/builds/idf/esp-modbus/modbus/mb_transports/rtu/rtu_master.c:210:75: error: redundant boolean literal in ternary expression result [readability-simplify-boolean-expr,-warnings-as-errors]
+  210 |         transp->frame_is_broadcast = (slv_addr == MB_ADDRESS_BROADCAST) ? true : false;
+      |                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~
+      |                                      static_cast<bool>(slv_addr == MB_ADDRESS_BROADCAST)
+133 warnings generated.
+Suppressed 123 warnings (123 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+6 warnings treated as errors
+
+[40/43][0.2s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_objects/functions/mbfunc_handling.c
+/builds/idf/esp-modbus/modbus/mb_objects/functions/mbfunc_handling.c:19:36: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+   19 |     mb_command_entry_t *item_ptr = NULL;
+      |                                    ^~~~
+      |                                    nullptr
+/builds/idf/esp-modbus/modbus/mb_objects/functions/mbfunc_handling.c:51:36: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+   51 |     mb_command_entry_t *item_ptr = NULL;
+      |                                    ^~~~
+      |                                    nullptr
+/builds/idf/esp-modbus/modbus/mb_objects/functions/mbfunc_handling.c:73:36: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+   73 |     mb_command_entry_t *item_ptr = NULL;
+      |                                    ^~~~
+      |                                    nullptr
+/builds/idf/esp-modbus/modbus/mb_objects/functions/mbfunc_handling.c:74:33: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+   74 |     mb_command_entry_t *ptemp = NULL;
+      |                                 ^~~~
+      |                                 nullptr
+/builds/idf/esp-modbus/modbus/mb_objects/functions/mbfunc_handling.c:99:36: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+   99 |     mb_command_entry_t *item_ptr = NULL;
+      |                                    ^~~~
+      |                                    nullptr
+133 warnings generated.
+Suppressed 123 warnings (123 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+5 warnings treated as errors
+
+[41/43][0.2s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_objects/mb_slave.c
+/builds/idf/esp-modbus/modbus/mb_objects/mb_slave.c:107:36: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  107 |         mb_fn_handler_fp handler = NULL;
+      |                                    ^~~~
+      |                                    nullptr
+/builds/idf/esp-modbus/modbus/mb_objects/mb_slave.c:187:29: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  187 |     mbs_object_t *mbs_obj = NULL;
+      |                             ^~~~
+      |                             nullptr
+/builds/idf/esp-modbus/modbus/mb_objects/mb_slave.c:188:35: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  188 |     mb_trans_base_t *transp_obj = NULL;
+      |                                   ^~~~
+      |                                   nullptr
+/builds/idf/esp-modbus/modbus/mb_objects/mb_slave.c:202:28: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  202 |     mbs_obj->base.obj_id = NULL;
+      |                            ^~~~
+      |                            nullptr
+/builds/idf/esp-modbus/modbus/mb_objects/mb_slave.c:372:36: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  372 |             mbs_obj->base.obj_id = NULL;
+      |                                    ^~~~
+      |                                    nullptr
+133 warnings generated.
+Suppressed 123 warnings (123 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+5 warnings treated as errors
+
+[42/43][0.2s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_controller/serial/mbc_serial_slave.c
+/builds/idf/esp-modbus/modbus/mb_controller/serial/mbc_serial_slave.c:136:43: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  136 |     mbs_opts->notification_queue_handle = NULL;
+      |                                           ^~~~
+      |                                           nullptr
+/builds/idf/esp-modbus/modbus/mb_controller/serial/mbc_serial_slave.c:137:36: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  137 |     mbs_opts->event_group_handle = NULL;
+      |                                    ^~~~
+      |                                    nullptr
+/builds/idf/esp-modbus/modbus/mb_controller/serial/mbc_serial_slave.c:138:29: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  138 |     mbs_opts->task_handle = NULL;
+      |                             ^~~~
+      |                             nullptr
+/builds/idf/esp-modbus/modbus/mb_controller/serial/mbc_serial_slave.c:152:43: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  152 |             mbs_iface->opts.task_handle = NULL;
+      |                                           ^~~~
+      |                                           nullptr
+/builds/idf/esp-modbus/modbus/mb_controller/serial/mbc_serial_slave.c:156:50: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  156 |             mbs_iface->opts.event_group_handle = NULL;
+      |                                                  ^~~~
+      |                                                  nullptr
+/builds/idf/esp-modbus/modbus/mb_controller/serial/mbc_serial_slave.c:176:29: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  176 |     mbs_opts->task_handle = NULL;
+      |                             ^~~~
+      |                             nullptr
+/builds/idf/esp-modbus/modbus/mb_controller/serial/mbc_serial_slave.c:205:44: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  205 |     mbs_controller_iface->set_descriptor = NULL; // Use common set descriptor function
+      |                                            ^~~~
+      |                                            nullptr
+/builds/idf/esp-modbus/modbus/mb_controller/serial/mbc_serial_slave.c:208:37: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  208 |     mbs_controller_iface->mb_base = NULL;
+      |                                     ^~~~
+      |                                     nullptr
+/builds/idf/esp-modbus/modbus/mb_controller/serial/mbc_serial_slave.c:220:52: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  220 |     mbs_controller_iface_t *mbs_controller_iface = NULL;
+      |                                                    ^~~~
+      |                                                    nullptr
+/builds/idf/esp-modbus/modbus/mb_controller/serial/mbc_serial_slave.c:287:45: error: use nullptr [modernize-use-nullptr,-warnings-as-errors]
+  287 |             mbs_controller_iface->mb_base = NULL;
+      |                                             ^~~~
+      |                                             nullptr
+146 warnings generated.
+Suppressed 126 warnings (126 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+10 warnings treated as errors
+
+[43/43][0.2s] /opt/esp/tools/esp-clang/esp-21.1.3_20260408/esp-clang/bin/clang-tidy -p=/builds/idf/esp-modbus/examples/get_started/basic_master/build --config-file=/builds/idf/esp-modbus/tools/.clang-tidy /builds/idf/esp-modbus/modbus/mb_controller/common/esp_modbus_master.c
+124 warnings generated.
+Suppressed 124 warnings (124 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+

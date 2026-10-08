@@ -3,6 +3,16 @@
   "default_hardware": "advance-v1.3",
   "versions": [
     {
+      "id": "1.1.0_dev",
+      "display_name": "1.1.0_dev (Preview 2026-10-08)",
+      "hardware": [
+        "basic",
+        "advance-v1.3",
+        "advance-v1.2"
+      ],
+      "is_preview": true
+    },
+    {
       "id": "1.1.0_wired-espnow",
       "display_name": "1.1.0_wired-espnow (Preview 2026-09-26)",
       "hardware": [
