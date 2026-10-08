@@ -55,7 +55,7 @@ The v1.3 buttons are sized for that board's original 4.5 × 4.5 mm, 9 mm tall ta
 
 The model tree is split into two groups:
 
-- **Printed Parts**: Top, Bottom, both button versions and the battery bracket. The v1.4 buttons are shown by default. Each button version also has a linked copy in the second hole, which is the same part rotated.
+- **Printed Parts**: Top, Bottom, both button versions and the battery bracket. The v1.4 buttons are shown by default. Each button version has a linked copy in the second hole, and the bracket has a linked copy on the second pair of posts. Each copy is the same part, moved into place.
 - **Reference**: the pendant adapter board, for fit checks.
 
 Features are named for what they do (e.g. `TopUSBCCutout`, `BottomPowerSwitchCutout`, `LightPipePost`, `BatteryStop`). Each port opening is split between the Top and Bottom bodies.
