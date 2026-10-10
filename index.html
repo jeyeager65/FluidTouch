@@ -805,7 +805,7 @@
             Web Installer
         </p>
         <div class="version-badge">
-            <span>Version 1.0.5</span>
+            <span>Version 1.1.0</span>
         </div>
         <p style="text-align: center; font-size: 1.2em; color: #c9d1d9; margin-bottom: 30px;">
             ESP32 Touchscreen CNC Controller for FluidNC
@@ -813,19 +813,24 @@
 
         <!-- Changelog -->
         <div class="changelog">
-            <h3>🎉 Version 1.0.5</h3>
+            <h3>🎉 Version 1.1.0</h3>
             <div class="changelog-content">
                 <div class="changelog-version">
-                    <div class="changelog-date">April 24, 2026</div>
+                    <div class="changelog-date">October 10, 2026</div>
                     <ul class="changelog-items">
-                        <li><strong>Probe / Limit Switch Indicators:</strong> Real-time pin status — probe indicator on Control → Probe and the Status tab; per-axis limit-switch indicators on Control → Actions and the Status tab. Triggered indicators stay visible for 500ms so brief activations are easy to see</li>
-                        <li><strong>Terminal History:</strong> Terminal tab retains command history — recall previous commands for re-sending</li>
-                        <li><strong>FluidNC Version on About Tab:</strong> Settings → About now displays the connected FluidNC controller's firmware version</li>
-                        <li><strong>M7 + M8 Coolant Display:</strong> Status tab now correctly shows both flood (M8) and mist (M7) coolant when active simultaneously</li>
-                        <li><strong>A-Axis is Per-Machine:</strong> A-axis enable/disable is now stored per machine instead of as a global setting, allowing mixed 3-axis and 4-axis configurations</li>
-                        <li><strong>Library Updates:</strong> LVGL 9.5.0, LovyanGFX 1.2.19, ArduinoJson 7.4.3</li>
-                        <li><strong>ESP32 Platform Branch:</strong> Switched to <code>Arduino/IDF53_gcc15</code> after the previous upstream branch was removed/renamed</li>
+                        <li><strong>ESP-NOW Connection:</strong> Connect to FluidNC directly over ESP-NOW with no WiFi network needed (FluidNC v4.1.0 or later); pair from the machine editor</li>
+                        <li><strong>Wired Connections:</strong> UART through the Advance's UART0 header, or USB CDC through the display's USB-C jack to FluidNC's USB host port (USB CDC needs a FluidNC release newer than v4.1.1)</li>
+                        <li><strong>File Uploads:</strong> Choose FluidNC's SD card or flash and an existing folder; uploads over WiFi or wired connections show the transfer rate, can be cancelled, and keep the display awake</li>
+                        <li><strong>Axis Configuration:</strong> Turn X, Y and Z on or off per machine; X-only machines get a single Main tab with saved positions</li>
+                        <li><strong>Load This Machine at Startup:</strong> Skip the machine list and connect straight to a machine</li>
+                        <li><strong>Reconnect:</strong> Reconnect from the System Options popup without restarting</li>
+                        <li><strong>Advance v1.4 and v1.5:</strong> Supported with the same firmware as v1.3</li>
+                        <li><strong>3D Printed Case and Stand:</strong> Print-ready files for an Advance case with room for a large battery, plus a table stand</li>
+                        <li><strong>Fixes:</strong> Correct alarm messages, uploads with mDNS hostnames, a late HOLD popup and slow Files list on FluidNC v4, and more</li>
+                        <li><strong>Platform:</strong> Official pioarduino platform (Arduino 3.3.12, ESP-IDF 5.5.5), LovyanGFX 1.2.29</li>
+                        <li><strong>⚠️ Advance v1.2:</strong> Not tested; support may be dropped in a future release</li>
                     </ul>
+                    <div class="changelog-date" style="margin: 10px 0 0;">Full details in the <a href="https://github.com/jeyeager65/FluidTouch/blob/main/CHANGELOG.md" target="_blank" style="color: #00bcd4;">changelog</a></div>
                 </div>
             </div>
 
@@ -833,6 +838,19 @@
             <div class="changelog-collapsed" id="changelog-prior" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(0, 188, 212, 0.2);">
                 <h3 onclick="toggleChangelog('changelog-prior')">📜 Prior Releases</h3>
                 <div class="changelog-content">
+                    <div class="changelog-version">
+                        <h4>Version 1.0.5 - Probe/Limit Indicators & Terminal History</h4>
+                        <div class="changelog-date">April 24, 2026</div>
+                        <ul class="changelog-items">
+                            <li><strong>Probe / Limit Switch Indicators:</strong> Real-time pin status — probe indicator on Control → Probe and the Status tab; per-axis limit-switch indicators on Control → Actions and the Status tab. Triggered indicators stay visible for 500ms so brief activations are easy to see</li>
+                            <li><strong>Terminal History:</strong> Terminal tab retains command history — recall previous commands for re-sending</li>
+                            <li><strong>FluidNC Version on About Tab:</strong> Settings → About now displays the connected FluidNC controller's firmware version</li>
+                            <li><strong>M7 + M8 Coolant Display:</strong> Status tab now correctly shows both flood (M8) and mist (M7) coolant when active simultaneously</li>
+                            <li><strong>A-Axis is Per-Machine:</strong> A-axis enable/disable is now stored per machine instead of as a global setting, allowing mixed 3-axis and 4-axis configurations</li>
+                            <li><strong>Library Updates:</strong> LVGL 9.5.0, LovyanGFX 1.2.19, ArduinoJson 7.4.3</li>
+                            <li><strong>ESP32 Platform Branch:</strong> Switched to <code>Arduino/IDF53_gcc15</code> after the previous upstream branch was removed/renamed</li>
+                        </ul>
+                    </div>
                     <div class="changelog-version">
                         <h4>Version 1.0.4 - A-Axis Support & Configurable Jog Steps</h4>
                         <div class="changelog-date">March 23, 2026</div>
@@ -946,7 +964,7 @@
                         <div id="advance-version-selector" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1); display: none;">
                             <label for="advance-version-select" style="display: block; margin-bottom: 6px; color: #00bcd4; font-weight: 600; font-size: 0.9em;">Hardware Revision</label>
                             <select id="advance-version-select" onchange="onAdvanceVersionChange()" style="width: 100%; padding: 8px; font-size: 14px; background: rgba(30, 30, 46, 0.9); color: #e8e8e8; border: 2px solid rgba(0, 188, 212, 0.5); border-radius: 6px; cursor: pointer;">
-                                <option value="advance-v1.3">v1.3+ (Current)</option>
+                                <option value="advance-v1.3">v1.3 – v1.5 (Current)</option>
                                 <option value="advance-v1.2">v1.2 (Untested)</option>
                             </select>
                         </div>
@@ -969,6 +987,7 @@
                 <li><strong>Permissions:</strong> Allow serial port access when prompted</li>
                 <li><strong>Hardware:</strong> ESP32-S3 boards only - ESP32-P4 versions are NOT supported</li>
                 <li><strong>Important:</strong> Installing wrong hardware firmware will result in non-functional display</li>
+                <li><strong>Updating:</strong> Your machines and settings are kept. When the installer asks whether to erase the device, choose <strong>not</strong> to erase</li>
             </ul>
         </div>
 
@@ -1055,7 +1074,7 @@
         
         const hardwareNames = {
             'basic': 'Elecrow CrowPanel 7" Basic',
-            'advance-v1.3': 'Elecrow CrowPanel 7" Advance v1.3+',
+            'advance-v1.3': 'Elecrow CrowPanel 7" Advance v1.3 – v1.5',
             'advance-v1.2': 'Elecrow CrowPanel 7" Advance v1.2'
         };
 
@@ -1130,13 +1149,13 @@
                 if (hasV13) {
                     const opt = document.createElement('option');
                     opt.value = 'advance-v1.3';
-                    opt.textContent = 'v1.3+ (Current)';
+                    opt.textContent = 'v1.3 – v1.5 (Current)';
                     advanceSelect.appendChild(opt);
                 }
                 if (hasV12) {
                     const opt = document.createElement('option');
                     opt.value = 'advance-v1.2';
-                    opt.textContent = 'v1.2';
+                    opt.textContent = 'v1.2 (Untested)';
                     advanceSelect.appendChild(opt);
                 }
                 
