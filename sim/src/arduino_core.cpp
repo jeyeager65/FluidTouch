@@ -293,9 +293,13 @@ namespace sim {
 extern int g_argc;
 extern char **g_argv;
 void shutdown();
+[[noreturn]] void restart();  // browser build: sim/wasm/wasm_main.cpp
 }
 
 void EspClass::restart() {
+#ifdef __EMSCRIPTEN__
+    sim::restart();
+#else
     // Emulate a reboot by relaunching the simulator with the same arguments.
     printf("\n[SIM] ESP.restart() - relaunching simulator\n\n");
     fflush(stdout);
@@ -315,5 +319,6 @@ void EspClass::restart() {
 #else
     execv(sim::g_argv[0], sim::g_argv);
     _exit(1);
+#endif
 #endif
 }

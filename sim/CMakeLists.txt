@@ -1,7 +1,7 @@
 # FluidTouch desktop simulator
 #
 # Builds the real FluidTouch UI + FluidNC client (src/) as a Windows/Linux
-# desktop app. The ESP32/Arduino APIs the firmware uses are replaced by the
+# desktop app, or (emcmake, see sim/wasm/build.ps1) for a web page. The ESP32/Arduino APIs the firmware uses are replaced by the
 # desktop implementations in sim/include and sim/src, and the display/touch
 # drivers are replaced by an SDL2 window. See sim/README.md.
 
@@ -53,7 +53,14 @@ FetchContent_Declare(mbedtls
 # own CMake projects aren't added) - we compile them ourselves below.
 FetchContent_MakeAvailable(lvgl arduinojson arduinowebsockets mbedtls)
 
-find_package(SDL2 REQUIRED CONFIG)
+if(EMSCRIPTEN)
+    # Browser build: pthreads (the firmware's loop blocks), no SDL - the page
+    # draws the framebuffer (sim/wasm). Needs a cross-origin isolated page.
+    add_compile_options(-pthread)
+    add_link_options(-pthread)
+else()
+    find_package(SDL2 REQUIRED CONFIG)
+endif()
 
 # ---------------------------------------------------------------------------
 # Shared compile settings
@@ -67,6 +74,10 @@ set(FT_INCLUDE_DIRS
     "${lvgl_SOURCE_DIR}/.."
     "${arduinojson_SOURCE_DIR}/src"
     "${arduinowebsockets_SOURCE_DIR}/src")
+if(EMSCRIPTEN)
+    # lv_conf.h without SDL
+    list(PREPEND FT_INCLUDE_DIRS "${SIM_DIR}/wasm/include")
+endif()
 
 set(FT_DEFINES
     FLUIDTOUCH_SIM=1
@@ -96,7 +107,9 @@ file(GLOB_RECURSE LVGL_SOURCES CONFIGURE_DEPENDS "${lvgl_SOURCE_DIR}/src/*.c")
 add_library(lvgl STATIC ${LVGL_SOURCES})
 target_include_directories(lvgl PUBLIC ${FT_INCLUDE_DIRS})
 target_compile_definitions(lvgl PUBLIC ${FT_DEFINES})
-target_link_libraries(lvgl PUBLIC SDL2::SDL2)
+if(NOT EMSCRIPTEN)
+    target_link_libraries(lvgl PUBLIC SDL2::SDL2)
+endif()
 target_compile_options(lvgl PRIVATE -w -O2 -funsigned-char)
 
 # ---------------------------------------------------------------------------
@@ -136,6 +149,29 @@ list(FILTER FT_SOURCES EXCLUDE REGEX ".*/src/core/touch_driver\\.cpp$")
 list(FILTER FT_SOURCES EXCLUDE REGEX ".*/src/network/screenshot_server\\.cpp$")
 
 file(GLOB SIM_SOURCES CONFIGURE_DEPENDS "${SIM_DIR}/src/*.cpp")
+
+if(EMSCRIPTEN)
+    # The SDL window, keyboard and socket files are replaced by sim/wasm
+    list(FILTER SIM_SOURCES EXCLUDE REGEX ".*/(sim_main|display_driver_sim|touch_driver_sim|pc_keyboard|net)\.cpp$")
+    file(GLOB WASM_SOURCES CONFIGURE_DEPENDS "${SIM_DIR}/wasm/*.cpp")
+    add_executable(fluidtouch ${FT_SOURCES} ${SIM_SOURCES} ${WASM_SOURCES})
+    target_include_directories(fluidtouch PRIVATE ${FT_INCLUDE_DIRS})
+    target_compile_definitions(fluidtouch PRIVATE ${FT_DEFINES} SIM_DEFAULT_DATA_DIR="/data")
+    target_compile_options(fluidtouch PRIVATE
+        -funsigned-char -Wall -Wno-unused-variable -Wno-unused-function -Wno-format
+        -Wno-unused-but-set-variable -Wno-missing-field-initializers
+        "$<$<COMPILE_LANGUAGE:CXX>:SHELL:-include ${FT_CXX_FORCE_INCLUDE}>")
+    target_link_libraries(fluidtouch PRIVATE lvgl arduinowebsockets mbedcrypto)
+    # fluidtouch.js + .wasm: createFluidTouch(options) -> Module (see sim/wasm/README.md)
+    target_link_options(fluidtouch PRIVATE
+        -sMODULARIZE=1 -sEXPORT_NAME=createFluidTouch -sENVIRONMENT=web,worker
+        -sPROXY_TO_PTHREAD=1 -sPTHREAD_POOL_SIZE=6 -sDEFAULT_PTHREAD_STACK_SIZE=262144
+        -sSTACK_SIZE=1048576 -sINITIAL_MEMORY=134217728 -sEXIT_RUNTIME=0
+        "-sEXPORTED_FUNCTIONS=_main,_malloc,_free,_ft_framebuffer,_ft_frame,_ft_width,_ft_height,_ft_touch,_ft_net_data,_ft_net_closed"
+        "-sEXPORTED_RUNTIME_METHODS=ccall,cwrap,HEAPU8,HEAPU16,FS")
+    set_target_properties(fluidtouch PROPERTIES SUFFIX ".js")
+    return()
+endif()
 
 add_executable(fluidtouch_sim ${FT_SOURCES} ${SIM_SOURCES})
 target_include_directories(fluidtouch_sim PRIVATE ${FT_INCLUDE_DIRS})
